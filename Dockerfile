@@ -10,8 +10,8 @@ RUN apt update && \
                    libtool autopoint gettext nano && \
     pip3 install mako meson jinja2
 
-ADD dependencies /build
-ADD meson-cross-i386 /build/
+COPY dependencies /build
+COPY meson-cross-i386 /build/
 
 ARG PATH="$PATH:/usr/local/bin"
 
@@ -26,8 +26,10 @@ ARG DEP_BUILD_SCRIPT="\
 [macros-util-macros] make install\n\
 [zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --static\n\
 [zlib] make install\n\
-[libxkbcommon] sed -i 's/^build_tools = have_getopt_long/build_tools = false/' meson.build\n\
-[libxkbcommon] meson setup build $MESON_PROLOGUE -Denable-wayland=false -Denable-docs=false\n\
+[libxkbcommon] meson setup build $MESON_PROLOGUE \
+-Denable-wayland=false \
+-Denable-docs=false \
+-Denable-tools=false \n\
 [libxkbcommon] cd build\n\
 [libxkbcommon] meson compile xkbcommon xkbcommon-x11 xkbregistry\n\
 [libxkbcommon] meson install --no-rebuild\n\
