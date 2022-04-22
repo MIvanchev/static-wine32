@@ -11,7 +11,7 @@ https://github.com/MIvanchev/wine/tree/static-dependencies. The changes are
 only intended to make Wine compatible with statically linked dependencies.
 
 Using stiatically compiled software is in general a **bad** idea and comes with
-significant risks. Use at your own risk and discreption. I assume no
+significant risks. Use at your own risk and discretion. I assume no
 responsibility for any damage resulting from using this project.
 
 ## Installation
