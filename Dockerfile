@@ -5,10 +5,18 @@ SHELL ["/bin/bash", "-c"]
 RUN apt update && \
     apt upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
-                   gcc-multilib g++-multilib gcc-mingw-w64 flex bison python3 \
-                   python3-pip wget git cmake ninja-build gperf automake \
-                   libtool autopoint gettext nano && \
-    pip3 install mako meson jinja2
+        gcc-multilib g++-multilib gcc-mingw-w64 flex bison python3 \
+        python3-pip wget git cmake ninja-build gperf automake \
+        libtool autopoint gettext && \
+    pip3 install mako meson jinja2 && \
+    DEBIAN_FRONTEND=noninteractive apt install -y nano xvfb x11-apps \
+        imagemagick && \
+    echo "#!/bin/sh" > /usr/bin/startx && \
+    echo "Xvfb \"\$DISPLAY\" -screen 0 1200x800x24 &" >> /usr/bin/startx && \
+    echo >> /usr/bin/startx && \
+    chmod +x /usr/bin/startx
+
+ENV DISPLAY=:1
 
 COPY dependencies /build
 COPY meson-cross-i386 /build/
@@ -65,7 +73,7 @@ ARG DEP_BUILD_SCRIPT="\
 --disable-su --disable-runuser --disable-ul --disable-more --disable-setterm \
 --disable-schedutils --disable-wall --disable-bash-completion\n\
 [util-linux] make install\n\
-[systemd] sed 's/\\(input : .libudev.pc.in.,\\)/\\1 install_tag: '\"'\"'devel'\"'\"',/' src/libudev/meson.build\n\
+[systemd] sed -i 's/\\(input : .libudev.pc.in.,\\)/\\1 install_tag: '\"'\"'devel'\"'\"',/' src/libudev/meson.build\n\
 [systemd] meson setup build $MESON_PROLOGUE -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\n\
 [systemd] cd build\n\
 [systemd] meson compile basic:static_library udev:static_library libudev.pc\n\
@@ -96,7 +104,8 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] patch -p1 < ../patches/\$(basename \$PWD).patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
-[mesa] sed  -i 's/extra_libs_libglx = \\[\\]/extra_libs_libglx = \\[libgallium_dri\\]/' src/glx/meson.build\n\
+[mesa] sed -i 's/extra_libs_libglx = \\[\\]/extra_libs_libglx = \\[libgallium_dri\\]/' src/glx/meson.build\n\
+[mesa] sed -i 's/extra_deps_libgl = \\[\\]/extra_deps_libgl = \\[meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"')\\]/' src/glx/meson.build\n\
 [mesa] echo '#!/usr/bin/env python3' > bin/install_megadrivers.py\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE --sysconfdir=/etc \
