@@ -24,9 +24,9 @@ COPY meson-cross-i386 /build/
 ARG PATH="$PATH:/usr/local/bin"
 
 ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -O2\" CPPFLAGS=\"-m32 -O2\" CXXFLAGS=\"-m32 -O2\" OBJCFLAGS=\"-m32 -O2\" LDFLAGS=-m32"
-ARG CONFIGURE_PROLOGUE="--prefix=/usr/local"
+ARG CONFIGURE_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc"
 ARG CONFIGURE_HOST="--host=i386-linux-gnu"
-ARG MESON_PROLOGUE="--prefix=/usr/local --buildtype=release --cross-file=../meson-cross-i386 --default-library=static"
+ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --buildtype=release --cross-file=../meson-cross-i386 --default-library=static"
 
 ARG DEP_BUILD_SCRIPT="\
 [macros-util-macros] autoreconf -v --install\n\
@@ -36,12 +36,11 @@ ARG DEP_BUILD_SCRIPT="\
 [zlib] make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
--Denable-docs=false \
--Denable-tools=false \n\
+-Denable-docs=false \n\
 [libxkbcommon] cd build\n\
-[libxkbcommon] meson compile xkbcommon xkbcommon-x11 xkbregistry\n\
+[libxkbcommon] meson compile xkbcommon xkbcommon-x11\n\
 [libxkbcommon] meson install --no-rebuild\n\
-[fontconfig] ./configure $CONFIGURE_PROLOGUE --sysconfdir=/etc --enable-static --disable-shared --disable-docs $CONFIGURE_FLAGS\n\
+[fontconfig] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-docs $CONFIGURE_FLAGS\n\
 [fontconfig] make install\n\
 [SDL2] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared \
 --disable-atomic --disable-audio --disable-video --disable-render --disable-sensor \
@@ -99,6 +98,15 @@ ARG DEP_BUILD_SCRIPT="\
 pulsecommon-\$(echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/') \
 pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] meson install --tags devel --no-rebuild\n\
+[openal-soft] cd build\n\
+[openal-soft] $CONFIGURE_FLAGS cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DLIBTYPE=STATIC \
+-DALSOFT_BACKEND_OSS=OFF \
+-DALSOFT_UTILS=OFF \
+-DALSOFT_NO_CONFIG_UTIL=ON \
+-DALSOFT_EXAMPLES=OFF \
+-DALSOFT_INSTALL_CONFIG=OFF \
+-DALSOFT_INSTALL_HRTF_DATA=OFF \
+-DALSOFT_INSTALL_AMBDEC_PRESETS=OFF .. \n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
 [mesa] patch -p1 < ../patches/\$(basename \$PWD).patch\n\
@@ -108,7 +116,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] sed -i 's/extra_deps_libgl = \\[\\]/extra_deps_libgl = \\[meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"')\\]/' src/glx/meson.build\n\
 [mesa] echo '#!/usr/bin/env python3' > bin/install_megadrivers.py\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
-[mesa] meson setup build $MESON_PROLOGUE --sysconfdir=/etc \
+[mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
 -Dgallium-drivers=swrast,i915,iris,crocus \
 -Dgallium-vdpau=disabled \
@@ -127,7 +135,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dlibunwind=enabled\n\
 [mesa] cd build\n\
 [mesa] meson compile GL glapi gallium_dri\n\
-[mesa] meson install --no-rebuild --only-changed"
+[mesa] meson install --no-rebuild"
 
 ARG DEF_BUILD_SCRIPT="\
 ENABLE_STATIC_ARG=\n\
