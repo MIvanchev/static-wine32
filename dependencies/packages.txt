@@ -19,6 +19,8 @@ https://www.x.org/releases/individual/lib/libICE-1.0.10.tar.gz
 https://www.x.org/releases/individual/lib/libSM-1.2.3.tar.gz
 https://www.x.org/releases/individual/lib/libXtst-1.2.3.tar.gz
 https://zlib.net/zlib-1.2.12.tar.gz
+https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/2.0.7-esr.tar.gz libjpeg-turbo-2.0.7-esr.tar.gz
+http://prdownloads.sourceforge.net/libpng/libpng-1.6.37.tar.xz?download libpng-1.6.37.tar.xz
 https://download.savannah.gnu.org/releases/freetype/freetype-2.12.0.tar.gz
 https://github.com/libexpat/libexpat/releases/download/R_2_4_8/expat-2.4.8.tar.gz
 http://xmlsoft.org/sources/libxml2-2.9.12.tar.gz
@@ -44,4 +46,7 @@ https://sourceforge.net/projects/pcre/files/pcre/8.45/pcre-8.45.tar.gz/download 
 https://download.gnome.org/sources/glib/2.72/glib-2.72.0.tar.xz
 https://freedesktop.org/software/pulseaudio/releases/pulseaudio-15.99.1.tar.xz
 https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.6.tar.bz2
+https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2
 https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26.tar.bz2
+https://github.com/apple/cups/releases/download/v2.3.3/cups-2.3.3-source.tar.gz cups-2.3.3.tar.gz
+https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.22.1.tar.bz2

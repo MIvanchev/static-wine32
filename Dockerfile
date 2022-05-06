@@ -34,6 +34,8 @@ ARG DEP_BUILD_SCRIPT="\
 [macros-util-macros] make install\n\
 [zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --static\n\
 [zlib] make install\n\
+[libjpeg-turbo] $CONFIGURE_FLAGS cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
+[libjpeg-turbo] make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
 -Denable-docs=false \n\
@@ -106,7 +108,8 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -DALSOFT_EXAMPLES=OFF \
 -DALSOFT_INSTALL_CONFIG=OFF \
 -DALSOFT_INSTALL_HRTF_DATA=OFF \
--DALSOFT_INSTALL_AMBDEC_PRESETS=OFF .. \n\
+-DALSOFT_INSTALL_AMBDEC_PRESETS=OFF ..\n\
+[openal-soft] make install\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
 [mesa] patch -p1 < ../patches/\$(basename \$PWD).patch\n\
@@ -135,7 +138,11 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dlibunwind=enabled\n\
 [mesa] cd build\n\
 [mesa] meson compile GL glapi gallium_dri\n\
-[mesa] meson install --no-rebuild"
+[mesa] meson install --no-rebuild\n\
+[cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static --with-components=libcups\n\
+[cups] make install\n\
+[v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
+[v4l-utils] make install"
 
 ARG DEF_BUILD_SCRIPT="\
 ENABLE_STATIC_ARG=\n\
@@ -167,7 +174,7 @@ RUN mkdir -p build && \
     cd build && \
     (for pkg_file in $(sed 's/.*\///' packages.txt | awk '{print $2 ? $2 : $1}' | tr '\n' ' '); \
      do \
-       pkg_name=$(echo "$pkg_file" | sed 's/\(.\+\)-.*/\1/'); \
+       pkg_name=$(echo "$pkg_file" | sed 's/\(.\+\)-[0-9]\+\(\.[0-9]\+\)\{0,\}.*/\1/'); \
        pkg_ver=$(echo "$pkg_file" | sed 's/-\([0-9.]\+).tar/\1'); \
        pkg_dir=$(echo "$pkg_file" | sed 's/\.tar\.\(gz\|xz\|bz2\)$//'); \
        pkg_build_script="${pkg_dir}.sh"; \
