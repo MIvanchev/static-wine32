@@ -2,13 +2,18 @@ FROM ubuntu:20.04
 
 SHELL ["/bin/bash", "-c"]
 
-RUN apt update && \
+RUN dpkg --add-architecture i386 && \
+    apt update && \
     apt upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
-        gcc-multilib g++-multilib gcc-mingw-w64 flex bison python3 \
-        python3-pip wget git cmake ninja-build gperf automake \
+        gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
+        python3 python3-pip wget git cmake ninja-build gperf automake \
         libtool autopoint gettext && \
-    pip3 install mako meson jinja2 && \
+    pip3 install mako jinja2 && \
+    git clone --depth 1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
+    echo "#!/bin/sh" > /usr/bin/meson && \
+    echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
+    chmod +x /usr/bin/meson && meson --version && \
     DEBIAN_FRONTEND=noninteractive apt install -y nano xvfb x11-apps \
         imagemagick && \
     echo "#!/bin/sh" > /usr/bin/startx && \
@@ -21,14 +26,17 @@ ENV DISPLAY=:1
 COPY dependencies /build
 COPY meson-cross-i386 /build/
 
+ARG WITH_GALLIUM
+
 ARG PATH="$PATH:/usr/local/bin"
 
 ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -O2\" CPPFLAGS=\"-m32 -O2\" CXXFLAGS=\"-m32 -O2\" OBJCFLAGS=\"-m32 -O2\" LDFLAGS=-m32"
 ARG CONFIGURE_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc"
 ARG CONFIGURE_HOST="--host=i386-linux-gnu"
-ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --buildtype=release --cross-file=../meson-cross-i386 --default-library=static"
+ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --buildtype=release --cross-file=../meson-cross-i386 --default-library=static --prefer-static"
+ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DCMAKE_BUILD_TYPE=Release"
 
-ARG DEP_BUILD_SCRIPT="\
+ARG DEP_BUILD_SCRIPTS="\
 [macros-util-macros] autoreconf -v --install\n\
 [macros-util-macros] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_FLAGS\n\
 [macros-util-macros] make install\n\
@@ -44,16 +52,16 @@ ARG DEP_BUILD_SCRIPT="\
 [libxkbcommon] meson install --no-rebuild\n\
 [fontconfig] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-docs $CONFIGURE_FLAGS\n\
 [fontconfig] make install\n\
-[SDL2] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared \
---disable-atomic --disable-audio --disable-video --disable-render --disable-sensor \
---disable-power --disable-filesystem --disable-threads --disable-timers --disable-file \
---disable-loadso --disable-cpuinfo --disable-assembly $CONFIGURE_FLAGS\n\
-[SDL2] make install\n\
+[SDL] mkdir build\n\
+[SDL] cd build\n\
+[SDL] $CONFIGURE_FLAGS CFLAGS=\"\$CFLAGS -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1\" cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+-DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF ..\n\
+[SDL] make install\n\
 [Linux-PAM] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --includedir=/usr/local/include/security --enable-static --disable-shared\n\
 [Linux-PAM] make install\n\
-[libcap] sed -i 's/.*\\$(MAKE) -C tests \\$@.*//' Makefile\n\
-[libcap] sed -i 's/.*\\$(MAKE) -C progs \\$@.*//' Makefile\n\
-[libcap] sed -i 's/.*\\$(MAKE) -C doc \\$@.*//' Makefile\n\
+[libcap] sed -i 's/.*\$(MAKE) -C tests \$@.*//' Makefile\n\
+[libcap] sed -i 's/.*\$(MAKE) -C progs \$@.*//' Makefile\n\
+[libcap] sed -i 's/.*\$(MAKE) -C doc \\\$@.*//' Makefile\n\
 [libcap] COPTS=\"-m32 -O2\" lib=lib prefix=/usr/local SHARED=no make install\n\
 [libcap-ng] ./autogen.sh\n\
 [libcap-ng] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --without-python3\n\
@@ -78,7 +86,7 @@ ARG DEP_BUILD_SCRIPT="\
 [systemd] meson setup build $MESON_PROLOGUE -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\n\
 [systemd] cd build\n\
 [systemd] meson compile basic:static_library udev:static_library libudev.pc\n\
-[systemd] meson install --tags devel --no-rebuild --only-changed\n\
+[systemd] meson install --tags devel --no-rebuild\n\
 [systemd] rm /usr/local/lib/*.so\n\
 [libdrm] meson setup build $MESON_PROLOGUE\n\
 [libdrm] meson install -C build\n\
@@ -97,11 +105,11 @@ ARG DEP_BUILD_SCRIPT="\
 -Dgcov=false -Dman=false -Dtests=false\n\
 [pulseaudio] cd build\n\
 [pulseaudio] meson compile pulse-simple \
-pulsecommon-\$(echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/') \
+pulsecommon-`echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/'` \
 pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] meson install --tags devel --no-rebuild\n\
 [openal-soft] cd build\n\
-[openal-soft] $CONFIGURE_FLAGS cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DLIBTYPE=STATIC \
+[openal-soft] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DLIBTYPE=STATIC \
 -DALSOFT_BACKEND_OSS=OFF \
 -DALSOFT_UTILS=OFF \
 -DALSOFT_NO_CONFIG_UTIL=ON \
@@ -112,11 +120,20 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [openal-soft] make install\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
-[mesa] patch -p1 < ../patches/\$(basename \$PWD).patch\n\
+[llvmorg] `[ -z \"$WITH_GALLIUM\" ] && echo return`\n\
+[llvmorg] cmake $CMAKE_PROLOGUE -S llvm -B build \
+[llvmorg] -DLLVM_TARGETS_TO_BUILD=X86 \
+[llvmorg] -DLLVM_BUILD_32_BITS=ON \
+[llvmorg] -DLLVM_BUILD_TOOLS=ON \
+[llvmorg] -DLLVM_ENABLE_RTTI=ON\n\
+[llvmorg] cd build\n\
+[llvmorg] make install\n\
+[mesa] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] sed -i 's/extra_libs_libglx = \\[\\]/extra_libs_libglx = \\[libgallium_dri\\]/' src/glx/meson.build\n\
 [mesa] sed -i 's/extra_deps_libgl = \\[\\]/extra_deps_libgl = \\[meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"')\\]/' src/glx/meson.build\n\
+[mesa] sed -i 's/driver_swrast/driver_swrast, meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"'),/' src/gallium/targets/osmesa/meson.build\n\
 [mesa] echo '#!/usr/bin/env python3' > bin/install_megadrivers.py\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
@@ -133,18 +150,26 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dglx=dri \
 -Dgbm=disabled \
 -Degl=disabled \
--Dllvm=disabled \
--Dvalgrind=disabled \
--Dlibunwind=enabled\n\
+-Dllvm=`if [ -z \"$WITH_GALLIUM\" ]; then echo disabled; else enabled; fi` \
+-Dshared-llvm=disabled \
+-Dlibunwind=enabled \
+-Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile GL glapi gallium_dri\n\
+[mesa] meson compile OSMesa GL glapi gallium_dri\n\
 [mesa] meson install --no-rebuild\n\
 [cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static --with-components=libcups\n\
 [cups] make install\n\
 [v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
-[v4l-utils] make install"
+[v4l-utils] make install\n\
+[libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
+[libpcap] make install\n\
+[openldap] echo $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-debug --disable-slapd\n\
+[openldap] echo make install\n\
+[sane-project] echo Hello, World!"
 
-ARG DEF_BUILD_SCRIPT="\
+ARG DEFAULT_BUILD_SCRIPT="\
+#!/bin/sh\n\
+set -e\n\
 ENABLE_STATIC_ARG=\n\
 DISABLE_SHARED_ARG=\n\
 DISABLE_DOCS_ARG=\n\
@@ -166,23 +191,38 @@ make install\n"
 
 # pkg_file         = xcb-proto-1.14.1.tar.gz
 # pkg_name         = xcb-proto
-# pkg_ver          = 1.14.1
 # pkg_dir          = xcb-proto-1.14.1
 # pkg_build_script = xcb-proto-1.14.1.sh
 
 RUN mkdir -p build && \
     cd build && \
-    (for pkg_file in $(sed 's/.*\///' packages.txt | awk '{print $2 ? $2 : $1}' | tr '\n' ' '); \
+    # The packages.txt files contains 1 line for every dependency to build.
+    # Each line is in one of the following formats:
+    #
+    # 1. <URL>
+    # 2. <URL> <file name>
+    # 3. <URL ending on .git> <branch name> <directory name>
+    #
+    # In the first case, the package name is derived from the URL, in cases
+    # where it's not possible, the file name of the package is given directly.
+    # For git repositories, the package name is derived from the directory
+    # name by appending .tar.gz.
+    #
+    (for pkg_file in `sed 's/.*\///' packages.txt | awk '{print $3 ? ($3 ".tar.gz") : ($2 ? $2 : $1)}' | tr '\n' ' '`; \
      do \
-       pkg_name=$(echo "$pkg_file" | sed 's/\(.\+\)-[0-9]\+\(\.[0-9]\+\)\{0,\}.*/\1/'); \
-       pkg_ver=$(echo "$pkg_file" | sed 's/-\([0-9.]\+).tar/\1'); \
-       pkg_dir=$(echo "$pkg_file" | sed 's/\.tar\.\(gz\|xz\|bz2\)$//'); \
+       pkg_name=`echo "$pkg_file" | sed 's/\(.\{1,\}\)-[0-9]\{1,\}\(\.[0-9]\{1,\}\)*.*/\1/'`; \
+       pkg_dir=`echo "$pkg_file" | sed 's/\.tar\.\(gz\|xz\|bz2\)$//'`; \
        pkg_build_script="${pkg_dir}.sh"; \
+       echo "pkg_name:         $pkg_name"; \
+       echo "pkg_dir:          $pkg_dir"; \
+       echo "pkg_build_script: $pkg_build_script"; \
        tar -xvf "$pkg_file" || exit; \
-       { echo -e "$DEP_BUILD_SCRIPT" | grep "^\[$pkg_name\]" | sed "s/^\[$pkg_name\] //" > "$pkg_build_script"; } || exit; \
-       if [[ ! -s "$pkg_build_script" ]]; \
+       { echo -e "$DEP_BUILD_SCRIPTS" | grep "^\[$pkg_name\]" | sed "s/^\[$pkg_name\] //" > "$pkg_build_script"; } || exit; \
+       if [ ! -s "$pkg_build_script" ]; \
        then \
-         echo -e "$DEF_BUILD_SCRIPT" > "$pkg_build_script" || exit; \
+         echo -e "$DEFAULT_BUILD_SCRIPT" > "$pkg_build_script" || exit; \
+       else \
+         echo -e "#!/bin/sh\nset -e\n`cat $pkg_build_script`" > "$pkg_build_script" || exit; \
        fi; \
-       pushd "$pkg_dir" && cat "../$pkg_build_script" && . "../$pkg_build_script" && popd || exit; \
+       pushd "$pkg_dir" && cat "../$pkg_build_script" && . "../$pkg_build_script" && set +e && popd || exit; \
      done)
