@@ -1,0 +1,117 @@
+diff --git a/src/gallium/targets/dri/target.c b/src/gallium/targets/dri/target.c
+index 30c9ee9a4da..f41abb14252 100644
+--- a/src/gallium/targets/dri/target.c
++++ b/src/gallium/targets/dri/target.c
+@@ -3,19 +3,20 @@
+ 
+ #include "dri_screen.h"
+ 
++const __DRIextension **__driDriverGetExtensions(const char *name);
++
++const __DRIextension **__driDriverGetExtensions(const char *name)
++{
+ #define DEFINE_LOADER_DRM_ENTRYPOINT(drivername)                          \
+-const __DRIextension **__driDriverGetExtensions_##drivername(void);       \
+-PUBLIC const __DRIextension **__driDriverGetExtensions_##drivername(void) \
++if (!strcmp(name, #drivername))                                           \
+ {                                                                         \
+-   globalDriverAPI = &galliumdrm_driver_api;                              \
+-   return galliumdrm_driver_extensions;                                   \
++    globalDriverAPI = &galliumdrm_driver_api;                             \
++    return galliumdrm_driver_extensions;                                  \
+ }
+ 
+ #if defined(GALLIUM_SOFTPIPE)
+ 
+-const __DRIextension **__driDriverGetExtensions_swrast(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_swrast(void)
++if (!strcmp(name, "swrast"))
+ {
+    globalDriverAPI = &galliumsw_driver_api;
+    return galliumsw_driver_extensions;
+@@ -23,9 +24,7 @@ PUBLIC const __DRIextension **__driDriverGetExtensions_swrast(void)
+ 
+ #if defined(HAVE_LIBDRM)
+ 
+-const __DRIextension **__driDriverGetExtensions_kms_swrast(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
++if (!strcmp(name, "kms_swrast"))
+ {
+    globalDriverAPI = &dri_kms_driver_api;
+    return galliumdrm_driver_extensions;
+@@ -92,7 +91,7 @@ DEFINE_LOADER_DRM_ENTRYPOINT(etnaviv)
+ #endif
+ 
+ #if defined(GALLIUM_TEGRA)
+-DEFINE_LOADER_DRM_ENTRYPOINT(tegra);
++DEFINE_LOADER_DRM_ENTRYPOINT(tegra)
+ #endif
+ 
+ #if defined(GALLIUM_KMSRO)
+@@ -125,9 +124,12 @@ DEFINE_LOADER_DRM_ENTRYPOINT(lima)
+ #endif
+ 
+ #if defined(GALLIUM_ZINK) && !defined(__APPLE__)
+-DEFINE_LOADER_DRM_ENTRYPOINT(zink);
++DEFINE_LOADER_DRM_ENTRYPOINT(zink)
+ #endif
+ 
+ #if defined(GALLIUM_D3D12)
+-DEFINE_LOADER_DRM_ENTRYPOINT(d3d12);
++DEFINE_LOADER_DRM_ENTRYPOINT(d3d12)
+ #endif
++
++    return NULL;
++}
+diff --git a/src/glx/dri_common.c b/src/glx/dri_common.c
+index 99e3ac0df8e..26d9aea9c76 100644
+--- a/src/glx/dri_common.c
++++ b/src/glx/dri_common.c
+@@ -55,6 +55,8 @@
+ #define GL_LIB_NAME "libGL.so.1"
+ #endif
+ 
++extern const __DRIextension **__driDriverGetExtensions(const char *driverName);
++
+ /**
+  * Try to \c dlopen the named driver.
+  *
+@@ -72,6 +74,7 @@
+ _X_HIDDEN const __DRIextension **
+ driOpenDriver(const char *driverName, void **out_driver_handle)
+ {
++#if 0
+    void *glhandle;
+ 
+    /* Attempt to make sure libGL symbols will be visible to the driver */
+@@ -88,6 +91,10 @@ driOpenDriver(const char *driverName, void **out_driver_handle)
+ 
+    if (glhandle)
+       dlclose(glhandle);
++#endif
++
++   const __DRIextension **extensions =
++      __driDriverGetExtensions(driverName);
+ 
+    return extensions;
+ }
+@@ -701,7 +708,7 @@ get_driver_config(const char *driverName)
+          break;
+       }
+    }
+-
++#if 0
+    if (!config) {
+       /* Fall back to the old method */
+       config = dlsym(handle, "__driConfigOptions");
+@@ -710,7 +717,7 @@ get_driver_config(const char *driverName)
+    }
+ 
+    dlclose(handle);
+-
++#endif
+    return config;
+ }
+ 
