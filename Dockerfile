@@ -42,7 +42,11 @@ ARG DEP_BUILD_SCRIPTS="\
 [macros-util-macros] make install\n\
 [zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --static\n\
 [zlib] make install\n\
-[libjpeg-turbo] $CONFIGURE_FLAGS cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
+[zstd] mkdir build/cmake/builddir\n\
+[zstd] cd build/cmake/builddir\n\
+[zstd] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF ..\n\
+[zstd] make install\n\
+[libjpeg-turbo] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
 [libjpeg-turbo] make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
@@ -54,7 +58,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [fontconfig] make install\n\
 [SDL] mkdir build\n\
 [SDL] cd build\n\
-[SDL] $CONFIGURE_FLAGS CFLAGS=\"\$CFLAGS -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1\" cmake -DCMAKE_INSTALL_PREFIX=/usr/local \
+[SDL] $CONFIGURE_FLAGS CFLAGS=\"\$CFLAGS -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1\" cmake $CMAKE_PROLOGUE \
 -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF ..\n\
 [SDL] make install\n\
 [Linux-PAM] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --includedir=/usr/local/include/security --enable-static --disable-shared\n\
@@ -94,11 +98,8 @@ ARG DEP_BUILD_SCRIPTS="\
 [tdb] make install\n\
 [tdb] rm /usr/local/lib/libtdb.so*\n\
 -Dshared-glapi=false\n\
-[glib] sed -i 's/\\(input : .glibconfig.h.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' glib/meson.build\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
-[glib] cd build\n\
-[glib] meson compile glib-2.0 gio-2.0 gthread-2.0 gmodule-2.0 gobject-2.0\n\
-[glib] meson install --tags devel --no-rebuild\n\
+[glib] ninja -C build install\n\
 [pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
 [pulseaudio] find . -name meson.build -exec sed -i 's/=[[:space:]]*shared_library(/= library(/g' {} \\;\n\
 [pulseaudio] meson setup build $MESON_PROLOGUE -Ddaemon=false -Ddoxygen=false \
@@ -157,10 +158,36 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] cd build\n\
 [mesa] meson compile OSMesa GL glapi gallium_dri\n\
 [mesa] meson install --no-rebuild\n\
+[ogg] ./autogen.sh\n\
+[ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[ogg] make install\n\
+[vorbis] ./autogen.sh\n\
+[vorbis] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[vorbis] make install\n\
+[flac] ./autogen.sh\n\
+[flac] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[flac] make install\n\
+[opus] ./autogen.sh\n\
+[opus] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[opus] make install\n\
+[libsndfile] sed -i '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)' configure.ac\n\
+[libsndfile] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[libsndfile] make install\n\
 [cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static --with-components=libcups\n\
 [cups] make install\n\
 [v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
 [v4l-utils] make install\n\
+[gst-build] sed -i 's/= *dynamic_libraries(/= static_library(/' meson.build\n\
+[gst-build] meson setup build $MESON_PROLOGUE \
+-Ddevtools=disabled \
+-Dgst-examples=disabled \
+-Dtests=disabled \
+-Dexamples=disabled \
+-Dintrospection=disabled \
+-Ddoc=disabled \
+-Dgtk_doc=disabled\n\
+[gst-build] ninja -C build install\n\
+[gst-build] export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
 [openldap] echo $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-debug --disable-slapd\n\

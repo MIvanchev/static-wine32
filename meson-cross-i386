@@ -7,9 +7,9 @@ pkgconfig = '/usr/bin/pkg-config'
 cmake = '/usr/bin/cmake'
 
 [built-in options]
-c_args = ['-m32']
+c_args = ['-m32', '-O2']
 c_link_args = ['-m32']
-cpp_args = ['-m32']
+cpp_args = ['-m32', '-O2']
 cpp_link_args = ['-m32']
 
 [host_machine]
