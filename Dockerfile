@@ -139,7 +139,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
--Dgallium-drivers=swrast,i915,iris,crocus \
+-Dgallium-drivers=swrast,i915,iris,crocus,nouveau \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
@@ -177,7 +177,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [cups] make install\n\
 [v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
 [v4l-utils] make install\n\
-[gst-build] sed -i 's/= *dynamic_libraries(/= static_library(/' meson.build\n\
+[gst-build] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
 [gst-build] meson setup build $MESON_PROLOGUE \
 -Ddevtools=disabled \
 -Dgst-examples=disabled \
