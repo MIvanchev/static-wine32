@@ -8,7 +8,7 @@ RUN dpkg --add-architecture i386 && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         python3 python3-pip wget git cmake ninja-build gperf automake \
-        libtool autopoint gettext && \
+        autoconf-archive libtool autopoint gettext && \
     pip3 install mako jinja2 && \
     git clone --depth 1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
     echo "#!/bin/sh" > /usr/bin/meson && \
@@ -48,6 +48,9 @@ ARG DEP_BUILD_SCRIPTS="\
 [zstd] make install\n\
 [libjpeg-turbo] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
 [libjpeg-turbo] make install\n\
+[libexif] autoreconf -i\n\
+[libexif] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
+[libexif] make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
 -Denable-docs=false \n\
@@ -139,7 +142,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
--Dgallium-drivers=swrast,i915,iris,crocus,nouveau \
+-Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600 \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
@@ -190,9 +193,25 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [gst-build] export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
+[isdn4k-utils] pushd capi20\n\
+[isdn4k-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[isdn4k-utils] make install-libLTLIBRARIES install-pcDATA install-includeHEADERS\n\
+[isdn4k-utils] popd\n\
+[tiff] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[tiff] sed -i 's/SUBDIRS = port libtiff tools build contrib test man html/SUBDIRS = port libtiff build test man html/' Makefile\n\
+[tiff] make install\n\
+[ieee1284] ./bootstrap\n\
+[ieee1284] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --without-python\n\
+[ieee1284] make install-includeHEADERS install-libLTLIBRARIES\n\
+[sane-backends] patch -p1 < ../patches/`basename \$PWD`.patch\n\
+[sane-backends] autoreconf -i\n\
+[sane-backends] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --enable-dynamic --enable-preload\n\
+[sane-backends] make install\n\
+[sane-backends] pushd tools\n\
+[sane-backends] make install-pkgconfigDATA install-binSCRIPTS\n\
+[sane-backends] popd\n\
 [openldap] echo $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-debug --disable-slapd\n\
-[openldap] echo make install\n\
-[sane-project] echo Hello, World!"
+[openldap] echo make install"
 
 ARG DEFAULT_BUILD_SCRIPT="\
 #!/bin/sh\n\
@@ -243,6 +262,7 @@ RUN mkdir -p build && \
        echo "pkg_name:         $pkg_name"; \
        echo "pkg_dir:          $pkg_dir"; \
        echo "pkg_build_script: $pkg_build_script"; \
+       echo "Build script contents:"; \
        tar -xvf "$pkg_file" || exit; \
        { echo -e "$DEP_BUILD_SCRIPTS" | grep "^\[$pkg_name\]" | sed "s/^\[$pkg_name\] //" > "$pkg_build_script"; } || exit; \
        if [ ! -s "$pkg_build_script" ]; \

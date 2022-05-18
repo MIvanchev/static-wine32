@@ -1,0 +1,101 @@
+diff --git a/Makefile.am b/Makefile.am
+index c54e939..1dc6087 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -4,8 +4,8 @@
+ ##  This file is part of the "Sane" build infra-structure.  See
+ ##  included LICENSE file for license information.
+ 
+-SUBDIRS = include lib sanei backend frontend tools doc po testsuite
+-DIST_SUBDIRS = include lib sanei backend frontend tools doc po japi testsuite
++SUBDIRS = include lib sanei backend doc po testsuite
++DIST_SUBDIRS = include lib sanei backend doc po japi testsuite
+ 
+ dist_doc_DATA = AUTHORS COPYING LICENSE NEWS PROBLEMS PROJECTS \
+  README README.aix README.beos README.darwin README.djpeg README.freebsd \
+diff --git a/acinclude.m4 b/acinclude.m4
+index 9393278..867abd2 100644
+--- a/acinclude.m4
++++ b/acinclude.m4
+@@ -290,7 +290,7 @@ AC_DEFUN([SANE_CHECK_JPEG],
+       ], [sane_cv_use_libjpeg="yes"; JPEG_LIBS="-ljpeg";
+       AC_MSG_RESULT(yes)],[AC_MSG_RESULT(no)])
+     ],)
+-  ],)
++  ],,[`pkg-config --libs --static libjpeg`])
+   if test "$sane_cv_use_libjpeg" = "yes" ; then
+     AC_DEFINE(HAVE_LIBJPEG,1,[Define to 1 if you have the libjpeg library.])
+   fi
+@@ -303,8 +303,8 @@ AC_DEFUN([SANE_CHECK_TIFF],
+   AC_CHECK_LIB(tiff,TIFFFdOpen,
+   [
+     AC_CHECK_HEADER(tiffio.h,
+-    [sane_cv_use_libtiff="yes"; TIFF_LIBS="-ltiff"],)
+-  ],)
++    [sane_cv_use_libtiff="yes"; TIFF_LIBS="`pkg-config --libs --static libtiff-4` -lpthread"],)
++  ],,[`pkg-config --libs --static libtiff-4` -lpthread])
+   AC_SUBST(TIFF_LIBS)
+ ])
+ 
+@@ -314,7 +314,7 @@ AC_DEFUN([SANE_CHECK_PNG],
+   [
+     AC_CHECK_HEADER(png.h,
+     [sane_cv_use_libpng="yes"; PNG_LIBS="-lpng"],)
+-  ],)
++  ],,[`pkg-config --libs --static libpng`])
+   if test "$sane_cv_use_libpng" = "yes" ; then
+     AC_DEFINE(HAVE_LIBPNG,1,[Define to 1 if you have the libpng library.])
+   fi
+diff --git a/backend/Makefile.am b/backend/Makefile.am
+index e56e7f1..e55fd58 100644
+--- a/backend/Makefile.am
++++ b/backend/Makefile.am
+@@ -1983,7 +1983,7 @@ EXTRA_DIST += dll.aliases
+ # what backends are preloaded.  It should include what is needed by
+ # those backends that are actually preloaded.
+ if preloadable_backends_enabled
+-PRELOADABLE_BACKENDS_LIBS = \
++PRELOADABLE_BACKENDS_LIBS = ../sanei/sanei_ir.lo $(SANEI_SANEI_JPEG_LO) \
+     ../sanei/sanei_config2.lo \
+     ../sanei/sanei_usb.lo \
+     ../sanei/sanei_scsi.lo \
+diff --git a/backend/kvs1025_low.h b/backend/kvs1025_low.h
+index ba8da24..29bdf41 100644
+--- a/backend/kvs1025_low.h
++++ b/backend/kvs1025_low.h
+@@ -235,7 +235,7 @@ void kv_init_options (PKV_DEV dev);
+ SANE_Status kv_control_option (PKV_DEV dev, SANE_Int option,
+ 			       SANE_Action action, void *val,
+ 			       SANE_Int * info);
+-void hexdump (int level, const char *comment, unsigned char *p, int l);
++
+ void kv_set_window_data (PKV_DEV dev,
+ 			 KV_SCAN_MODE scan_mode,
+ 			 int side, unsigned char *windowdata);
+diff --git a/backend/kvs1025_opt.c b/backend/kvs1025_opt.c
+index 3006a25..b0a2f64 100644
+--- a/backend/kvs1025_opt.c
++++ b/backend/kvs1025_opt.c
+@@ -1362,7 +1362,7 @@ kv_control_option (PKV_DEV dev, SANE_Int option,
+ }
+ 
+ /* Display a buffer in the log. */
+-void
++static void
+ hexdump (int level, const char *comment, unsigned char *p, int l)
+ {
+   int i;
+diff --git a/tools/sane-backends.pc.in b/tools/sane-backends.pc.in
+index b4d9731..d6caffa 100644
+--- a/tools/sane-backends.pc.in
++++ b/tools/sane-backends.pc.in
+@@ -8,7 +8,7 @@ libs=@LIBS@ @DL_LIBS@ @LIBV4L_LIBS@ @MATH_LIB@ @TIFF_LIBS@ @JPEG_LIBS@ @GPHOTO2_
+ Name: SANE Backends
+ Description: Backends for SANE, the universal scanner interface
+ Version: @VERSION@
+-Requires:
++Requires: libudev libv4l2 libjpeg libpng libtiff-4 libxml-2.0
+ Libs: -L${libdir} -lsane
+-Libs.private: ${ldflags} ${libs}
++Libs.private: ${ldflags} ${libs} -lieee1284
+ Cflags: -I${includedir}

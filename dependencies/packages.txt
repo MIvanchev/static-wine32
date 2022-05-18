@@ -22,6 +22,7 @@ https://zlib.net/zlib-1.2.12.tar.gz
 https://github.com/facebook/zstd/releases/download/v1.5.2/zstd-1.5.2.tar.gz
 https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/2.0.7-esr.tar.gz libjpeg-turbo-2.0.7-esr.tar.gz
 http://prdownloads.sourceforge.net/libpng/libpng-1.6.37.tar.xz?download libpng-1.6.37.tar.xz
+https://github.com/libexif/libexif/archive/refs/tags/v0.6.24.tar.gz libexif-0.6.24.tar.gz
 https://download.savannah.gnu.org/releases/freetype/freetype-2.12.0.tar.gz
 https://github.com/libexpat/libexpat/releases/download/R_2_4_8/expat-2.4.8.tar.gz
 http://xmlsoft.org/sources/libxml2-2.9.12.tar.gz
@@ -58,5 +59,8 @@ https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2
 https://github.com/apple/cups/releases/download/v2.3.3/cups-2.3.3-source.tar.gz cups-2.3.3.tar.gz
 https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.22.1.tar.bz2
 https://gitlab.freedesktop.org/gstreamer/gst-build.git 1.18 gst-build-1.18
-https://gitlab.com/sane-project/backends.git 1.1.1 sane-project-1.1.1
 https://github.com/the-tcpdump-group/libpcap.git libpcap-1.10.1 libpcap-1.10.1
+https://github.com/marschap/isdn4k-utils.git master isdn4k-utils-3.0.6
+http://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz
+https://github.com/twaugh/libieee1284.git V0_2_11 ieee1284-0.2.11
+https://gitlab.com/sane-project/backends.git 1.1.1 sane-backends-1.1.1

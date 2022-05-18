@@ -27,14 +27,13 @@ BEGIN {
         next
       }
 
-      git_files_path = "\"" pkg_path "/.git\""
+      # git_files_path = "\"" pkg_path "/.git\""
       pkg_path = "\"" pkg_path "\""
       pkg_file = "\"" pkg_file "\""
 
       if (system("git clone --branch " $2 " --depth 1 " $1 " " pkg_path \
-                 " && tar --xform='s:^" download_dir "/::' --exclude=" \
-                 git_files_path " -czvf " pkg_file " " pkg_path " && rm -rf " \
-                 pkg_path)) {
+                 " && tar --xform='s:^" download_dir "/::' -czvf " pkg_file \
+                 " " pkg_path " && rm -rf " pkg_path)) {
         exit 1
       }
     }
