@@ -26,7 +26,8 @@ ENV DISPLAY=:1
 COPY dependencies /build
 COPY meson-cross-i386 /build/
 
-ARG WITH_GALLIUM
+ARG WITH_LLVM=1
+ARG BUILD_JOBS=4
 
 ARG PATH="$PATH:/usr/local/bin"
 
@@ -46,6 +47,17 @@ ARG DEP_BUILD_SCRIPTS="\
 [zstd] cd build/cmake/builddir\n\
 [zstd] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF ..\n\
 [zstd] make install\n\
+[xz] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared \
+--disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links \
+--disable-scripts --disable-doc\n\
+[xz] make install\n\
+[bzip2] sed -i 's/\(CFLAGS.*=.*\)/\\1 -m32/' Makefile\n\
+[bzip2] make libbz2.a\n\
+[bzip2] cp libbz2.a /usr/local/lib/\n\
+[bzip2] cp bzlib.h /usr/local/include/\n\
+[elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
+[elfutils] make install\n\
+[elfutils] rm /usr/local/lib/lib*.so*\n\
 [libjpeg-turbo] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
 [libjpeg-turbo] make install\n\
 [libexif] autoreconf -i\n\
@@ -94,12 +106,12 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] cd build\n\
 [systemd] meson compile basic:static_library udev:static_library libudev.pc\n\
 [systemd] meson install --tags devel --no-rebuild\n\
-[systemd] rm /usr/local/lib/*.so\n\
+[systemd] rm /usr/local/lib/lib*.so*\n\
 [libdrm] meson setup build $MESON_PROLOGUE\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
 [tdb] make install\n\
-[tdb] rm /usr/local/lib/libtdb.so*\n\
+[tdb] rm /usr/local/lib/lib*.so*\n\
 -Dshared-glapi=false\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
 [glib] ninja -C build install\n\
@@ -124,14 +136,16 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [openal-soft] make install\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
-[llvmorg] `[ -z \"$WITH_GALLIUM\" ] && echo return`\n\
+[llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && echo return\n\
 [llvmorg] cmake $CMAKE_PROLOGUE -S llvm -B build \
-[llvmorg] -DLLVM_TARGETS_TO_BUILD=X86 \
-[llvmorg] -DLLVM_BUILD_32_BITS=ON \
-[llvmorg] -DLLVM_BUILD_TOOLS=ON \
-[llvmorg] -DLLVM_ENABLE_RTTI=ON\n\
+-DLLVM_BUILD_SHARED_LIBS=OFF \
+-DLLVM_TARGETS_TO_BUILD=\"X86;AMDGPU\" \
+-DLLVM_BUILD_32_BITS=ON \
+-DLLVM_BUILD_TOOLS=ON \
+-DLLVM_ENABLE_RTTI=ON\n\
 [llvmorg] cd build\n\
 [llvmorg] make install\n\
+[llvmorg] sed -i 's/#llvm-config =/llvm-config =/' ../../meson-cross-i386\n\
 [mesa] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
@@ -142,7 +156,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
--Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600 \
+-Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600`if [ \"$WITH_LLVM\" -eq 1 ]; then echo \",radeonsi\"; fi` \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
@@ -154,7 +168,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dglx=dri \
 -Dgbm=disabled \
 -Degl=disabled \
--Dllvm=`if [ -z \"$WITH_GALLIUM\" ]; then echo disabled; else enabled; fi` \
+-Dllvm=`if [ \"$WITH_LLVM\" -eq 1 ]; then echo enabled; else echo disabled; fi` \
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
@@ -191,6 +205,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgtk_doc=disabled\n\
 [gst-build] ninja -C build install\n\
 [gst-build] export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\n\
+[gst-build] rm /usr/local/lib/lib*.so*\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
 [isdn4k-utils] pushd capi20\n\
@@ -240,7 +255,9 @@ make install\n"
 # pkg_dir          = xcb-proto-1.14.1
 # pkg_build_script = xcb-proto-1.14.1.sh
 
-RUN mkdir -p build && \
+RUN export MAKEFLAGS=-j$BUILD_JOBS && \
+    export NINJAFLAGS=-j$BUILD_JOBS && \
+    mkdir -p build && \
     cd build && \
     # The packages.txt files contains 1 line for every dependency to build.
     # Each line is in one of the following formats:
