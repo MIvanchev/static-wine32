@@ -8,7 +8,7 @@ RUN dpkg --add-architecture i386 && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         python3 python3-pip wget git cmake ninja-build gperf automake \
-        autoconf-archive libtool autopoint gettext && \
+        autoconf-archive libtool autopoint gettext nasm && \
     pip3 install mako jinja2 && \
     git clone --depth 1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
     echo "#!/bin/sh" > /usr/bin/meson && \
@@ -26,7 +26,7 @@ ENV DISPLAY=:1
 COPY dependencies /build
 COPY meson-cross-i386 /build/
 
-ARG WITH_LLVM=1
+ARG WITH_LLVM=0
 ARG BUILD_JOBS=4
 
 ARG PATH="$PATH:/usr/local/bin"
@@ -63,6 +63,18 @@ ARG DEP_BUILD_SCRIPTS="\
 [libexif] autoreconf -i\n\
 [libexif] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
 [libexif] make install\n\
+[gmp] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --libdir=/usr/local/lib --enable-static --disable-shared\n\
+[gmp] make install\n\
+[nettle] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --disable-assembler\n\
+[nettle] make install\n\
+[gnutls] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
+--with-included-unistring \
+--without-p11-kit \
+--disable-libdane \
+--enable-ssl3-support \
+--enable-openssl-compatibility \
+--host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
+[gnutls] echo make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
 -Denable-docs=false \n\
@@ -136,7 +148,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [openal-soft] make install\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
-[llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && echo return\n\
+[llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && return\n\
 [llvmorg] cmake $CMAKE_PROLOGUE -S llvm -B build \
 -DLLVM_BUILD_SHARED_LIBS=OFF \
 -DLLVM_TARGETS_TO_BUILD=\"X86;AMDGPU\" \
@@ -190,12 +202,22 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [libsndfile] sed -i '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)' configure.ac\n\
 [libsndfile] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [libsndfile] make install\n\
-[cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static --with-components=libcups\n\
+[cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
+--with-components=libcups\n\
 [cups] make install\n\
 [v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
 [v4l-utils] make install\n\
-[gst-build] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
-[gst-build] meson setup build $MESON_PROLOGUE \
+[openh264] echo > codec/console/enc/meson.build\n\
+[openh264] meson setup build $MESON_PROLOGUE -Dtests=disabled\n\
+[openh264] ninja -C build install\n\
+[gstreamer] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
+[gstreamer] sed -i 's/link_with: gstfull.get_shared_lib()/link_whole: gstfull/' meson.build\n\
+[gstreamer] meson setup build $MESON_PROLOGUE \
+-Dgst-plugins-base:gl=disabled \
+-Dgst-plugins-base:x11=disabled  \
+-Dgst-plugins-bad:x11=disabled \
+-Dgst-plugins-good:ximagesrc=disabled \
+-Dgst-plugins-bad:siren=disabled \
 -Ddevtools=disabled \
 -Dgst-examples=disabled \
 -Dtests=disabled \
@@ -203,9 +225,8 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dintrospection=disabled \
 -Ddoc=disabled \
 -Dgtk_doc=disabled\n\
-[gst-build] ninja -C build install\n\
-[gst-build] export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\n\
-[gst-build] rm /usr/local/lib/lib*.so*\n\
+[gstreamer] ninja -C build install\n\
+[gstreamer] rm /usr/local/lib/lib*.so*\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
 [isdn4k-utils] pushd capi20\n\
@@ -245,9 +266,9 @@ if [ \$? -eq 0 ]; then DISABLE_DOCS_ARG=--disable-docs; fi\n\
   \$DISABLE_SHARED_ARG \
   \$DISABLE_DOCS_ARG \
   $CONFIGURE_FLAGS\n\
-ENABLE_STATIC_ARG=\n\
-DISABLED_SHARED_ARG=\n\
-DISABLE_DOCS_ARG=\n\
+unset ENABLE_STATIC_ARG\n\
+unset DISABLED_SHARED_ARG\n\
+unset DISABLE_DOCS_ARG\n\
 make install\n"
 
 # pkg_file         = xcb-proto-1.14.1.tar.gz
@@ -288,5 +309,7 @@ RUN export MAKEFLAGS=-j$BUILD_JOBS && \
        else \
          echo -e "#!/bin/sh\nset -e\n`cat $pkg_build_script`" > "$pkg_build_script" || exit; \
        fi; \
-       pushd "$pkg_dir" && cat "../$pkg_build_script" && . "../$pkg_build_script" && set +e && popd || exit; \
+       pushd "$pkg_dir" && cat "../$pkg_build_script" \
+         && . "../$pkg_build_script" && set +e && popd \
+         && rm -rf "$pkg_dir"  || exit; \
      done)
