@@ -27,6 +27,7 @@ COPY dependencies /build
 COPY meson-cross-i386 /build/
 
 ARG WITH_LLVM=0
+ARG WITH_GNUTLS=1
 ARG BUILD_JOBS=4
 
 ARG PATH="$PATH:/usr/local/bin"
@@ -38,7 +39,7 @@ ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --buildtype=release --
 ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DCMAKE_BUILD_TYPE=Release"
 
 ARG DEP_BUILD_SCRIPTS="\
-[macros-util-macros] autoreconf -v --install\n\
+[macros-util-macros] autoreconf -i\n\
 [macros-util-macros] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_FLAGS\n\
 [macros-util-macros] make install\n\
 [zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --static\n\
@@ -57,7 +58,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [bzip2] cp bzlib.h /usr/local/include/\n\
 [elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
 [elfutils] make install\n\
-[elfutils] rm /usr/local/lib/lib*.so*\n\
+[elfutils] rm /usr/local/lib/libasm*.so* /usr/local/lib/libdw*.so* /usr/local/lib/libelf*.so*\n\
 [libjpeg-turbo] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
 [libjpeg-turbo] make install\n\
 [libexif] autoreconf -i\n\
@@ -67,19 +68,30 @@ ARG DEP_BUILD_SCRIPTS="\
 [gmp] make install\n\
 [nettle] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --disable-assembler\n\
 [nettle] make install\n\
+[gnutls] [ \"$WITH_GNUTLS\" -eq 0 ] && return\n\
 [gnutls] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
 --with-included-unistring \
+--with-included-libtasn1 \
 --without-p11-kit \
 --disable-libdane \
 --enable-ssl3-support \
 --enable-openssl-compatibility \
 --host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
-[gnutls] echo make install\n\
+[gnutls] make install\n\
+[gnutls] mkdir build_shared && cd build_shared && mkdir gnutls nettle hogweed gmp\n\
+[gnutls] rm /usr/local/lib/libgnutls*\n\
+[gnutls] ar -x --output gnutls ../lib/.libs/libgnutls.a\n\
+[gnutls] ar -x --output nettle /usr/local/lib/libnettle.a\n\
+[gnutls] ar -x --output hogweed /usr/local/lib/libhogweed.a\n\
+[gnutls] ar -x --output gmp /usr/local/lib/libgmp.a\n\
+[gnutls] gcc -m32 -shared -o libgnutls.so gnutls/* nettle/* hogweed/* gmp/*\n\
+[gnutls] cp libgnutls.so /usr/local/lib/\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
--Denable-docs=false \n\
+-Denable-docs=false \
+-Denable-tools=false\n\
 [libxkbcommon] cd build\n\
-[libxkbcommon] meson compile xkbcommon xkbcommon-x11\n\
+[libxkbcommon] meson compile xkbcommon xkbcommon-x11 xkbregistry\n\
 [libxkbcommon] meson install --no-rebuild\n\
 [fontconfig] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-docs $CONFIGURE_FLAGS\n\
 [fontconfig] make install\n\
@@ -113,18 +125,17 @@ ARG DEP_BUILD_SCRIPTS="\
 --disable-su --disable-runuser --disable-ul --disable-more --disable-setterm \
 --disable-schedutils --disable-wall --disable-bash-completion\n\
 [util-linux] make install\n\
-[systemd] sed -i 's/\\(input : .libudev.pc.in.,\\)/\\1 install_tag: '\"'\"'devel'\"'\"',/' src/libudev/meson.build\n\
+[systemd] sed -i 's/install_tag.*//' src/libsystemd/meson.build\n\
+[systemd] sed -i 's/install : true,/install : false,/' meson.build\n\
 [systemd] meson setup build $MESON_PROLOGUE -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\n\
 [systemd] cd build\n\
-[systemd] meson compile basic:static_library udev:static_library libudev.pc\n\
-[systemd] meson install --tags devel --no-rebuild\n\
-[systemd] rm /usr/local/lib/lib*.so*\n\
+[systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc\n\
+[systemd] meson install --tags devel,libudev --no-rebuild\n\
 [libdrm] meson setup build $MESON_PROLOGUE\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
 [tdb] make install\n\
-[tdb] rm /usr/local/lib/lib*.so*\n\
--Dshared-glapi=false\n\
+[tdb] rm /usr/local/lib/libtdb*.so*\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
 [glib] ninja -C build install\n\
 [pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
@@ -157,6 +168,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -DLLVM_ENABLE_RTTI=ON\n\
 [llvmorg] cd build\n\
 [llvmorg] make install\n\
+[llvmorg] rm /usr/local/lib/libRemarks.so* /usr/local/lib/libLTO.so*\n\
 [llvmorg] sed -i 's/#llvm-config =/llvm-config =/' ../../meson-cross-i386\n\
 [mesa] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
@@ -226,7 +238,8 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Ddoc=disabled \
 -Dgtk_doc=disabled\n\
 [gstreamer] ninja -C build install\n\
-[gstreamer] rm /usr/local/lib/lib*.so*\n\
+[gstreamer] rm /usr/local/lib/liborc*.so*\n\
+[gstreamer] echo \"export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\" >> ~/.bashrc\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
 [isdn4k-utils] pushd capi20\n\
