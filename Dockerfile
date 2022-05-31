@@ -259,8 +259,11 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [sane-backends] pushd tools\n\
 [sane-backends] make install-pkgconfigDATA install-binSCRIPTS\n\
 [sane-backends] popd\n\
-[openldap] echo $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-debug --disable-slapd\n\
-[openldap] echo make install"
+[openldap] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-debug --disable-slapd\n\
+[openldap] make install\n\
+[krb5] cd src\n\
+[krb5] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[krb5] make && make install"
 
 ARG DEFAULT_BUILD_SCRIPT="\
 #!/bin/sh\n\
@@ -308,7 +311,7 @@ RUN export MAKEFLAGS=-j$BUILD_JOBS && \
     (for pkg_file in `sed 's/.*\///' packages.txt | awk '{print $3 ? ($3 ".tar.gz") : ($2 ? $2 : $1)}' | tr '\n' ' '`; \
      do \
        pkg_name=`echo "$pkg_file" | sed 's/\(.\{1,\}\)-[0-9]\{1,\}\(\.[0-9]\{1,\}\)*.*/\1/'`; \
-       pkg_dir=`echo "$pkg_file" | sed 's/\.tar\.\(gz\|xz\|bz2\)$//'`; \
+       pkg_dir=`echo "$pkg_file" | sed -e 's/\.tar\.\(gz\|xz\|bz2\)$//' -e 's/\.tgz$//'`; \
        pkg_build_script="${pkg_dir}.sh"; \
        echo "pkg_name:         $pkg_name"; \
        echo "pkg_dir:          $pkg_dir"; \

@@ -1,2 +1,4 @@
 dependencies/*.tar.*
+dependencies/*.tgz
 build.log
+build*.log*

@@ -58,7 +58,7 @@ https://www.samba.org/ftp/tdb/tdb-1.4.6.tar.gz
 https://sourceforge.net/projects/pcre/files/pcre/8.45/pcre-8.45.tar.gz/download pcre-8.45.tar.gz
 https://download.gnome.org/sources/glib/2.72/glib-2.72.0.tar.xz
 https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26.tar.bz2
-https://freedesktop.org/software/pulseaudio/releases/pulseaudio-15.99.1.tar.xz
+https://freedesktop.org/software/pulseaudio/releases/pulseaudio-16.0.tar.xz
 https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.6.tar.bz2
 https://github.com/libsdl-org/SDL.git 2.0.22 SDL-2.0.22
 https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2
@@ -71,3 +71,5 @@ https://github.com/marschap/isdn4k-utils.git master isdn4k-utils-3.0.6
 http://download.osgeo.org/libtiff/tiff-4.3.0.tar.gz
 https://github.com/twaugh/libieee1284.git V0_2_11 ieee1284-0.2.11
 https://gitlab.com/sane-project/backends.git 1.1.1 sane-backends-1.1.1
+https://www.openldap.org/software/download/OpenLDAP/openldap-release/openldap-2.6.2.tgz
+https://kerberos.org/dist/krb5/1.20/krb5-1.20.tar.gz
