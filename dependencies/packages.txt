@@ -43,7 +43,7 @@ https://github.com/stevegrubb/libcap-ng/archive/refs/tags/v0.8.3.tar.gz libcap-n
 https://github.com/util-linux/util-linux/archive/refs/tags/v2.38.tar.gz util-linux-2.38.tar.gz
 https://github.com/systemd/systemd/archive/refs/tags/v251.tar.gz systemd-251.tar.gz
 https://www.x.org/releases/individual/lib/libpciaccess-0.16.tar.gz
-https://dri.freedesktop.org/libdrm/libdrm-2.4.110.tar.xz
+https://dri.freedesktop.org/libdrm/libdrm-2.4.111.tar.xz
 http://download.savannah.nongnu.org/releases/libunwind/libunwind-1.6.2.tar.gz
 https://github.com/llvm/llvm-project.git llvmorg-14.0.4 llvmorg-14.0.4
 https://archive.mesa3d.org//mesa-22.1.0.tar.xz
