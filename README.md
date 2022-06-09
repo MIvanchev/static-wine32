@@ -207,7 +207,7 @@ because `libgnutls.so` is the only dynamic dependency. Consider adding
 
    Notice the usage of `GALLIUM_HUD` which shows me frame rate and CPU usage.
 
-### What isn't supported yet?
+## What isn't supported yet?
 
 * Vulkan – the loader architecture of Vulkan is hard to link statically, not
 as easily as OpenGL at least. I'll have to research it.
@@ -220,7 +220,7 @@ I'll get to it. It's a fair amount of work.
 * Samba – the build process is little tough... I need to find a way to compile
 libnetapi.
 
-### FAQ
+## FAQ
 
 ### Isn't static linking bad?
 
@@ -294,7 +294,7 @@ to official Wine while you still can.
 
 I've experienced this on one of my machines but have no I idea what causes it.
 
-### Credits
+## Credits
 
 Thanks to my friends and their friends for compilation hardware, testing and
 general support.
