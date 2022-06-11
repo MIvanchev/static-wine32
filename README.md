@@ -151,11 +151,11 @@ also clone from within the container of course but for me this way is easier.
 
 2. Run the container and mount your Wine clone:
 
-       docker run -v <wine-dir>:/build/wine -it /bin/bash
+       docker run -v <wine-dir>:/build/wine -it static-wine32:latest /bin/bash
 
    For example:
 
-       docker build -v /home/king/Develop/wine:/build/wine -it /bin/bash
+       docker run -v /home/king/Develop/wine:/build/wine -it static-wine32:latest /bin/bash
 
    Make sure Wine is mounted with `ls /build/wine`.
 
