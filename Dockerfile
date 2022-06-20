@@ -32,17 +32,18 @@ ARG BUILD_JOBS=4
 
 ARG PATH="$PATH:/usr/local/bin"
 
+ARG CONFIGURE_PREFIX="--prefix=/usr/local"
 ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -O2\" CPPFLAGS=\"-m32 -O2\" CXXFLAGS=\"-m32 -O2\" OBJCFLAGS=\"-m32 -O2\" LDFLAGS=-m32"
-ARG CONFIGURE_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc"
+ARG CONFIGURE_PROLOGUE="$CONFIGURE_PREFIX --sysconfdir=/etc --datarootdir=/usr/share"
 ARG CONFIGURE_HOST="--host=i386-linux-gnu"
-ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --buildtype=release --cross-file=../meson-cross-i386 --default-library=static --prefer-static"
-ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DCMAKE_BUILD_TYPE=Release"
+ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --datadir=/usr/share --buildtype=release --cross-file=../meson-cross-i386 --default-library=static --prefer-static"
+ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DDATAROOTDIR=/usr/share -DCMAKE_BUILD_TYPE=Release"
 
 ARG DEP_BUILD_SCRIPTS="\
 [macros-util-macros] autoreconf -i\n\
 [macros-util-macros] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_FLAGS\n\
 [macros-util-macros] make install\n\
-[zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --static\n\
+[zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PREFIX --static\n\
 [zlib] make install\n\
 [zstd] mkdir build/cmake/builddir\n\
 [zstd] cd build/cmake/builddir\n\
@@ -84,7 +85,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [gnutls] ar -x --output nettle /usr/local/lib/libnettle.a\n\
 [gnutls] ar -x --output hogweed /usr/local/lib/libhogweed.a\n\
 [gnutls] ar -x --output gmp /usr/local/lib/libgmp.a\n\
-[gnutls] gcc -m32 -shared -o libgnutls.so gnutls/* nettle/* hogweed/* gmp/*\n\
+[gnutls] gcc -m32 -shared -o libgnutls.so gnutls/* nettle/* hogweed/* gmp/* -lz -lzstd -lpthread\n\
 [gnutls] cp libgnutls.so /usr/local/lib/\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
@@ -147,6 +148,20 @@ ARG DEP_BUILD_SCRIPTS="\
 pulsecommon-`echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/'` \
 pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] meson install --tags devel --no-rebuild\n\
+[alsa-lib] patch -p1 < ../patches/`basename \$PWD`.patch\n\
+[alsa-lib] autoreconf -i\n\
+[alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[alsa-lib] make install\n\
+[alsa-plugins] sed -i 's/.*AC_CHECK_LIB(asound.*//' configure.ac\n\
+[alsa-plugins] sed -i 's/.*AC_ERROR.*libasound has no external plugin SDK.*//' configure.ac\n\
+[alsa-plugins] autoreconf -i\n\
+[alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
+[alsa-plugins] make install\n\
+[alsa-plugins] sed -i 's/Requires:\\(.*\\)/Requires:\\1 libpulse dbus-1/' /usr/local/lib/pkgconfig/alsa.pc\n\
+[alsa-plugins] sed -i 's/Libs:\\(.*\\)/Libs:\\1 -L\${libdir}\\/alsa-lib -lasound_module_conf_pulse -lasound_module_pcm_pulse \
+-lasound_module_ctl_arcam_av -lasound_module_pcm_upmix -lasound_module_ctl_oss -lasound_module_pcm_usb_stream \
+-lasound_module_ctl_pulse -lasound_module_pcm_vdownmix -lasound_module_rate_speexrate -lasound_module_pcm_oss/' \
+/usr/local/lib/pkgconfig/alsa.pc\n\
 [openal-soft] cd build\n\
 [openal-soft] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DLIBTYPE=STATIC \
 -DALSOFT_BACKEND_OSS=OFF \

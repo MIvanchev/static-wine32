@@ -1,0 +1,92 @@
+diff --git a/Makefile.am b/Makefile.am
+index ff4c963a..b203d549 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -8,7 +8,7 @@ if BUILD_MODULES
+ SUBDIRS += modules
+ endif
+ if BUILD_PCM_PLUGIN_SHM
+-SUBDIRS += aserver
++SUBDIRS +=
+ endif
+ if BUILD_MIXER
+ if BUILD_ALISP
+diff --git a/src/dlmisc.c b/src/dlmisc.c
+index f64c716a..116be18a 100644
+--- a/src/dlmisc.c
++++ b/src/dlmisc.c
+@@ -105,6 +105,28 @@ int snd_dlpath(char *path, size_t path_len, const char *name)
+ 	return 0;
+ }
+ 
++#define PLUGIN_CTOR(name, type) _snd_dlsym_constructor_ ## name ## _dlsym_ ## type ## _001
++#define DECLARE_PLUGIN(name, type) void PLUGIN_CTOR(name, type) (void)
++#define REGISTER_PLUGIN(name, type) PLUGIN_CTOR(name, type) ()
++
++DECLARE_PLUGIN(conf_pulse_hook_load_if_running, config_hook);
++DECLARE_PLUGIN(_snd_ctl_arcam_av_open, control);
++/*
++DECLARE_PLUGIN(_snd_ctl_oss_open, control);
++*/
++DECLARE_PLUGIN(_snd_ctl_pulse_open, control);
++/*
++DECLARE_PLUGIN(_snd_pcm_a52_open, pcm);
++DECLARE_PLUGIN(_snd_pcm_aaf_open, pcm);
++DECLARE_PLUGIN(_snd_pcm_oss_open, pcm);
++*/
++DECLARE_PLUGIN(_snd_pcm_pulse_open, pcm);
++DECLARE_PLUGIN(_snd_pcm_upmix_open, pcm);
++/*
++DECLARE_PLUGIN(_snd_pcm_usb_stream_open, pcm);
++*/
++DECLARE_PLUGIN(_snd_pcm_vdownmix_open, pcm);
++
+ /**
+  * \brief Opens a dynamic library - ALSA wrapper for \c dlopen.
+  * \param name name of the library, similar to \c dlopen.
+@@ -123,8 +145,44 @@ void *snd_dlopen(const char *name, int mode, char *errbuf, size_t errbuflen)
+ #endif
+ {
+ #ifndef PIC
+-	if (name == NULL)
++	if (name == NULL
++		|| !strcmp(name, "libasound_module_conf_pulse.so")
++		|| !strcmp(name, "libasound_module_ctl_arcam_av.so")
++		|| !strcmp(name, "libasound_module_ctl_pulse.so")
++		|| !strcmp(name, "libasound_module_pcm_pulse.so")
++		|| !strcmp(name, "libasound_module_pcm_upmix.so")
++		|| !strcmp(name, "libasound_module_pcm_vdownmix.so")
++) {
++		struct snd_dlsym_link *link = snd_dlsym_start;
++		while (link) {
++			if (!strcmp(link->dlsym_name, "conf_pulse_hook_load_if_running")) {
++				break;
++			}
++			link = link->next;
++		}
++
++		if (link == NULL) {
++			REGISTER_PLUGIN(conf_pulse_hook_load_if_running, config_hook);
++			REGISTER_PLUGIN(_snd_ctl_arcam_av_open, control);
++/*
++			REGISTER_PLUGIN(_snd_ctl_oss_open, control);
++*/
++			REGISTER_PLUGIN(_snd_ctl_pulse_open, control);
++/*
++			REGISTER_PLUGIN(_snd_pcm_a52_open, pcm);
++			REGISTER_PLUGIN(_snd_pcm_aaf_open, pcm);
++			REGISTER_PLUGIN(_snd_pcm_oss_open, pcm);
++*/
++			REGISTER_PLUGIN(_snd_pcm_pulse_open, pcm);
++			REGISTER_PLUGIN(_snd_pcm_upmix_open, pcm);
++/*
++			REGISTER_PLUGIN(_snd_pcm_usb_stream_open, pcm);
++*/
++			REGISTER_PLUGIN(_snd_pcm_vdownmix_open, pcm);
++	        }
++
+ 		return &snd_dlsym_start;
++}
+ #else
+ #ifdef HAVE_LIBDL
+ 	if (name == NULL) {
