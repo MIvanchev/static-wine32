@@ -16,10 +16,13 @@ famous 🧙*
 * [Frequently asked questions](#frequently-asked-questions)
   * [Isn't static linking bad?](#isnt-static-linking-bad)
   * [What operating systems and hardware platforms are supported?](#what-operating-systems-and-hardware-platforms-are-supported)
+  * [Are there precompiled binary packages available?](#are-there-precompiled-binary-packages-available)
   * [Are external graphics drivers supported?](#are-external-graphics-drivers-supported)
   * [Is Vulkan supported?](#is-vulkan-supported)
   * [Is winetricks supported?](#is-winetricks-supported)
+  * [Is Gallium Nine supported?](#is-gallium-nine-supported)
   * [Is there any speed increase?](#is-there-any-speed-increase)
+  * [What is known to work?](#what-is-known-to-work)
 * [Troubleshooting](#troubleshooting)
   * [0048:err:vulkan:get_vulkan_driver Wine was built without Vulkan support.](#0048errvulkanget_vulkan_driver-wine-was-built-without-vulkan-support)
   * [Unhandled exception](#unhandled-exception)
@@ -239,7 +242,14 @@ like that seem to have been avoided entirely but be on your guard at all times.
 
 ### What operating systems and hardware platforms are supported?
 
-For now only x86 Linux.
+For now only x64 Linux.
+
+### Are there precompiled binary packages available?
+
+No and there won't be. With static linkage of so many dependencies the
+licensing situation becomes impossible to resolve. The build process is
+however not that complicated so give it a go! If you're stuck contact
+me and I'll guide you through it.
 
 ### Are external graphics drivers supported?
 
@@ -257,11 +267,28 @@ allows static linking for MacOS so I might be able to start hacking there.
 
 ### Is winetricks supported?
 
-I don't use winetricks so I don't know but most of it should, yes.
+I don't use winetricks so I don't know but most of it should, yes. Please let
+me know if you try it out.
+
+### Is Gallium Nine supported?
+
+Not but I'm working on it. Statically building the Mesa module is not
+complicated but finding a way to make it cooperate with Wine is somewhat
+harder. Yes, I'm aware of
+[Gallium Nine Standalone](https://github.com/iXit/wine-nine-standalone).
 
 ### Is there any speed increase?
 
 I haven't benchmarked but probably only minimal.
+
+### What is known to work?
+
+Among others the GOG versions of System Shock 2, Deus Ex,
+Hidden and Dangerous 2, Sid Meyer's Alpha Centauri, Hotline Miami,
+Supreme Commander Gold Edition (sound doesn't work but seems to be a
+[Wine issue](https://bugs.winehq.org/show_bug.cgi?id=49970)),
+Total Annihilation: Commander Pack; Max Payne, Microsoft Office 2007,
+Winamp Classic.
 
 ## Troubleshooting
 
