@@ -132,7 +132,7 @@ dependencies and maybe a shared GnuTLS. You can open a shell to a container
 using this image by
 
 ```
-docker run -it static-wine:latest /bin/bash
+docker run -it static-wine32:latest /bin/bash
 ```
 
 Check out all the libs in `/usr/local/lib`. Wow!
