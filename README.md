@@ -184,6 +184,10 @@ the configuration script and finally do
        strip -s lib/wine/i386-unix/*
        strip -s lib/wine/i386-windows/*
 
+   and if you're building with `WITH_GNUTLS=1` also
+
+       strip -s lib/wine/i386-unix/custom/*
+
    This greatly reduces the size of the build.
 
 6. Finally we create an installation package outside of the container
