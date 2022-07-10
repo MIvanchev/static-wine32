@@ -58,7 +58,7 @@ The project uses a modifed version of Wine available at
 https://github.com/MIvanchev/wine/tree/static-dependencies which is
 continuously updated to the latest Wine release. The changes are
 only intended to make Wine compatible with statically linked dependencies as is
-clearly visible in the [diff](https://github.com/wine-mirror/wine/compare/master...MIvanchev:static-dependencies?expand=1.)
+clearly visible in the [diff](https://github.com/wine-mirror/wine/compare/master...MIvanchev:static-dependencies?expand=1).
 Basically I just removed the dynamic loading of libraries and replaced the
 function pointers that Wine `dlsym`s with the actual library symbols. This
 removes one level of indirection. There are a couple of hacks like `win32u.so`
