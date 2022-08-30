@@ -10,7 +10,7 @@ RUN dpkg --add-architecture i386 && \
         python3 python3-pip wget git cmake ninja-build gperf automake \
         autoconf-archive libtool autopoint gettext nasm && \
     pip3 install mako jinja2 && \
-    git clone --depth 1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
+    git clone --depth 1 --branch 0.63.1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
     chmod +x /usr/bin/meson && meson --version && \
@@ -195,6 +195,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
+-Ddri3=enabled \
 -Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600`if [ \"$WITH_LLVM\" -eq 1 ]; then echo \",radeonsi\"; fi` \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
