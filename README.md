@@ -65,7 +65,7 @@ removes one level of indirection. There are a couple of hacks like `win32u.so`
 loading OpenGL symbols from `winex11.so` to avoid statically linking Mesa two
 times.
 
-This Wine build is **highly** experimental. I cannot stress on this enough. 
+This Wine build is **very** unorthodox. I cannot stress on this enough.
 Several libraries were patched (although lightly) to pull this off. Are you
 really gonna trust something like that? Also, using statically compiled
 software is in general a **bad** idea if you don't know what you're doing and
@@ -257,7 +257,7 @@ me and I'll guide you through it.
 
 ### Are external graphics drivers supported?
 
-Not yet. The project features a statically compiled Mesa with the open-source
+No. The project features a statically compiled Mesa with the open-source
 video drivers you're likely to need but there's no way to use dynamic libraries
 supplied by your hardware's vendor (i.e. Nvidia). I'm working on allowing that
 because I understand the importance. If you have an Nvidia card static-wine32
@@ -276,7 +276,7 @@ me know if you try it out.
 
 ### Is Gallium Nine supported?
 
-Not but I'm working on it. Statically building the Mesa module is not
+No but I'm working on it. Statically building the Mesa module is not
 complicated but finding a way to make it cooperate with Wine is somewhat
 harder. Yes, I'm aware of
 [Gallium Nine Standalone](https://github.com/iXit/wine-nine-standalone).
@@ -289,10 +289,10 @@ I haven't benchmarked but probably only minimal.
 
 Among others the GOG versions of System Shock 2, Deus Ex,
 Hidden and Dangerous 2, Sid Meyer's Alpha Centauri, Hotline Miami,
-Supreme Commander Gold Edition (sound doesn't work but seems to be a
-[Wine issue](https://bugs.winehq.org/show_bug.cgi?id=49970)),
+Hitman: Codename 47, Supreme Commander Gold Edition (sound doesn't work
+but seems to be a [Wine issue](https://bugs.winehq.org/show_bug.cgi?id=49970)),
 Total Annihilation: Commander Pack; Max Payne, Microsoft Office 2007,
-Winamp Classic.
+TeamViewer, Winamp Classic.
 
 ## Troubleshooting
 
