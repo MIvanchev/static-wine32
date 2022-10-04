@@ -1,37 +1,49 @@
 #!/bin/bash
 PKG_DIR=$(dirname $0)
 for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
+  ver_found="false"
   pkg=$(echo "$line" | sed 's/\$.*//')
   if [[ "$pkg" =~ "https://github.com/"(.*)"/archive/refs/tags/"(.*)\.tar.* \
         || "$line" =~ "https://github.com/"(.*)\.git\$(.*)\$ ]]; then
 #    continue
     path=${BASH_REMATCH[1]}
     tag=${BASH_REMATCH[2]}
-    latest_tag=$(wget -q -O - "https://api.github.com/repos/$path/tags" | grep -o -m 1 "https://api.github.com/repos/$path/.*/refs/tags/[^\"]\+" | sed 's/.*\///')
-    #echo "Latest tag of $pkg is PROBABLY $latest_tag."
-    if [[ -n $latest_tag ]]; then
+    latest_tag=$(wget -q -O - "https://api.github.com/repos/$path/tags" | \
+                 grep -o "https://api.github.com/repos/$path/.*/refs/tags/[^\"]\+" | \
+                 grep -vi "[0-9]\-\?\(rc\|pre\|b\)" | \
+                 grep "[0-9][._0-9]*$" | \
+                 sed 's/.*\///' | \
+                 sed 's/.*/& &/' | \
+                 sed 's/[0-9][._0-9]* .*/ &/' | \
+                 sed 's/[^ ]* //' | \
+                 awk '{ gsub(/_/, ".", $1); print }' | \
+                 sort -rV | \
+                 head -n1 | \
+                 sed 's/[^ ]* //')
+#    echo "Latest tag of $pkg is PROBABLY \"$latest_tag\"."
+    if [[ -n "$latest_tag" ]]; then
+      ver_found="true"
       if [[ "$latest_tag" != "$tag" ]]; then
-        echo "$pkg PROBABLY has a newer version under the tag $latest_tag."
+        echo "$pkg with current tag \"$tag\" PROBABLY has a newer version under the tag \"$latest_tag\"."
       fi
-    else
-      echo "Cannot determine latest version of $pkg; must be manually checked."
     fi
-  elif [[ "$pkg" =~ "https://github.com/"(.*)"/releases/".*"/"(.*)-([0-9]+[0-9.]*)(\..*) ]]; then
+  elif [[ "$pkg" =~ "https://github.com/"(.*)"/releases/".*"/"(.*)-([0-9]+[0-9.]+)(\..*) ]]; then
 #    continue
     path=${BASH_REMATCH[1]}
     name=${BASH_REMATCH[2]}
     ver=${BASH_REMATCH[3]}
     ext=${BASH_REMATCH[4]}
-    latest_ver=$(wget -q -O - "https://api.github.com/repos/$path/releases/latest" | grep -o -m 1 "$name-[0-9]\+\(\.[0-9]\+\)*" | sed "s/.*-//")
+    latest_ver=$(wget -q -O - "https://api.github.com/repos/$path/releases/latest" | \
+                 grep -o -m 1 "$name-[0-9]\+\(\.[0-9]\+\)\+" | \
+                 sed "s/.*-//")
     #echo "Latest version of $pkg is $latest_ver."
-    if [[ -n $latest_ver ]]; then
+    if [[ -n "$latest_ver" ]]; then
+      ver_found="true"
       if [[ "$latest_ver" != "$ver" ]]; then
         echo "$pkg could be updated to $latest_ver."
       fi
-    else
-      echo "Cannot determine latest version of $pkg; must be manually checked."
     fi
-  elif [[ "$pkg" =~ (.*)/(.*)-([0-9]+[0-9.]*)(\..*) ]]; then
+  elif [[ "$pkg" =~ (.*)/(.*)-([0-9]+[0-9.]+)(\..*) ]]; then
 #    continue
     path=${BASH_REMATCH[1]}
     name=${BASH_REMATCH[2]}
@@ -62,20 +74,23 @@ for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
     latest_ver=
     for item in $list; do
       if [[ "$item" == "$path" ]]; then
-        latest_ver=$(wget -q -O - $path | grep -o "$name-[0-9]\+\(\.[0-9]\+\)*" | sed "s/.*-//" | sort --version-sort --reverse | head -n 1)
+        latest_ver=$(wget -q -O - $path | grep -o "$name-[0-9]\+\(\.[0-9]\+\)*" | \
+                     sed "s/.*-//" | \
+                     sort -rV |\
+                     head -n1)
         break
       fi
     done
-    if [[ -n $latest_ver ]]; then
-      #echo "Latest version of $pkg is $latest_ver."
+    if [[ -n "$latest_ver" ]]; then
+      ver_found="true"
       if [[ "$latest_ver" != "$ver" ]]; then
         echo "$pkg could be updated to $latest_ver."
       fi
-    else
-      echo "Cannot determine latest version of $pkg; must be manually checked."
     fi
-  else
-    echo "Cannot determine latest version of $pkg; must be manually checked."
+  fi
+
+  if [[ "$ver_found" == "false" ]]; then
+    echo "Cannot determine latest version of $pkg; must be manually checked." 2>&1
   fi
 done
 
