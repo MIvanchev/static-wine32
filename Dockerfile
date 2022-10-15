@@ -87,6 +87,9 @@ ARG DEP_BUILD_SCRIPTS="\
 [gnutls] ar -x --output gmp /usr/local/lib/libgmp.a\n\
 [gnutls] gcc -m32 -shared -o libgnutls.so gnutls/* nettle/* hogweed/* gmp/* -lz -lzstd -lpthread\n\
 [gnutls] cp libgnutls.so /usr/local/lib/\n\
+[libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
+--without-python\n\
+[libxml2] make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
 -Denable-wayland=false \
 -Denable-docs=false \

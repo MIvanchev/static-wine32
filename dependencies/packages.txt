@@ -20,7 +20,7 @@ https://www.x.org/releases/individual/lib/libSM-1.2.3.tar.gz
 https://www.x.org/releases/individual/lib/libXtst-1.2.4.tar.gz
 https://github.com/madler/zlib/archive/refs/tags/v1.2.13.tar.gz zlib-1.2.13.tar.gz
 https://github.com/facebook/zstd/releases/download/v1.5.2/zstd-1.5.2.tar.gz
-https://tukaani.org/xz/xz-5.2.7.tar.gz
+https://tukaani.org/xz/xz-5.2.6.tar.gz
 https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
 https://sourceware.org/elfutils/ftp/0.187/elfutils-0.187.tar.bz2
 https://sourceforge.net/projects/libjpeg-turbo/files/2.1.4/libjpeg-turbo-2.1.4.tar.gz/download libjpeg-turbo-2.1.4.tar.gz
