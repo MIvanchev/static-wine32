@@ -62,7 +62,6 @@ https://freedesktop.org/software/pulseaudio/releases/pulseaudio-16.1.tar.xz
 https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.8.tar.bz2
 https://www.alsa-project.org/files/pub/plugins/alsa-plugins-1.2.7.1.tar.bz2
 https://github.com/libsdl-org/SDL.git release-2.24.2 SDL-2.24.2
-https://openal-soft.org/openal-releases/openal-soft-1.22.2.tar.bz2
 https://github.com/apple/cups/archive/refs/tags/v2.3.6.tar.gz cups-2.3.6.tar.gz
 https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.22.1.tar.bz2
 https://github.com/cisco/openh264/archive/refs/tags/v2.3.1.tar.gz openh264-2.3.1.tar.gz

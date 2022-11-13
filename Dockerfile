@@ -165,16 +165,6 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -lasound_module_ctl_arcam_av -lasound_module_pcm_upmix -lasound_module_ctl_oss -lasound_module_pcm_usb_stream \
 -lasound_module_ctl_pulse -lasound_module_pcm_vdownmix -lasound_module_rate_speexrate -lasound_module_pcm_oss/' \
 /usr/local/lib/pkgconfig/alsa.pc\n\
-[openal-soft] cd build\n\
-[openal-soft] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DLIBTYPE=STATIC \
--DALSOFT_BACKEND_OSS=OFF \
--DALSOFT_UTILS=OFF \
--DALSOFT_NO_CONFIG_UTIL=ON \
--DALSOFT_EXAMPLES=OFF \
--DALSOFT_INSTALL_CONFIG=OFF \
--DALSOFT_INSTALL_HRTF_DATA=OFF \
--DALSOFT_INSTALL_AMBDEC_PRESETS=OFF ..\n\
-[openal-soft] make install\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
 [llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && return\n\
