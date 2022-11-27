@@ -10,7 +10,7 @@ for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
     tag=${BASH_REMATCH[2]}
     latest_tag=$(wget -q -O - "https://api.github.com/repos/$path/tags" | \
                  grep -o "https://api.github.com/repos/$path/.*/refs/tags/[^\"]\+" | \
-                 grep -vi "[0-9]\-\?\(rc\|pre\|b\)" | \
+                 grep -vi "[0-9]-\?\(rc\|pre\|b\)" | \
                  grep "[0-9][._0-9]*$" | \
                  sed 's/.*\///' | \
                  sed 's/.*/& &/' | \
@@ -74,7 +74,9 @@ for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
     latest_ver=
     for item in $list; do
       if [[ "$item" == "$path" ]]; then
-        latest_ver=$(wget -q -O - $path | grep -o "$name-[0-9]\+\(\.[0-9]\+\)*" | \
+        latest_ver=$(wget -q -O - $path | \
+                     grep -vi "$name-[0-9]\+\(\.[0-9]\+\)*-\?\(rc\|pre\|b\)" | \
+                     grep -o "$name-[0-9]\+\(\.[0-9]\+\)*" | \
                      sed "s/.*-//" | \
                      sort -rV |\
                      head -n1)
