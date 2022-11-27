@@ -338,3 +338,12 @@ RUN export MAKEFLAGS=-j$BUILD_JOBS && \
          && . "../$pkg_build_script" && set +e && popd \
          && rm -rf "$pkg_dir"  || exit; \
      done)
+
+# wine recently modified configure.ac to use PKG_CONFIG_LIBDIR instead of
+# PKG_CONFIG_PATH and something broke so this is now required before
+# building wine, see:
+#
+# https://github.com/wine-mirror/wine/commit/c7a97b5d5d56ef00a0061b75412c6e0e489fdc99
+#
+
+ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig
