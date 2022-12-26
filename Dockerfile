@@ -215,6 +215,12 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] cd build\n\
 [mesa] meson compile OSMesa GL glapi gallium_dri\n\
 [mesa] meson install --no-rebuild\n\
+[Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
+[Vulkan-Headers] cd build && make install\n\
+[Vulkan-Loader] echo sed -i 's/if\\(APPLE\\)/if(TRUE)/' CMakeLists.txt\n\
+[Vulkan-Loader] echo sed -i 's/if\\(APPLE AND BUILD_STATIC_LOADER\\)/if(BUILD_STATIC_LOADER)/' loader/CMakeLists.txt\n\
+[Vulkan-Loader] echo $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
+[Vulkan-Loader] echo make install\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\
