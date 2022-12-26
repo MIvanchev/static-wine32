@@ -10,7 +10,7 @@ RUN dpkg --add-architecture i386 && \
         python3 python3-pip wget git cmake ninja-build gperf automake \
         autoconf-archive libtool autopoint gettext nasm && \
     pip3 install mako jinja2 && \
-    git clone --depth 1 --branch 0.63.1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
+    git clone --depth 1 --branch 0.64.1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
     chmod +x /usr/bin/meson && meson --version && \
@@ -129,7 +129,7 @@ ARG DEP_BUILD_SCRIPTS="\
 --disable-su --disable-runuser --disable-ul --disable-more --disable-setterm \
 --disable-schedutils --disable-wall --disable-bash-completion\n\
 [util-linux] make install\n\
-[systemd] sed -i 's/install_tag.*//' src/libsystemd/meson.build\n\
+[systemd] sed -i 's/install : pkgconfiglibdir != .no.,/install : false,/' src/libsystemd/meson.build\n\
 [systemd] sed -i 's/install : true,/install : false,/' meson.build\n\
 [systemd] meson setup build $MESON_PROLOGUE -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\n\
 [systemd] cd build\n\
@@ -256,7 +256,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [isdn4k-utils] make install-libLTLIBRARIES install-pcDATA install-includeHEADERS\n\
 [isdn4k-utils] popd\n\
 [tiff] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[tiff] sed -i 's/SUBDIRS = port libtiff tools build contrib test man html/SUBDIRS = port libtiff build test man html/' Makefile\n\
+[tiff] sed -i 's/SUBDIRS = port libtiff tools build contrib test doc/SUBDIRS = port libtiff build test doc/' Makefile\n\
 [tiff] make install\n\
 [ieee1284] ./bootstrap\n\
 [ieee1284] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --without-python\n\
