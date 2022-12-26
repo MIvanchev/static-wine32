@@ -162,48 +162,38 @@ also clone from within the container of course but for me this way is easier.
 
    Make sure Wine is mounted with `ls /build/wine`.
 
-3. Do `cd /build/wine`, then
+3. Build and install Wine in the container. Because the build size is initially
+huge due to the static libraries, we want to strip as much as we can before
+installing locally
 
+       INSTALL_DIR=/build/wine-build
+       cd /build/wine
        autoreconf -f
-       ./configure --disable-tests --prefix=/build/wine-build
+       ./configure --disable-tests --prefix="$INSTALL_DIR"
+       make -j$(nproc) install
+       [ ! -f /usr/local/lib/libgnutls.so ] || mkdir "$INSTALL_DIR/lib/wine/i386-unix/custom" && cp /usr/local/lib/libgnutls.so "$INSTALL_DIR/lib/wine/i386-unix/custom/"
 
-   Note that we will install Wine in the container. This is because we need to
-strip the libraries first before we install on your PC. Analyze the output of
-the configuration script and finally do
+4. This step is optional; minimize the build size by stripping away unneccessary
+code and information
 
-       make -j$(nproc)
-       INSTALL_PROGRAM_FLAGS="-s" make install
+       strip -s "$INSTALL_DIR/lib/wine/i386-unix/"*
+       strip -s "$INSTALL_DIR/lib/wine/i386-windows/"*
+       [ ! -d "$INSTALL_DIR/lib/wine/i386-unix/custom" ] || strip -s "$INSTALL_DIR/lib/wine/i386-unix/custom/"*
 
-4. Do `cd /build/wine-build`. If you have set `WITH_GNUTLS=1` copy
-`libgnutls.so` to the Wine installation with
-
-       mkdir lib/wine/i386-unix/custom && cp /usr/local/lib/libgnutls.so lib/wine/i386-unix/custom/
-
-5. Remove unnecessary symbols with
-
-       strip -s lib/wine/i386-unix/*
-       strip -s lib/wine/i386-windows/*
-
-   and if you're building with `WITH_GNUTLS=1` also
-
-       strip -s lib/wine/i386-unix/custom/*
-
-   This greatly reduces the size of the build.
-
-6. Finally we create an installation package outside of the container
+5. Finally we create an installation package outside of the container
 for local installation
  
-       tar czvf /build/wine/wine-build.tar.gz .
+       tar czvf /build/wine/wine-build.tar.gz -C "$INSTALL_DIR" .
 
    The package is now available locally in `<wine-dir>/wine-build.tar.gz`.
 
-7. To install Wine I extract the contents of the package to `~/.local`
+6. To install Wine I extract the contents of the package to `~/.local`
 because it's a well-known location and nothing else is needed. You can
 however install it wherever you see fit. You can then just do
 `<wine-installation-dir>/bin/winecfg` or just `winecfg` if you install to a
 place like `~/.local` because `~/.local/bin` is most likely in your path.
 
-8. If you have used `WITH_GNUTLS=1` you need to modify `LD_LIBRARY_PATH` to
+7. If you have used `WITH_GNUTLS=1` you need to modify `LD_LIBRARY_PATH` to
 include `<wine-installation-dir>/lib/wine/i386-unix/custom`
 because `libgnutls.so` is the only dynamic dependency. Consider adding
 `LD_LIBRARY_PATH` to your `~/.profile` so you don't have to set it manually.
