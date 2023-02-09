@@ -237,8 +237,10 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgst-plugins-base:gl=disabled \
 -Dgst-plugins-base:x11=disabled  \
 -Dgst-plugins-bad:x11=disabled \
+-Dgst-plugins-bad:codectimestamper \
 -Dgst-plugins-good:ximagesrc=disabled \
 -Dgst-plugins-bad:siren=disabled \
+-Dtools=disabled \
 -Ddevtools=disabled \
 -Dgst-examples=disabled \
 -Dtests=disabled \
