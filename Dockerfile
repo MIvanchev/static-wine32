@@ -217,9 +217,6 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [flac] ./autogen.sh\n\
 [flac] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [flac] make install\n\
-[opus] ./autogen.sh\n\
-[opus] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[opus] make install\n\
 [libsndfile] sed -i '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)' configure.ac\n\
 [libsndfile] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [libsndfile] make install\n\
@@ -237,7 +234,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgst-plugins-base:gl=disabled \
 -Dgst-plugins-base:x11=disabled  \
 -Dgst-plugins-bad:x11=disabled \
--Dgst-plugins-bad:codectimestamper \
+-Dgst-plugins-bad:codectimestamper=disabled \
 -Dgst-plugins-good:ximagesrc=disabled \
 -Dgst-plugins-bad:siren=disabled \
 -Dtools=disabled \
