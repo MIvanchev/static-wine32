@@ -122,7 +122,7 @@ chip shortages.
 
 4. Run `cd <static-wine-dir>` and  execute
 
-       docker build -t static-wine32:latest . | tee build.log
+       DOCKER_BUILDKIT=0 docker build -t static-wine32:latest . 2>&1 | tee build.log
 
    This will take forever with `WITH_LLVM=1`. Otherwise about 45 minutes on 4
 cores.

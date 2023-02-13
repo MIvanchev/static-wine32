@@ -19,8 +19,8 @@ https://www.x.org/releases/individual/lib/libICE-1.1.1.tar.gz
 https://www.x.org/releases/individual/lib/libSM-1.2.4.tar.gz
 https://www.x.org/releases/individual/lib/libXtst-1.2.4.tar.gz
 https://github.com/madler/zlib/archive/refs/tags/v1.2.13.tar.gz zlib-1.2.13.tar.gz
-https://github.com/facebook/zstd/releases/download/v1.5.2/zstd-1.5.2.tar.gz
-https://tukaani.org/xz/xz-5.2.6.tar.gz
+https://github.com/facebook/zstd/releases/download/v1.5.4/zstd-1.5.4.tar.gz
+https://tukaani.org/xz/xz-5.4.1.tar.gz
 https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
 https://sourceware.org/elfutils/ftp/0.188/elfutils-0.188.tar.bz2
 https://sourceforge.net/projects/libjpeg-turbo/files/2.1.5/libjpeg-turbo-2.1.5.tar.gz/download libjpeg-turbo-2.1.5.tar.gz
@@ -43,7 +43,7 @@ https://github.com/stevegrubb/libcap-ng/archive/refs/tags/v0.8.3.tar.gz libcap-n
 https://github.com/util-linux/util-linux/archive/refs/tags/v2.38.1.tar.gz util-linux-2.38.1.tar.gz
 https://github.com/systemd/systemd/archive/refs/tags/v252.tar.gz systemd-252.tar.gz
 https://www.x.org/releases/individual/lib/libpciaccess-0.17.tar.gz
-https://dri.freedesktop.org/libdrm/libdrm-2.4.114.tar.xz
+https://dri.freedesktop.org/libdrm/libdrm-2.4.115.tar.xz
 https://github.com/libunwind/libunwind/releases/download/v1.6.2/libunwind-1.6.2.tar.gz
 https://github.com/llvm/llvm-project.git llvmorg-15.0.7 llvmorg-15.0.7
 https://archive.mesa3d.org/mesa-22.3.5.tar.xz

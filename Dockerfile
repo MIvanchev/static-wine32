@@ -7,9 +7,12 @@ RUN dpkg --add-architecture i386 && \
     apt upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
-        python3 python3-pip wget git cmake ninja-build gperf automake \
+        python3 python3-pip wget git ninja-build gperf automake \
         autoconf-archive libtool autopoint gettext nasm && \
     pip3 install mako jinja2 && \
+    wget -q https://github.com/Kitware/CMake/releases/download/v3.25.2/cmake-3.25.2-linux-x86_64.tar.gz -P $HOME && \
+    tar xf $HOME/cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
+    cmake --version && \
     git clone --depth 1 --branch 0.64.1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
