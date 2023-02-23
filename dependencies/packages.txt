@@ -41,7 +41,7 @@ https://github.com/besser82/libxcrypt/releases/download/v4.4.33/libxcrypt-4.4.33
 https://github.com/linux-pam/linux-pam/releases/download/v1.5.2/Linux-PAM-1.5.2.tar.xz
 https://github.com/stevegrubb/libcap-ng/archive/refs/tags/v0.8.3.tar.gz libcap-ng-0.8.3.tar.gz
 https://github.com/util-linux/util-linux/archive/refs/tags/v2.38.1.tar.gz util-linux-2.38.1.tar.gz
-https://github.com/systemd/systemd/archive/refs/tags/v252.tar.gz systemd-252.tar.gz
+https://github.com/systemd/systemd/archive/refs/tags/v253.tar.gz systemd-253.tar.gz
 https://www.x.org/releases/individual/lib/libpciaccess-0.17.tar.gz
 https://dri.freedesktop.org/libdrm/libdrm-2.4.115.tar.xz
 https://github.com/libunwind/libunwind/releases/download/v1.6.2/libunwind-1.6.2.tar.gz
