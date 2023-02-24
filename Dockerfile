@@ -8,7 +8,7 @@ RUN dpkg --add-architecture i386 && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         python3 python3-pip wget git ninja-build gperf automake \
-        autoconf-archive libtool autopoint gettext nasm && \
+        autoconf-archive libtool autopoint gettext nasm glslang-tools && \
     pip3 install mako jinja2 && \
     wget -q https://github.com/Kitware/CMake/releases/download/v3.25.2/cmake-3.25.2-linux-x86_64.tar.gz -P $HOME && \
     tar xf $HOME/cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
@@ -201,7 +201,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
--Dvulkan-drivers=\"\" \
+-Dvulkan-drivers=intel,intel_hasvk \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
 -Dgles2=disabled \
@@ -213,12 +213,11 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile OSMesa GL glapi gallium_dri\n\
+[mesa] meson compile OSMesa GL glapi gallium_dri intel_icd vulkan_intel intel_hasvk_icd vulkan_intel_hasvk\n\
 [mesa] meson install --no-rebuild\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] cd build && make install\n\
-[Vulkan-Loader] echo sed -i 's/if\\(APPLE\\)/if(TRUE)/' CMakeLists.txt\n\
-[Vulkan-Loader] echo sed -i 's/if\\(APPLE AND BUILD_STATIC_LOADER\\)/if(BUILD_STATIC_LOADER)/' loader/CMakeLists.txt\n\
+[Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [Vulkan-Loader] echo $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
 [Vulkan-Loader] echo make install\n\
 [ogg] ./autogen.sh\n\
