@@ -1,0 +1,26 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d6777418..03c96729 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -25,7 +25,7 @@ find_package(PythonInterp 3 QUIET)
+ set(THREADS_PREFER_PTHREAD_FLAG ON)
+ find_package(Threads REQUIRED)
+ 
+-if(APPLE)
++if(TRUE)
+     option(BUILD_STATIC_LOADER "Build a loader that can be statically linked" OFF)
+ endif()
+ 
+diff --git a/loader/CMakeLists.txt b/loader/CMakeLists.txt
+index babe0213..c14527a7 100644
+--- a/loader/CMakeLists.txt
++++ b/loader/CMakeLists.txt
+@@ -306,7 +306,7 @@ if(WIN32)
+     add_dependencies(vulkan loader_asm_gen_files)
+ 
+ else()
+-    if(APPLE AND BUILD_STATIC_LOADER)
++    if(BUILD_STATIC_LOADER)
+         add_library(vulkan STATIC ${NORMAL_LOADER_SRCS} ${OPT_LOADER_SRCS})
+         target_compile_definitions(vulkan PRIVATE BUILD_STATIC_LOADER)
+     else()

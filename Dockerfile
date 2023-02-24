@@ -202,6 +202,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
 -Dvulkan-drivers=intel,intel_hasvk \
+-Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
 -Dgles2=disabled \
@@ -216,10 +217,10 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] meson compile OSMesa GL glapi gallium_dri intel_icd vulkan_intel intel_hasvk_icd vulkan_intel_hasvk\n\
 [mesa] meson install --no-rebuild\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
-[Vulkan-Headers] cd build && make install\n\
+[Vulkan-Headers] make -C build install\n\
 [Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
-[Vulkan-Loader] echo $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
-[Vulkan-Loader] echo make install\n\
+[Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
+[Vulkan-Loader] make -C build install\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\
