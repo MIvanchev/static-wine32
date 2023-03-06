@@ -24,3 +24,131 @@ index babe0213..c14527a7 100644
          add_library(vulkan STATIC ${NORMAL_LOADER_SRCS} ${OPT_LOADER_SRCS})
          target_compile_definitions(vulkan PRIVATE BUILD_STATIC_LOADER)
      else()
+diff --git a/loader/loader.c b/loader/loader.c
+index ac2843c6..32af0a9d 100644
+--- a/loader/loader.c
++++ b/loader/loader.c
+@@ -70,6 +70,8 @@
+ // Generated file containing all the extension data
+ #include "vk_loader_extensions.c"
+ 
++#include "static_icds.h"
++
+ struct loader_struct loader = {0};
+ 
+ struct activated_layer_info {
+@@ -1332,7 +1334,7 @@ void loader_scanned_icd_clear(const struct loader_instance *inst, struct loader_
+     if (0 != icd_tramp_list->capacity) {
+         for (uint32_t i = 0; i < icd_tramp_list->count; i++) {
+             if (icd_tramp_list->scanned_list[i].handle) {
+-                loader_platform_close_library(icd_tramp_list->scanned_list[i].handle);
++                //loader_platform_close_library(icd_tramp_list->scanned_list[i].handle);
+                 icd_tramp_list->scanned_list[i].handle = NULL;
+             }
+             loader_instance_heap_free(inst, icd_tramp_list->scanned_list[i].lib_name);
+@@ -1595,6 +1597,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+         goto out;
+     }
+ 
++#if 0
+     // TODO implement smarter opening/closing of libraries. For now this
+     // function leaves libraries open and the scanned_icd_clear closes them
+ #if defined(__Fuchsia__)
+@@ -1602,6 +1605,13 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+ #else
+     handle = loader_platform_open_library(filename);
+ #endif
++#endif
++    for (uint32_t i = 0; i < static_icds.count; i++) {
++        if (!strcmp(static_icds.icd_list[i].libname, filename)) {
++            handle = (loader_platform_dl_handle) &static_icds.icd_list[i];
++            break;
++        }
++    }
+     if (NULL == handle) {
+         loader_handle_load_library_error(inst, filename, lib_status);
+         if (lib_status && *lib_status == LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY) {
+@@ -1613,13 +1623,13 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+     }
+ 
+     // Try to load the driver's exported vk_icdNegotiateLoaderICDInterfaceVersion
+-    fp_negotiate_icd_version = loader_platform_get_proc_address(handle, "vk_icdNegotiateLoaderICDInterfaceVersion");
++    fp_negotiate_icd_version = ((struct loader_static_icd *) handle)->api.fp_negotiate_icd_version;
+ 
+     // If it isn't exported, we are dealing with either a v0, v1, or a v7 and up driver
+     if (NULL == fp_negotiate_icd_version) {
+         // Try to load the driver's exported vk_icdGetInstanceProcAddr - if this is a v7 or up driver, we can use it to get
+         // the driver's vk_icdNegotiateLoaderICDInterfaceVersion function
+-        fp_get_proc_addr = loader_platform_get_proc_address(handle, "vk_icdGetInstanceProcAddr");
++        fp_get_proc_addr = ((struct loader_static_icd *) handle)->api.fp_get_proc_addr;
+ 
+         // If we successfully loaded vk_icdGetInstanceProcAddr, try to get vk_icdNegotiateLoaderICDInterfaceVersion
+         if (fp_get_proc_addr) {
+@@ -1640,7 +1650,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+ 
+     // If we didn't already query vk_icdGetInstanceProcAddr, try now
+     if (NULL == fp_get_proc_addr) {
+-        fp_get_proc_addr = loader_platform_get_proc_address(handle, "vk_icdGetInstanceProcAddr");
++        fp_get_proc_addr = ((struct loader_static_icd *) handle)->api.fp_get_proc_addr;
+     }
+ 
+     // If vk_icdGetInstanceProcAddr is NULL, this ICD is using version 0 and so we should respond accordingly.
+@@ -1712,7 +1722,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+                 (PFN_vk_icdGetPhysicalDeviceProcAddr)fp_get_proc_addr(NULL, "vk_icdGetPhysicalDeviceProcAddr");
+         }
+         if (NULL == fp_get_phys_dev_proc_addr && interface_vers >= 3) {
+-            fp_get_phys_dev_proc_addr = loader_platform_get_proc_address(handle, "vk_icdGetPhysicalDeviceProcAddr");
++            fp_get_phys_dev_proc_addr = ((struct loader_static_icd *) handle)->api.fp_get_phys_dev_proc_addr;
+         }
+ #if defined(VK_USE_PLATFORM_WIN32_KHR)
+         // Query "vk_icdEnumerateAdapterPhysicalDevices" with vk_icdGetInstanceProcAddr if the library reports interface version 7
+@@ -3546,8 +3556,8 @@ struct ICDManifestInfo {
+ 
+ // Takes a json file, opens, reads, and parses an ICD Manifest out of it.
+ // Should only return VK_SUCCESS, VK_ERROR_INCOMPATIBLE_DRIVER, or VK_ERROR_OUT_OF_HOST_MEMORY
+-VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *file_str, struct ICDManifestInfo *icd,
+-                                   bool *skipped_portability_drivers) {
++VkResult loader_parse_icd_manifest(const struct loader_instance *inst, const char *file_str, const char *json_str,
++                                   struct ICDManifestInfo *icd, bool *skipped_portability_drivers) {
+     VkResult res = VK_SUCCESS;
+     cJSON *json = NULL;
+     cJSON *item = NULL, *itemICD = NULL;
+@@ -3561,8 +3571,11 @@ VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *fil
+         goto out;
+     }
+ 
+-    res = loader_get_json(inst, file_str, &json);
+-    if (res == VK_ERROR_OUT_OF_HOST_MEMORY) {
++    json = cJSON_Parse(inst ? &inst->alloc_callbacks : NULL, json_str);
++    if (json == NULL) {
++        loader_log(inst, VULKAN_LOADER_ERROR_BIT, 0,
++                   "loader_parse_icd_manifest: Failed to parse JSON file %s, this is usually because something ran out of memory.", file_str);
++        res = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto out;
+     }
+     if (res != VK_SUCCESS || NULL == json) {
+@@ -3772,20 +3785,20 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+     if (VK_SUCCESS != res) {
+         goto out;
+     }
+-
++#if 0
+     // Get a list of manifest files for ICDs
+     res = loader_get_data_files(inst, LOADER_DATA_FILE_MANIFEST_DRIVER, NULL, &manifest_files);
+     if (VK_SUCCESS != res) {
+         goto out;
+     }
+-
++#endif
+     loader_platform_thread_lock_mutex(&loader_json_lock);
+     lockedMutex = true;
+-    for (uint32_t i = 0; i < manifest_files.count; i++) {
++    for (uint32_t i = 0; i < static_icds.count; i++) {
+         VkResult icd_res = VK_SUCCESS;
+         struct ICDManifestInfo icd;
+         memset(&icd, 0, sizeof(struct ICDManifestInfo));
+-        icd_res = loader_parse_icd_manifest(inst, manifest_files.filename_list[i], &icd, skipped_portability_drivers);
++        icd_res = loader_parse_icd_manifest(inst, static_icds.icd_list[i].jsonname, static_icds.icd_list[i].json, &icd, skipped_portability_drivers);
+         if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_res) {
+             res = icd_res;
+             goto out;

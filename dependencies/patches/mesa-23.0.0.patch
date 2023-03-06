@@ -71,8 +71,22 @@ index d506869cbb4..31ce65652f2 100644
 +
 +   return NULL;
 +}
+diff --git a/src/gallium/targets/osmesa/meson.build b/src/gallium/targets/osmesa/meson.build
+index 024bac32b58..b979bba73dc 100644
+--- a/src/gallium/targets/osmesa/meson.build
++++ b/src/gallium/targets/osmesa/meson.build
+@@ -55,7 +55,8 @@ libosmesa = shared_library(
+     libmesa, libgallium, libws_null, osmesa_link_with,
+   ],
+   dependencies : [
+-    dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind, driver_swrast
++    dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind, driver_swrast,
++    meson.get_compiler('cpp').find_library('stdc++')
+   ],
+   name_prefix : host_machine.system() == 'windows' ? '' : 'lib',  # otherwise mingw will create libosmesa.dll
+   soversion : host_machine.system() == 'windows' ? '' : '8',
 diff --git a/src/glx/dri_common.c b/src/glx/dri_common.c
-index 94e264cc07f..dfe59af4d73 100644
+index 1b17f80be01..db44ac4af43 100644
 --- a/src/glx/dri_common.c
 +++ b/src/glx/dri_common.c
 @@ -55,6 +55,8 @@
@@ -121,3 +135,275 @@ index 94e264cc07f..dfe59af4d73 100644
     return config;
  }
  
+diff --git a/src/glx/meson.build b/src/glx/meson.build
+index 20f04742894..e358a686e7a 100644
+--- a/src/glx/meson.build
++++ b/src/glx/meson.build
+@@ -73,8 +73,8 @@ files_libglx = files(
+   'xfont.c',
+ )
+ 
+-extra_libs_libglx = []
+-extra_deps_libgl = []
++extra_libs_libglx = [libgallium_dri]
++extra_deps_libgl = [meson.get_compiler('cpp').find_library('stdc++')]
+ extra_ld_args_libgl = []
+ 
+ # dri2
+diff --git a/src/intel/vulkan/anv_device.c b/src/intel/vulkan/anv_device.c
+index a1fc836f98f..e774ddd7741 100644
+--- a/src/intel/vulkan/anv_device.c
++++ b/src/intel/vulkan/anv_device.c
+@@ -2963,12 +2963,12 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
+  * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName)
+ {
+@@ -2979,11 +2979,11 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
+  * vk_icdGetPhysicalDeviceProcAddr()
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName);
+ 
+-PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
++PFN_vkVoidFunction intel_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName)
+ {
+@@ -4924,10 +4924,10 @@ void anv_GetPhysicalDeviceMultisamplePropertiesEXT(
+  * suppress Wmissing-prototypes.
+  */
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
++intel_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
++intel_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/intel/vulkan/meson.build b/src/intel/vulkan/meson.build
+index d09960a4b8c..e09e7608cbe 100644
+--- a/src/intel/vulkan/meson.build
++++ b/src/intel/vulkan/meson.build
+@@ -219,13 +219,16 @@ libvulkan_intel = shared_library(
+   ],
+   link_whole : [libanv_common, libanv_per_hw_ver_libs] + optional_libgrl,
+   link_with : [
+-    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
++#    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
+   ],
+   dependencies : [
+-    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
+-    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
+-    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+-    idep_intel_driver_ds,
++#    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
++#    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
++#    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
++#    idep_intel_driver_ds,
++    dep_thread, dep_dl, dep_m, anv_deps,
++    idep_vulkan_util, idep_vulkan_wsi,
++    idep_vulkan_runtime
+   ],
+   c_args : anv_flags,
+   gnu_symbol_visibility : 'hidden',
+diff --git a/src/intel/vulkan_hasvk/anv_device.c b/src/intel/vulkan_hasvk/anv_device.c
+index a530ed64c3e..229cfb52690 100644
+--- a/src/intel/vulkan_hasvk/anv_device.c
++++ b/src/intel/vulkan_hasvk/anv_device.c
+@@ -2426,12 +2426,12 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
+  * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName)
+ {
+@@ -2442,11 +2442,11 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
+  * vk_icdGetPhysicalDeviceProcAddr()
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName);
+ 
+-PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
++PFN_vkVoidFunction intel_hasvk_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName)
+ {
+@@ -4226,10 +4226,10 @@ void anv_GetPhysicalDeviceMultisamplePropertiesEXT(
+  * suppress Wmissing-prototypes.
+  */
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
++intel_hasvk_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
++intel_hasvk_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/intel/vulkan_hasvk/meson.build b/src/intel/vulkan_hasvk/meson.build
+index 7fcbc3b42cf..5bc2911e874 100644
+--- a/src/intel/vulkan_hasvk/meson.build
++++ b/src/intel/vulkan_hasvk/meson.build
+@@ -24,10 +24,10 @@ anv_hasvk_entrypoints = custom_target(
+   output : ['anv_entrypoints.h', 'anv_entrypoints.c'],
+   command : [
+     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+-    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
++    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv_hasvk',
+     '--device-prefix', 'gfx7', '--device-prefix', 'gfx75',
+     '--device-prefix', 'gfx8',
+-    '--device-prefix', 'doom64',
++    '--device-prefix', 'doom64_hasvk',
+   ],
+   depend_files : vk_entrypoints_gen_depend_files,
+ )
+@@ -189,13 +189,14 @@ libvulkan_intel_hasvk = shared_library(
+   ],
+   link_whole : [libanv_hasvk_common, libanv_per_hw_ver_libs],
+   link_with : [
+-    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
++#    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
+   ],
+   dependencies : [
+-    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
+-    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
+-    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+-    idep_intel_driver_ds,
++#    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
++#    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
++#    idep_intel_driver_ds,
++    dep_thread, dep_dl, dep_m, anv_deps,
++    idep_vulkan_runtime
+   ],
+   c_args : anv_flags,
+   gnu_symbol_visibility : 'hidden',
+diff --git a/src/vulkan/runtime/meson.build b/src/vulkan/runtime/meson.build
+index fa2257d53e6..c39544671b5 100644
+--- a/src/vulkan/runtime/meson.build
++++ b/src/vulkan/runtime/meson.build
+@@ -94,8 +94,9 @@ vulkan_runtime_files = files(
+ 
+ vulkan_runtime_deps = [
+   vulkan_wsi_deps,
+-  idep_mesautil,
+-  idep_nir,
++#  idep_nir,
++#  idep_mesautil,
++  idep_nir_headers,
+   idep_vulkan_util,
+ ]
+ 
+@@ -188,6 +189,7 @@ libvulkan_runtime = static_library(
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_runtime_headers = declare_dependency(
+@@ -204,14 +206,14 @@ idep_vulkan_common_entrypoints_h = declare_dependency(
+ # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506 
+ if get_option('backend').startswith('vs')
+   idep_vulkan_runtime = declare_dependency(
+-    link_with : libvulkan_runtime,
++#    link_with : libvulkan_runtime,
+     dependencies : idep_vulkan_runtime_headers
+   )
+ else
+   idep_vulkan_runtime = declare_dependency(
+     # Instruct users of this library to link with --whole-archive.  Otherwise,
+     # our weak function overloads may not resolve properly.
+-    link_whole : libvulkan_runtime,
++#    link_whole : libvulkan_runtime,
+     dependencies : idep_vulkan_runtime_headers
+   )
+ endif
+diff --git a/src/vulkan/util/meson.build b/src/vulkan/util/meson.build
+index 4eaa8e70d71..234235dea4f 100644
+--- a/src/vulkan/util/meson.build
++++ b/src/vulkan/util/meson.build
+@@ -101,10 +101,12 @@ libvulkan_util = static_library(
+   'vulkan_util',
+   [files_vulkan_util, vk_dispatch_table, vk_enum_to_str, vk_extensions],
+   include_directories : [inc_include, inc_src, inc_gallium],
+-  dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
++#  dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
++  dependencies : [vulkan_wsi_deps, idep_nir_headers],
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_util_headers = declare_dependency(
+@@ -113,6 +115,6 @@ idep_vulkan_util_headers = declare_dependency(
+ )
+ 
+ idep_vulkan_util = declare_dependency(
+-  link_with : libvulkan_util,
++#  link_with : libvulkan_util,
+   dependencies : idep_vulkan_util_headers
+ )
+diff --git a/src/vulkan/wsi/meson.build b/src/vulkan/wsi/meson.build
+index a79e3a34789..fd61ab23a25 100644
+--- a/src/vulkan/wsi/meson.build
++++ b/src/vulkan/wsi/meson.build
+@@ -63,10 +63,12 @@ libvulkan_wsi = static_library(
+   include_directories : [inc_include, inc_src, inc_gallium],
+   dependencies : [
+     vulkan_wsi_deps, dep_libdrm, dep_libudev, idep_vulkan_util_headers,
+-    idep_vulkan_runtime_headers, idep_xmlconfig, idep_mesautil, platform_deps
++#    idep_vulkan_runtime_headers, idep_xmlconfig, idep_mesautil, platform_deps
++    idep_vulkan_runtime_headers
+   ],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_wsi_headers = declare_dependency(
+@@ -82,14 +84,14 @@ idep_vulkan_wsi_entrypoints_h = declare_dependency(
+ # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506
+ if get_option('backend').startswith('vs')
+   idep_vulkan_wsi = declare_dependency(
+-    link_with : libvulkan_wsi,
++#    link_with : libvulkan_wsi,
+     dependencies : idep_vulkan_wsi_headers
+   )
+ else
+   idep_vulkan_wsi = declare_dependency(
+     # Instruct users of this library to link with --whole-archive.  Otherwise,
+     # our weak function overloads may not resolve properly.
+-    link_whole : libvulkan_wsi,
++#    link_whole : libvulkan_wsi,
+     dependencies : [
+       idep_vulkan_wsi_headers, dep_libudev
+     ]

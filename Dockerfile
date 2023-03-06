@@ -28,6 +28,8 @@ ENV DISPLAY=:1
 
 COPY dependencies /build
 COPY meson-cross-i386 /build/
+COPY build_static_icds_h.py /build/
+COPY static_icds_h.template /build/
 
 ARG WITH_LLVM=0
 ARG WITH_GNUTLS=1
@@ -138,6 +140,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] cd build\n\
 [systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc\n\
 [systemd] meson install --tags devel,libudev --no-rebuild\n\
+[systemd] [ -f /usr/local/lib/pkgconfig/libudev.pc ] && echo 'Requires.private: libcap' >> /usr/local/lib/pkgconfig/libudev.pc\n\
 [libdrm] meson setup build $MESON_PROLOGUE\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
@@ -145,7 +148,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [tdb] rm /usr/local/lib/libtdb*.so*\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
 [glib] ninja -C build install\n\
-[libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev) \\$(pkg-config --libs --static libcap)]/' configure.ac\n\
+[libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev)]/' configure.ac\n\
 [libusb] autoreconf -i\n\
 [libusb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libusb] make install\n\
@@ -188,9 +191,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
-[mesa] sed -i 's/extra_libs_libglx = \\[\\]/extra_libs_libglx = \\[libgallium_dri\\]/' src/glx/meson.build\n\
-[mesa] sed -i 's/extra_deps_libgl = \\[\\]/extra_deps_libgl = \\[meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"')\\]/' src/glx/meson.build\n\
-[mesa] sed -i 's/driver_swrast/driver_swrast, meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"'),/' src/gallium/targets/osmesa/meson.build\n\
+[mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
 [mesa] echo '#!/usr/bin/env python3' > bin/install_megadrivers.py\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
@@ -207,20 +208,24 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgles1=disabled \
 -Dgles2=disabled \
 -Dglx=dri \
--Dgbm=disabled \
+-Dgbm=enabled \
 -Degl=disabled \
 -Dllvm=`if [ \"$WITH_LLVM\" -eq 1 ]; then echo enabled; else echo disabled; fi` \
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile OSMesa GL glapi gallium_dri intel_icd vulkan_intel intel_hasvk_icd vulkan_intel_hasvk\n\
+[mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime vulkan_wsi intel_icd vulkan_intel intel_hasvk_icd vulkan_intel_hasvk gbm\n\
 [mesa] meson install --no-rebuild\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
 [Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
+[Vulkan-Loader] python3 ../build_static_icds_h.py > loader/static_icds.h\n\
+[Vulkan-Loader] cat loader/static_icds.h\n\
 [Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
 [Vulkan-Loader] make -C build install\n\
+[Vulkan-Loader] [ -f /usr/local/lib/pkgconfig/vulkan.pc ] && echo 'Requires.private: gl libudev' >> /usr/local/lib/pkgconfig/vulkan.pc\n\
+[Vulkan-Loader] [ -f /usr/local/lib/pkgconfig/vulkan.pc ] && echo 'Libs.private: -Wl,--whole-archive -lvulkan_intel -lvulkan_intel_hasvk -lvulkan_runtime -lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive' >> /usr/local/lib/pkgconfig/vulkan.pc\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\
@@ -338,7 +343,7 @@ RUN export MAKEFLAGS=-j$BUILD_JOBS && \
        echo "pkg_dir:          $pkg_dir"; \
        echo "pkg_build_script: $pkg_build_script"; \
        echo "Build script contents:"; \
-       tar -xvf "$pkg_file" || exit; \
+       tar -xf "$pkg_file" || exit; \
        { echo -e "$DEP_BUILD_SCRIPTS" | grep "^\[$pkg_name\]" | sed "s/^\[$pkg_name\] //" > "$pkg_build_script"; } || exit; \
        if [ ! -s "$pkg_build_script" ]; \
        then \

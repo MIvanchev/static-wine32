@@ -1,0 +1,50 @@
+#ifndef __STATIC_ICDS_H__
+#define __STATIC_ICDS_H__
+
+{% for icd in icds %}
+extern VKAPI_ATTR VkResult VKAPI_CALL {{ icd.prefix }}_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pVersion);
+extern VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL {{ icd.prefix }}_vk_icdGetInstanceProcAddr(VkInstance instance, const char* pName);
+extern VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL {{ icd.prefix }}_vk_icdGetPhysicalDeviceProcAddr(VkInstance isntance, const char* pName);
+{% endfor %}
+
+struct loader_static_icd_api {
+  const PFN_vk_icdNegotiateLoaderICDInterfaceVersion fp_negotiate_icd_version;
+  const PFN_vk_icdGetInstanceProcAddr fp_get_proc_addr;
+  const PFN_vk_icdGetPhysicalDeviceProcAddr fp_get_phys_dev_proc_addr;
+};
+
+struct loader_static_icd {
+    const char *libname;
+    const char *jsonname;
+    const char *json;
+    const struct loader_static_icd_api api;
+};
+
+struct loader_static_icds {
+  const struct loader_static_icd *icd_list;
+  const uint32_t count;
+};
+
+static const struct loader_static_icd static_icd_list[] = {
+  {% for icd in icds %}
+  {
+    "{{ icd.libname }}",
+    "{{ icd.jsonname }}",
+    {% for byte in icd.json %}
+    {% if loop.index % 8 == 1 %}
+    "{% endif %}
+{{ "\\x{:02x}".format(byte) }}{% if loop.index % 8 == 0 or loop.last %}"{% if not loop.last +%}
+{% endif %}{% endif %}
+    {% endfor +%},
+    {
+      {{ icd.prefix }}_vk_icdNegotiateLoaderICDInterfaceVersion,
+      {{ icd.prefix }}_vk_icdGetInstanceProcAddr,
+      {{ icd.prefix }}_vk_icdGetPhysicalDeviceProcAddr
+    }
+  }{% if not loop.last %},{% endif +%}
+  {% endfor %}
+};
+
+static const struct loader_static_icds static_icds = { static_icd_list, {{ icds|length }} };
+
+#endif // __STATIC_ICDS_H__
