@@ -1,3 +1,596 @@
+diff --git a/src/amd/common/meson.build b/src/amd/common/meson.build
+index 1262c3a056e..2dca3993fe2 100644
+--- a/src/amd/common/meson.build
++++ b/src/amd/common/meson.build
+@@ -117,8 +117,10 @@ libamd_common = static_library(
+     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler, inc_mapi, inc_amd,
+   ],
+   dependencies : [
++#    dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
++#    idep_mesautil, idep_nir_headers, idep_nir
+     dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
+-    idep_mesautil, idep_nir_headers, idep_nir
++    idep_nir_headers
+   ],
+   gnu_symbol_visibility : 'hidden',
+   c_args : ['-DADDR_FASTCALL=']
+diff --git a/src/amd/vulkan/meson.build b/src/amd/vulkan/meson.build
+index d7cd1f0d039..f68bcf40011 100644
+--- a/src/amd/vulkan/meson.build
++++ b/src/amd/vulkan/meson.build
+@@ -189,10 +189,15 @@ libvulkan_radeon = shared_library(
+     libamd_common, libamd_common_llvm, libamdgpu_addrlib,
+   ],
+   dependencies : [
++#    dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
++#    dep_valgrind, radv_deps, idep_aco,
++#    idep_mesautil, idep_nir, idep_vulkan_util, idep_vulkan_wsi,
++#    idep_vulkan_runtime, idep_amdgfxregs_h, idep_xmlconfig,
++#    idep_vulkan_common_entrypoints_h, idep_vulkan_wsi_entrypoints_h
+     dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
+     dep_valgrind, radv_deps, idep_aco,
+-    idep_mesautil, idep_nir, idep_vulkan_util, idep_vulkan_wsi,
+-    idep_vulkan_runtime, idep_amdgfxregs_h, idep_xmlconfig,
++    idep_nir_headers, idep_vulkan_util, idep_vulkan_wsi,
++    idep_vulkan_runtime, idep_amdgfxregs_h,
+     idep_vulkan_common_entrypoints_h, idep_vulkan_wsi_entrypoints_h
+   ],
+   c_args : [no_override_init_args, radv_flags, c_msvc_compat_args],
+diff --git a/src/amd/vulkan/radix_sort/radix_sort_vk.c b/src/amd/vulkan/radix_sort/radix_sort_vk.c
+index 70253884fc4..1e54c85b3ef 100644
+--- a/src/amd/vulkan/radix_sort/radix_sort_vk.c
++++ b/src/amd/vulkan/radix_sort/radix_sort_vk.c
+@@ -259,7 +259,7 @@ radix_sort_vk_create(VkDevice                           device,
+     {
+       plci.pPushConstantRanges = pcr + ii;
+ 
+-      if (vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
++      if (radix_vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
+         goto fail_layout;
+     }
+ 
+@@ -282,7 +282,7 @@ radix_sort_vk_create(VkDevice                           device,
+       smci.codeSize = spv_sizes[ii];
+       smci.pCode    = spv[ii];
+ 
+-      if (vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
++      if (radix_vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
+         goto fail_shader;
+     }
+ 
+@@ -358,7 +358,7 @@ radix_sort_vk_create(VkDevice                           device,
+   //
+   // Create the compute pipelines
+   //
+-  if (vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
++  if (radix_vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
+     goto fail_pipeline;
+ 
+   //
+@@ -366,7 +366,7 @@ radix_sort_vk_create(VkDevice                           device,
+   //
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyShaderModule(device, sms[ii], ac);
++      radix_vkDestroyShaderModule(device, sms[ii], ac);
+     }
+ 
+ #ifdef RS_VK_ENABLE_DEBUG_UTILS
+@@ -397,17 +397,17 @@ radix_sort_vk_create(VkDevice                           device,
+ fail_pipeline:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
++      radix_vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
+     }
+ fail_shader:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyShaderModule(device, sms[ii], ac);
++      radix_vkDestroyShaderModule(device, sms[ii], ac);
+     }
+ fail_layout:
+    for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
++      radix_vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
+     }
+ 
+   free(rs);
+@@ -425,13 +425,13 @@ radix_sort_vk_destroy(struct radix_sort_vk * rs, VkDevice d, VkAllocationCallbac
+   // destroy pipelines
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipeline(d, rs->pipelines.handles[ii], ac);
++      radix_vkDestroyPipeline(d, rs->pipelines.handles[ii], ac);
+     }
+ 
+   // destroy pipeline layouts
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipelineLayout(d, rs->pipeline_layouts.handles[ii], ac);
++      radix_vkDestroyPipelineLayout(d, rs->pipeline_layouts.handles[ii], ac);
+     }
+ 
+   free(rs);
+@@ -450,7 +450,7 @@ rs_get_devaddr(VkDevice device, VkDescriptorBufferInfo const * dbi)
+     .buffer = dbi->buffer
+   };
+ 
+-  VkDeviceAddress const devaddr = vkGetBufferDeviceAddress(device, &bdai) + dbi->offset;
++  VkDeviceAddress const devaddr = radix_vkGetBufferDeviceAddress(device, &bdai) + dbi->offset;
+ 
+   return devaddr;
+ }
+@@ -468,7 +468,7 @@ rs_ext_cmd_write_timestamp(struct radix_sort_vk_ext_timestamps * ext_timestamps,
+   if ((ext_timestamps != NULL) &&
+       (ext_timestamps->timestamps_set < ext_timestamps->timestamp_count))
+     {
+-      vkCmdWriteTimestamp(cb,
++      radix_vkCmdWriteTimestamp(cb,
+                           pipeline_stage,
+                           ext_timestamps->timestamps,
+                           ext_timestamps->timestamps_set++);
+@@ -679,16 +679,16 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+     .passes             = passes
+   };
+ 
+-  vkCmdPushConstants(cb,
++  radix_vkCmdPushConstants(cb,
+                      rs->pipeline_layouts.named.histogram,
+                      VK_SHADER_STAGE_COMPUTE_BIT,
+                      0,
+                      sizeof(push_histogram),
+                      &push_histogram);
+ 
+-  vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
++  radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
+ 
+-  vkCmdDispatch(cb, histo_blocks, 1, 1);
++  radix_vkCmdDispatch(cb, histo_blocks, 1, 1);
+ 
+   ////////////////////////////////////////////////////////////////////////
+   //
+@@ -707,16 +707,16 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+     .devaddr_histograms = devaddr_histograms,
+   };
+ 
+-  vkCmdPushConstants(cb,
++  radix_vkCmdPushConstants(cb,
+                      rs->pipeline_layouts.named.prefix,
+                      VK_SHADER_STAGE_COMPUTE_BIT,
+                      0,
+                      sizeof(push_prefix),
+                      &push_prefix);
+ 
+-  vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
++  radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
+ 
+-  vkCmdDispatch(cb, passes, 1, 1);
++  radix_vkCmdDispatch(cb, passes, 1, 1);
+ 
+   ////////////////////////////////////////////////////////////////////////
+   //
+@@ -746,14 +746,14 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+   {
+     uint32_t const pass_dword = pass_idx / 4;
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.scatter[pass_dword].even,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_scatter),
+                        &push_scatter);
+ 
+-    vkCmdBindPipeline(cb,
++    radix_vkCmdBindPipeline(cb,
+                       VK_PIPELINE_BIND_POINT_COMPUTE,
+                       rs->pipelines.named.scatter[pass_dword].even);
+   }
+@@ -762,7 +762,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+ 
+   while (true)
+     {
+-      vkCmdDispatch(cb, scatter_blocks, 1, 1);
++      radix_vkCmdDispatch(cb, scatter_blocks, 1, 1);
+ 
+       //
+       // Continue?
+@@ -788,7 +788,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+       //
+       VkPipelineLayout const pl = is_even ? rs->pipeline_layouts.named.scatter[pass_dword].even  //
+                                           : rs->pipeline_layouts.named.scatter[pass_dword].odd;
+-      vkCmdPushConstants(cb,
++      radix_vkCmdPushConstants(cb,
+                          pl,
+                          VK_SHADER_STAGE_COMPUTE_BIT,
+                          OFFSETOF_MACRO(struct rs_push_scatter, devaddr_histograms),
+@@ -801,7 +801,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+       VkPipeline const p = is_even ? rs->pipelines.named.scatter[pass_dword].even  //
+                                    : rs->pipelines.named.scatter[pass_dword].odd;
+ 
+-      vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
++      radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
+     }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -938,16 +938,16 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .passes        = passes
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.init,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_init),
+                        &push_init);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.init);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.init);
+ 
+-    vkCmdDispatch(cb, 1, 1, 1);
++    radix_vkCmdDispatch(cb, 1, 1, 1);
+   }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -967,14 +967,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .dword          = 0xFFFFFFFF
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.fill,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_pad),
+                        &push_pad);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
+ 
+     info->dispatch_indirect(cb, &info->indirect, offsetof(struct rs_indirect_info, dispatch.pad));
+   }
+@@ -992,14 +992,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .dword          = 0
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.fill,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_zero),
+                        &push_zero);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
+ 
+     info->dispatch_indirect(cb, &info->indirect, offsetof(struct rs_indirect_info, dispatch.zero));
+   }
+@@ -1021,14 +1021,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .passes             = passes
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.histogram,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_histogram),
+                        &push_histogram);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
+ 
+     info->dispatch_indirect(cb,
+                             &info->indirect,
+@@ -1049,16 +1049,16 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .devaddr_histograms = devaddr_histograms,
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.prefix,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_prefix),
+                        &push_prefix);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
+ 
+-    vkCmdDispatch(cb, passes, 1, 1);
++    radix_vkCmdDispatch(cb, passes, 1, 1);
+   }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -1088,14 +1088,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+     {
+       uint32_t const pass_dword = pass_idx / 4;
+ 
+-      vkCmdPushConstants(cb,
++      radix_vkCmdPushConstants(cb,
+                          rs->pipeline_layouts.named.scatter[pass_dword].even,
+                          VK_SHADER_STAGE_COMPUTE_BIT,
+                          0,
+                          sizeof(push_scatter),
+                          &push_scatter);
+ 
+-      vkCmdBindPipeline(cb,
++      radix_vkCmdBindPipeline(cb,
+                         VK_PIPELINE_BIND_POINT_COMPUTE,
+                         rs->pipelines.named.scatter[pass_dword].even);
+     }
+@@ -1134,7 +1134,7 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+         VkPipelineLayout const pl = is_even
+                                       ? rs->pipeline_layouts.named.scatter[pass_dword].even  //
+                                       : rs->pipeline_layouts.named.scatter[pass_dword].odd;
+-        vkCmdPushConstants(
++        radix_vkCmdPushConstants(
+           cb,
+           pl,
+           VK_SHADER_STAGE_COMPUTE_BIT,
+@@ -1148,7 +1148,7 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+         VkPipeline const p = is_even ? rs->pipelines.named.scatter[pass_dword].even  //
+                                      : rs->pipelines.named.scatter[pass_dword].odd;
+ 
+-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
++        radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
+       }
+   }
+ 
+@@ -1177,7 +1177,7 @@ radix_sort_vk_fill_buffer(VkCommandBuffer                     cb,
+                           VkDeviceSize                        size,
+                           uint32_t                            data)
+ {
+-  vkCmdFillBuffer(cb, buffer_info->buffer, buffer_info->offset + offset, size, data);
++  radix_vkCmdFillBuffer(cb, buffer_info->buffer, buffer_info->offset + offset, size, data);
+ }
+ 
+ //
+@@ -1221,7 +1221,7 @@ radix_sort_vk_dispatch_indirect(VkCommandBuffer                     cb,
+                                 radix_sort_vk_buffer_info_t const * buffer_info,
+                                 VkDeviceSize                        offset)
+ {
+-  vkCmdDispatchIndirect(cb, buffer_info->buffer, buffer_info->offset + offset);
++  radix_vkCmdDispatchIndirect(cb, buffer_info->buffer, buffer_info->offset + offset);
+ }
+ 
+ //
+diff --git a/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h b/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
+index 23dd808249a..98fc6c67db7 100644
+--- a/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
++++ b/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
+@@ -89,6 +89,62 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+                                     VkCommandBuffer                                    cb,
+                                     VkDeviceAddress *                                  keyvals_sorted);
+ 
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
++                     const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
++                      const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
++                       const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
++                        const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
++                         const VkComputePipelineCreateInfo *pCreateInfos,
++                         const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
++                     VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
++                     uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
++                     uint32_t bufferMemoryBarrierCount,
++                     const VkBufferMemoryBarrier *pBufferMemoryBarriers,
++                     uint32_t imageMemoryBarrierCount,
++                     const VkImageMemoryBarrier *pImageMemoryBarriers);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
++                   VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size,
++                   const void *pValues);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
++                  VkPipeline pipeline);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
++              uint32_t groupCountZ);
++
++VKAPI_ATTR VkDeviceAddress VKAPI_CALL
++radix_vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
++                VkDeviceSize size, uint32_t data);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset);
++
+ //
+ // clang-format on
+ //
+diff --git a/src/amd/vulkan/radix_sort/radv_radix_sort.c b/src/amd/vulkan/radix_sort/radv_radix_sort.c
+index 061461432c8..824521c1fb5 100644
+--- a/src/amd/vulkan/radix_sort/radv_radix_sort.c
++++ b/src/amd/vulkan/radix_sort/radv_radix_sort.c
+@@ -98,7 +98,7 @@ radv_create_radix_sort_u64(VkDevice device, VkAllocationCallbacks const *ac, VkP
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
++radix_vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
+                      const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -107,7 +107,7 @@ vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateIn
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
++radix_vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
+                       const VkAllocationCallbacks *pAllocator)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -115,7 +115,7 @@ vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
++radix_vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
+                        const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -124,7 +124,7 @@ vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCrea
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
++radix_vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
+                         const VkAllocationCallbacks *pAllocator)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -132,7 +132,7 @@ vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
++radix_vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
+                          const VkComputePipelineCreateInfo *pCreateInfos,
+                          const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
+ {
+@@ -142,14 +142,14 @@ vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
++radix_vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+    device->vk.dispatch_table.DestroyPipeline(_device, pipeline, pAllocator);
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
++radix_vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
+                      VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
+                      uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
+                      uint32_t bufferMemoryBarrierCount,
+@@ -165,7 +165,7 @@ vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStag
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
++radix_vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
+                    VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size,
+                    const void *pValues)
+ {
+@@ -175,7 +175,7 @@ vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
++radix_vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
+                   VkPipeline pipeline)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -184,7 +184,7 @@ vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBin
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
++radix_vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
+               uint32_t groupCountZ)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -193,14 +193,14 @@ vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t grou
+ }
+ 
+ VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+-vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
++radix_vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+    return device->vk.dispatch_table.GetBufferDeviceAddress(_device, pInfo);
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
++radix_vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
+                 VkDeviceSize size, uint32_t data)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -209,7 +209,7 @@ vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
++radix_vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+    cmd_buffer->device->vk.dispatch_table.CmdDispatchIndirect(commandBuffer, buffer, offset);
+diff --git a/src/amd/vulkan/radv_device.c b/src/amd/vulkan/radv_device.c
+index 4c2c3168d8c..fd70a368305 100644
+--- a/src/amd/vulkan/radv_device.c
++++ b/src/amd/vulkan/radv_device.c
+@@ -5961,19 +5961,27 @@ radv_GetInstanceProcAddr(VkInstance _instance, const char *pName)
+ #define PUBLIC
+ #endif
+ 
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
++radeon_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName);
++
+ /* The loader wants us to expose a second GetInstanceProcAddr function
+  * to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+-vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
++radeon_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
+ {
+    return radv_GetInstanceProcAddr(instance, pName);
+ }
+ 
+ PUBLIC
+ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+-vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
++radeon_vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName);
++
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
++radeon_vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
+ {
+    RADV_FROM_HANDLE(radv_instance, instance, _instance);
+    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
+@@ -7693,7 +7701,10 @@ radv_DestroySampler(VkDevice _device, VkSampler _sampler, const VkAllocationCall
+ }
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
++radeon_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion);
++
++PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
++radeon_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
 diff --git a/src/gallium/targets/dri/target.c b/src/gallium/targets/dri/target.c
 index d506869cbb4..31ce65652f2 100644
 --- a/src/gallium/targets/dri/target.c

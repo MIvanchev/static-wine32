@@ -140,7 +140,8 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] cd build\n\
 [systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc\n\
 [systemd] meson install --tags devel,libudev --no-rebuild\n\
-[systemd] [ -f /usr/local/lib/pkgconfig/libudev.pc ] && echo 'Requires.private: libcap' >> /usr/local/lib/pkgconfig/libudev.pc\n\
+[systemd] PC_FILE=/usr/local/lib/pkgconfig/libudev.pc\n\
+[systemd] [ -f \$PC_FILE ] && echo 'Requires.private: libcap' >> \$PC_FILE\n\
 [libdrm] meson setup build $MESON_PROLOGUE\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
@@ -170,11 +171,11 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [alsa-plugins] autoreconf -i\n\
 [alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-plugins] make install\n\
-[alsa-plugins] sed -i 's/Requires:\\(.*\\)/Requires:\\1 libpulse dbus-1/' /usr/local/lib/pkgconfig/alsa.pc\n\
-[alsa-plugins] sed -i 's/Libs:\\(.*\\)/Libs:\\1 -L\${libdir}\\/alsa-lib -lasound_module_conf_pulse -lasound_module_pcm_pulse \
--lasound_module_ctl_arcam_av -lasound_module_pcm_upmix -lasound_module_ctl_oss -lasound_module_pcm_usb_stream \
--lasound_module_ctl_pulse -lasound_module_pcm_vdownmix -lasound_module_rate_speexrate -lasound_module_pcm_oss/' \
-/usr/local/lib/pkgconfig/alsa.pc\n\
+[alsa-plugins] PC_FILE=/usr/local/lib/pkgconfig/alsa.pc\n\
+[alsa-plugins] [ -f \$PC_FILE ] && echo 'Requires.private: libpulse dbus-1' > \$PC_FILE\n\
+[alsa-plugins] [ -f \$PC_FILE ] && echo 'Libs.private: asound_module_ctl_arcam_av asound_module_pcm_upmix \
+asound_module_ctl_oss asound_module_pcm_usb_stream asound_module_ctl_pulse asound_module_pcm_vdownmix \
+asound_module_rate_speexrate asound_module_pcm_oss' > \$PC_FILE\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
 [llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && return\n\
@@ -202,7 +203,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
--Dvulkan-drivers=intel,intel_hasvk \
+-Dvulkan-drivers=intel,intel_hasvk,amd \
 -Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
@@ -215,7 +216,9 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime vulkan_wsi intel_icd vulkan_intel intel_hasvk_icd vulkan_intel_hasvk gbm\n\
+[mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime \
+vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
+vulkan_intel_hasvk gbm\n\
 [mesa] meson install --no-rebuild\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
@@ -224,8 +227,14 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [Vulkan-Loader] cat loader/static_icds.h\n\
 [Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
 [Vulkan-Loader] make -C build install\n\
-[Vulkan-Loader] [ -f /usr/local/lib/pkgconfig/vulkan.pc ] && echo 'Requires.private: gl libudev' >> /usr/local/lib/pkgconfig/vulkan.pc\n\
-[Vulkan-Loader] [ -f /usr/local/lib/pkgconfig/vulkan.pc ] && echo 'Libs.private: -Wl,--whole-archive -lvulkan_intel -lvulkan_intel_hasvk -lvulkan_runtime -lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive' >> /usr/local/lib/pkgconfig/vulkan.pc\n\
+[Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
+[Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Requires.private: gl libudev' >> \$PC_FILE\n\
+[Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Libs.private: -Wl,--whole-archive \
+-lvulkan_radeon -lvulkan_intel -lvulkan_intel_hasvk -lvulkan_runtime \
+-lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive -ldrm_amdgpu' >> \$PC_FILE\n\
+[vkcube] meson setup build $MESON_PROLOGUE\n\
+[vkcube] cd build\n\
+[vkcube] meson compile\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\
