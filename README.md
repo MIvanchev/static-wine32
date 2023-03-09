@@ -73,7 +73,7 @@ comes with significant dangers. Use at your own risk and discretion. I assume no
 responsibility for any damage resulting from using this project. I do use it
 myself all the time to play GoG games and use some Windows programs.
 
-Pleae report any bugs and problems. I really greatly appreciate your
+Please report any bugs and problems. I really greatly appreciate your
 feedback even if it's an angry rant about reformatted hard drive. Let's make
 static-wine32 better together and liberate ourselves from the dynamic oppression.
 Feel free to share your ideas and contributions as well.
@@ -206,8 +206,6 @@ because `libgnutls.so` is the only dynamic dependency. Consider adding
 
 ## What isn't supported yet?
 
-* Vulkan – the loader architecture of Vulkan is hard to link statically, not
-as easily as OpenGL at least. I'll have to research it.
 * OSS – honestly I have no idea about that, everything is so confusing with
 OSS... contributions welcome.
 * OpenCL – I have no idea about OpenCL, contributions welcome.
@@ -219,7 +217,7 @@ libnetapi.
 
 ## FAQ
 
-### Isn't static linking bad?
+### Isn't static linking bad??
 
 Depends on the context. Not per se. Installing thousands of shared libraries
 with sketchy interdependencies is not better IMHO if you only want to run Wine.
@@ -255,9 +253,10 @@ might not be for you.
 
 ### Is Vulkan supported?
 
-No. Vulkan employs a dynamic loading architecture for drivers which is not
-as easy to hack away as Mesa's. There seems to be hope because the Vulkan loader
-allows static linking for MacOS so I might be able to start hacking there.
+Yes it is! Intel, AMD and software rendering drivers are included, Nvidia
+users are out of luck. Vulkan employs a dynamic loading architecture for
+drivers and layers that wasn't easy to hack away but everything seems to be
+running OK. Please let me know if you have issues.
 
 ### Is winetricks supported?
 
@@ -308,8 +307,8 @@ A good way to see what libraries Wine is loading at runtime is
 `cat /proc/<id>/maps` where `<id>` is the process ID of one of Wine's processes.
 
 If nothing else helps you could dedicate a week to build Wine without
-optimizations and with full debug symbols. You'll deeply regret it so just jump
-to official Wine while you still can.
+optimizations and with full debug symbols. You'll deeply regret it so just
+jump to official Wine while you still can.
 
 ### winedevice.exe causes 100% CPU usage
 

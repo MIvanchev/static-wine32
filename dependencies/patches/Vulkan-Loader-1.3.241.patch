@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d6777418..03c96729 100644
+index d6777418..8f2540b8 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -25,7 +25,7 @@ find_package(PythonInterp 3 QUIET)
@@ -11,6 +11,32 @@ index d6777418..03c96729 100644
      option(BUILD_STATIC_LOADER "Build a loader that can be statically linked" OFF)
  endif()
  
+@@ -222,6 +222,25 @@ if(NOT MSVC AND NOT (HAVE_SECURE_GETENV OR HAVE___SECURE_GETENV))
+     message(WARNING "Using non-secure environmental lookups. This loader will not properly disable environent variables when run with elevated permissions.")
+ endif()
+ 
++set(JINJA2_FOUND 0)
++
++if(PYTHONINTERP_FOUND)
++    execute_process(
++        COMMAND ${PYTHON_EXECUTABLE} -c "import jinja2"
++        RESULT_VARIABLE EXIT_CODE
++        OUTPUT_QUIET
++    )
++    if (NOT EXIT_CODE)
++        set(JINJA2_FOUND 1)
++    endif()
++endif()
++
++if (PYTHONINTERP_FOUND AND JINJA2_FOUND)
++    execute_process(COMMAND ${PYTHON_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/generate_static_icds_header.py)
++else()
++    message(FATAL_ERROR "Python 3 with jinja2 is required to generate the static ICDs header file.")
++endif()
++
+ # Optional codegen target
+ if(PYTHONINTERP_FOUND)
+     add_custom_target(VulkanLoader_generated_source
 diff --git a/loader/CMakeLists.txt b/loader/CMakeLists.txt
 index babe0213..c14527a7 100644
 --- a/loader/CMakeLists.txt
@@ -25,7 +51,7 @@ index babe0213..c14527a7 100644
          target_compile_definitions(vulkan PRIVATE BUILD_STATIC_LOADER)
      else()
 diff --git a/loader/loader.c b/loader/loader.c
-index ac2843c6..32af0a9d 100644
+index ac2843c6..14dac5ae 100644
 --- a/loader/loader.c
 +++ b/loader/loader.c
 @@ -70,6 +70,8 @@
@@ -152,3 +178,103 @@ index ac2843c6..32af0a9d 100644
          if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_res) {
              res = icd_res;
              goto out;
+@@ -3795,11 +3808,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+ 
+         if (select_filter.count > 0 || disable_filter.count > 0) {
+             // Get only the filename for comparing to the filters
+-            char *just_filename_str = strrchr(manifest_files.filename_list[i], DIRECTORY_SYMBOL);
++            char *just_filename_str = strrchr(static_icds.icd_list[i].jsonname, DIRECTORY_SYMBOL);
+ 
+             // No directory symbol, just the filename
+             if (NULL == just_filename_str) {
+-                just_filename_str = manifest_files.filename_list[i];
++                just_filename_str = (char*) static_icds.icd_list[i].jsonname;
+             } else {
+                 just_filename_str++;
+             }
+diff --git a/scripts/generate_static_icds_header.py b/scripts/generate_static_icds_header.py
+new file mode 100644
+index 00000000..f62a472b
+--- /dev/null
++++ b/scripts/generate_static_icds_header.py
+@@ -0,0 +1,24 @@
++from jinja2 import Template
++from pathlib import Path
++from itertools import groupby
++from operator import itemgetter
++
++import glob
++import re
++
++def get_icds(files):
++  for file in files:
++    name = re.sub(r"_icd.i686.json$", "", file.name)
++    yield {
++      "libname": f"/usr/local/lib/libvulkan_{name}.so",
++      "jsonname": file.name,
++      "json": file.read_bytes(),
++      "prefix": name
++    }
++
++files = Path("/usr/local/share/vulkan/icd.d").glob("*_icd.i686.json")
++
++path = Path(__file__).parent
++template = Template((path / "static_icds_h.template").read_text(),
++                    trim_blocks=True, lstrip_blocks=True)
++(path.parent / "loader" / "static_icds.h").write_text(template.render(icds=list(get_icds(files))))
+diff --git a/scripts/static_icds_h.template b/scripts/static_icds_h.template
+new file mode 100644
+index 00000000..9078018e
+--- /dev/null
++++ b/scripts/static_icds_h.template
+@@ -0,0 +1,50 @@
++#ifndef __STATIC_ICDS_H__
++#define __STATIC_ICDS_H__
++
++{% for icd in icds %}
++extern VKAPI_ATTR VkResult VKAPI_CALL {{ icd.prefix }}_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pVersion);
++extern VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL {{ icd.prefix }}_vk_icdGetInstanceProcAddr(VkInstance instance, const char* pName);
++extern VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL {{ icd.prefix }}_vk_icdGetPhysicalDeviceProcAddr(VkInstance isntance, const char* pName);
++{% endfor %}
++
++struct loader_static_icd_api {
++  const PFN_vk_icdNegotiateLoaderICDInterfaceVersion fp_negotiate_icd_version;
++  const PFN_vk_icdGetInstanceProcAddr fp_get_proc_addr;
++  const PFN_vk_icdGetPhysicalDeviceProcAddr fp_get_phys_dev_proc_addr;
++};
++
++struct loader_static_icd {
++    const char *libname;
++    const char *jsonname;
++    const char *json;
++    const struct loader_static_icd_api api;
++};
++
++struct loader_static_icds {
++  const struct loader_static_icd *icd_list;
++  const uint32_t count;
++};
++
++static const struct loader_static_icd static_icd_list[] = {
++  {% for icd in icds %}
++  {
++    "{{ icd.libname }}",
++    "{{ icd.jsonname }}",
++    {% for byte in icd.json %}
++    {% if loop.index % 8 == 1 %}
++    "{% endif %}
++{{ "\\x{:02x}".format(byte) }}{% if loop.index % 8 == 0 or loop.last %}"{% if not loop.last +%}
++{% endif %}{% endif %}
++    {% endfor +%},
++    {
++      {{ icd.prefix }}_vk_icdNegotiateLoaderICDInterfaceVersion,
++      {{ icd.prefix }}_vk_icdGetInstanceProcAddr,
++      {{ icd.prefix }}_vk_icdGetPhysicalDeviceProcAddr
++    }
++  }{% if not loop.last %},{% endif +%}
++  {% endfor %}
++};
++
++static const struct loader_static_icds static_icds = { static_icd_list, {{ icds|length }} };
++
++#endif // __STATIC_ICDS_H__

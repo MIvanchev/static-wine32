@@ -28,11 +28,12 @@ ENV DISPLAY=:1
 
 COPY dependencies /build
 COPY meson-cross-i386 /build/
-COPY build_static_icds_h.py /build/
-COPY static_icds_h.template /build/
 
-ARG WITH_LLVM=0
-ARG WITH_GNUTLS=1
+# Leave empty or comment out to skip LLVM build
+# ARG BUILD_WITH_LLVM=y
+
+# Set to the desired number of parallel build jobs; this should losely
+# correspond to the number of CPU cores.
 ARG BUILD_JOBS=4
 
 ARG PATH="$PATH:/usr/local/bin"
@@ -74,7 +75,6 @@ ARG DEP_BUILD_SCRIPTS="\
 [gmp] make install\n\
 [nettle] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --disable-assembler\n\
 [nettle] make install\n\
-[gnutls] [ \"$WITH_GNUTLS\" -eq 0 ] && return\n\
 [gnutls] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
 --with-included-unistring \
 --with-included-libtasn1 \
@@ -84,14 +84,6 @@ ARG DEP_BUILD_SCRIPTS="\
 --enable-openssl-compatibility \
 --host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
 [gnutls] make install\n\
-[gnutls] mkdir build_shared && cd build_shared && mkdir gnutls nettle hogweed gmp\n\
-[gnutls] rm /usr/local/lib/libgnutls*\n\
-[gnutls] ar -x --output gnutls ../lib/.libs/libgnutls.a\n\
-[gnutls] ar -x --output nettle /usr/local/lib/libnettle.a\n\
-[gnutls] ar -x --output hogweed /usr/local/lib/libhogweed.a\n\
-[gnutls] ar -x --output gmp /usr/local/lib/libgmp.a\n\
-[gnutls] gcc -m32 -shared -o libgnutls.so gnutls/* nettle/* hogweed/* gmp/* -lz -lzstd -lpthread\n\
-[gnutls] cp libgnutls.so /usr/local/lib/\n\
 [libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
 --without-python\n\
 [libxml2] make install\n\
@@ -178,7 +170,7 @@ asound_module_ctl_oss asound_module_pcm_usb_stream asound_module_ctl_pulse asoun
 asound_module_rate_speexrate asound_module_pcm_oss' > \$PC_FILE\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
-[llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && return\n\
+[llvmorg] ${BUILD_WITH_LLVM:+echo} return\n\
 [llvmorg] cmake $CMAKE_PROLOGUE -S llvm -B build \
 -DLLVM_BUILD_SHARED_LIBS=OFF \
 -DLLVM_TARGETS_TO_BUILD=\"X86;AMDGPU\" \
@@ -198,12 +190,12 @@ asound_module_rate_speexrate asound_module_pcm_oss' > \$PC_FILE\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
 -Ddri3=enabled \
--Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600`if [ \"$WITH_LLVM\" -eq 1 ]; then echo \",radeonsi\"; fi` \
+-Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600${BUILD_WITH_LLVM:+,radeonsi} \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
--Dvulkan-drivers=intel,intel_hasvk,amd \
+-Dvulkan-drivers=intel,intel_hasvk,amd${BUILD_WITH_LLVM:+,swrast} \
 -Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
@@ -211,30 +203,30 @@ asound_module_rate_speexrate asound_module_pcm_oss' > \$PC_FILE\n\
 -Dglx=dri \
 -Dgbm=enabled \
 -Degl=disabled \
--Dllvm=`if [ \"$WITH_LLVM\" -eq 1 ]; then echo enabled; else echo disabled; fi` \
+-Dllvm=disabled \
+${BUILD_WITH_LLVM:+-Dllvm=enabled} \
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
 [mesa] cd build\n\
 [mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime \
 vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
-vulkan_intel_hasvk gbm\n\
+vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [mesa] meson install --no-rebuild\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
 [Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
-[Vulkan-Loader] python3 ../build_static_icds_h.py > loader/static_icds.h\n\
-[Vulkan-Loader] cat loader/static_icds.h\n\
 [Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
 [Vulkan-Loader] make -C build install\n\
 [Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Requires.private: gl libudev' >> \$PC_FILE\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Libs.private: -Wl,--whole-archive \
--lvulkan_radeon -lvulkan_intel -lvulkan_intel_hasvk -lvulkan_runtime \
--lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive -ldrm_amdgpu' >> \$PC_FILE\n\
+-lvulkan_radeon -lvulkan_intel -lvulkan_intel_hasvk' ${BUILD_WITH_LLVM:+-lvulkan_lvp} \
+'-lvulkan_runtime -lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive \
+-ldrm_amdgpu' >> \$PC_FILE\n\
 [vkcube] meson setup build $MESON_PROLOGUE\n\
-[vkcube] cd build\n\
-[vkcube] meson compile\n\
+[vkcube] meson compile -C build\n\
+[vkcube] cp build/vkcube /usr/local/bin/\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\

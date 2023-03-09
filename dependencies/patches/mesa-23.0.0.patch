@@ -1,38 +1,33 @@
 diff --git a/src/amd/common/meson.build b/src/amd/common/meson.build
-index 1262c3a056e..2dca3993fe2 100644
+index 1262c3a056e..6fc5a8922c0 100644
 --- a/src/amd/common/meson.build
 +++ b/src/amd/common/meson.build
-@@ -117,8 +117,10 @@ libamd_common = static_library(
-     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_compiler, inc_mapi, inc_amd,
+@@ -118,7 +118,9 @@ libamd_common = static_library(
    ],
    dependencies : [
-+#    dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
-+#    idep_mesautil, idep_nir_headers, idep_nir
      dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
 -    idep_mesautil, idep_nir_headers, idep_nir
-+    idep_nir_headers
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir_headers,
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true)
    ],
    gnu_symbol_visibility : 'hidden',
    c_args : ['-DADDR_FASTCALL=']
 diff --git a/src/amd/vulkan/meson.build b/src/amd/vulkan/meson.build
-index d7cd1f0d039..f68bcf40011 100644
+index d7cd1f0d039..12c04f7978d 100644
 --- a/src/amd/vulkan/meson.build
 +++ b/src/amd/vulkan/meson.build
-@@ -189,10 +189,15 @@ libvulkan_radeon = shared_library(
-     libamd_common, libamd_common_llvm, libamdgpu_addrlib,
-   ],
+@@ -191,8 +191,11 @@ libvulkan_radeon = shared_library(
    dependencies : [
-+#    dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
-+#    dep_valgrind, radv_deps, idep_aco,
-+#    idep_mesautil, idep_nir, idep_vulkan_util, idep_vulkan_wsi,
-+#    idep_vulkan_runtime, idep_amdgfxregs_h, idep_xmlconfig,
-+#    idep_vulkan_common_entrypoints_h, idep_vulkan_wsi_entrypoints_h
      dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
      dep_valgrind, radv_deps, idep_aco,
 -    idep_mesautil, idep_nir, idep_vulkan_util, idep_vulkan_wsi,
 -    idep_vulkan_runtime, idep_amdgfxregs_h, idep_xmlconfig,
-+    idep_nir_headers, idep_vulkan_util, idep_vulkan_wsi,
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util, idep_vulkan_wsi,
 +    idep_vulkan_runtime, idep_amdgfxregs_h,
++    idep_xmlconfig.partial_dependency(compile_args : true, link_args : true, includes : true),
      idep_vulkan_common_entrypoints_h, idep_vulkan_wsi_entrypoints_h
    ],
    c_args : [no_override_init_args, radv_flags, c_msvc_compat_args],
@@ -591,6 +586,68 @@ index 4c2c3168d8c..fd70a368305 100644
  {
     /* For the full details on loader interface versioning, see
      * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/gallium/frontends/lavapipe/lvp_device.c b/src/gallium/frontends/lavapipe/lvp_device.c
+index f33a902b825..ffd5e3d5726 100644
+--- a/src/gallium/frontends/lavapipe/lvp_device.c
++++ b/src/gallium/frontends/lavapipe/lvp_device.c
+@@ -1466,12 +1466,12 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_GetInstanceProcAddr(
+  * to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetInstanceProcAddr(
+    VkInstance                                  instance,
+    const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetInstanceProcAddr(
+    VkInstance                                  instance,
+    const char*                                 pName)
+ {
+@@ -1479,12 +1479,12 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
+ }
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetPhysicalDeviceProcAddr(
+    VkInstance                                  _instance,
+    const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetPhysicalDeviceProcAddr(
+    VkInstance                                  _instance,
+    const char*                                 pName)
+ {
+@@ -2304,10 +2304,10 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySamplerYcbcrConversionKHR(
+  * suppress Wmissing-prototypes.
+  */
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
++lvp_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
++lvp_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/gallium/frontends/lavapipe/meson.build b/src/gallium/frontends/lavapipe/meson.build
+index 8215cf0dacb..0fa7a055df9 100644
+--- a/src/gallium/frontends/lavapipe/meson.build
++++ b/src/gallium/frontends/lavapipe/meson.build
+@@ -45,6 +45,9 @@ liblavapipe_st = static_library(
+   c_args : [ c_msvc_compat_args, lvp_flags ],
+   gnu_symbol_visibility : 'hidden',
+   include_directories : [ inc_include, inc_src, inc_util, inc_gallium, inc_compiler, inc_gallium_aux ],
+-  dependencies : [ dep_llvm, idep_nir, idep_mesautil, idep_vulkan_util, idep_vulkan_wsi,
++  dependencies : [ dep_llvm,
++                   idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++                   idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++                   idep_vulkan_util, idep_vulkan_wsi,
+                    idep_vulkan_runtime, lvp_deps ]
+ )
 diff --git a/src/gallium/targets/dri/target.c b/src/gallium/targets/dri/target.c
 index d506869cbb4..31ce65652f2 100644
 --- a/src/gallium/targets/dri/target.c
@@ -664,6 +721,23 @@ index d506869cbb4..31ce65652f2 100644
 +
 +   return NULL;
 +}
+diff --git a/src/gallium/targets/lavapipe/meson.build b/src/gallium/targets/lavapipe/meson.build
+index 46e9d9a93e4..2389656ab61 100644
+--- a/src/gallium/targets/lavapipe/meson.build
++++ b/src/gallium/targets/lavapipe/meson.build
+@@ -6,10 +6,10 @@ libvulkan_lvp = shared_library(
+   vs_module_defs : vulkan_api_def,
+   include_directories : [ inc_src, inc_util, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers ],
+   link_whole : [ liblavapipe_st ],
+-  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
++#  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
+   gnu_symbol_visibility : 'hidden',
+   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
+-  dependencies : driver_swrast,
++  dependencies : driver_swrast.partial_dependency(compile_args : true, includes : true),
+   name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
+   install : true,
+ )
 diff --git a/src/gallium/targets/osmesa/meson.build b/src/gallium/targets/osmesa/meson.build
 index 024bac32b58..b979bba73dc 100644
 --- a/src/gallium/targets/osmesa/meson.build
@@ -790,10 +864,10 @@ index a1fc836f98f..e774ddd7741 100644
     /* For the full details on loader interface versioning, see
      * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
 diff --git a/src/intel/vulkan/meson.build b/src/intel/vulkan/meson.build
-index d09960a4b8c..e09e7608cbe 100644
+index d09960a4b8c..f91f02fccf2 100644
 --- a/src/intel/vulkan/meson.build
 +++ b/src/intel/vulkan/meson.build
-@@ -219,13 +219,16 @@ libvulkan_intel = shared_library(
+@@ -219,13 +219,18 @@ libvulkan_intel = shared_library(
    ],
    link_whole : [libanv_common, libanv_per_hw_ver_libs] + optional_libgrl,
    link_with : [
@@ -805,13 +879,15 @@ index d09960a4b8c..e09e7608cbe 100644
 -    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
 -    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
 -    idep_intel_driver_ds,
-+#    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
-+#    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
-+#    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
-+#    idep_intel_driver_ds,
 +    dep_thread, dep_dl, dep_m, anv_deps,
++    idep_libintel_common.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_genxml.partial_dependency(compile_args : true, link_args : true, includes : true),
 +    idep_vulkan_util, idep_vulkan_wsi,
-+    idep_vulkan_runtime
++    idep_vulkan_runtime,
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_xmlconfig.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_driver_ds.partial_dependency(compile_args : true, link_args : true, includes : true)
    ],
    c_args : anv_flags,
    gnu_symbol_visibility : 'hidden',
@@ -862,7 +938,7 @@ index a530ed64c3e..229cfb52690 100644
     /* For the full details on loader interface versioning, see
      * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
 diff --git a/src/intel/vulkan_hasvk/meson.build b/src/intel/vulkan_hasvk/meson.build
-index 7fcbc3b42cf..5bc2911e874 100644
+index 7fcbc3b42cf..96abba3333b 100644
 --- a/src/intel/vulkan_hasvk/meson.build
 +++ b/src/intel/vulkan_hasvk/meson.build
 @@ -24,10 +24,10 @@ anv_hasvk_entrypoints = custom_target(
@@ -878,7 +954,7 @@ index 7fcbc3b42cf..5bc2911e874 100644
    ],
    depend_files : vk_entrypoints_gen_depend_files,
  )
-@@ -189,13 +189,14 @@ libvulkan_intel_hasvk = shared_library(
+@@ -189,13 +189,16 @@ libvulkan_intel_hasvk = shared_library(
    ],
    link_whole : [libanv_hasvk_common, libanv_per_hw_ver_libs],
    link_with : [
@@ -890,31 +966,32 @@ index 7fcbc3b42cf..5bc2911e874 100644
 -    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
 -    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
 -    idep_intel_driver_ds,
-+#    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
-+#    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
-+#    idep_intel_driver_ds,
-+    dep_thread, dep_dl, dep_m, anv_deps,
-+    idep_vulkan_runtime
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_genxml.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_wsi,
++    idep_vulkan_runtime,
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_driver_ds.partial_dependency(compile_args : true, link_args : true, includes : true)
    ],
    c_args : anv_flags,
    gnu_symbol_visibility : 'hidden',
 diff --git a/src/vulkan/runtime/meson.build b/src/vulkan/runtime/meson.build
-index fa2257d53e6..c39544671b5 100644
+index fa2257d53e6..e6c09cddce9 100644
 --- a/src/vulkan/runtime/meson.build
 +++ b/src/vulkan/runtime/meson.build
-@@ -94,8 +94,9 @@ vulkan_runtime_files = files(
+@@ -94,8 +94,8 @@ vulkan_runtime_files = files(
  
  vulkan_runtime_deps = [
    vulkan_wsi_deps,
 -  idep_mesautil,
 -  idep_nir,
-+#  idep_nir,
-+#  idep_mesautil,
-+  idep_nir_headers,
++  idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++  idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
    idep_vulkan_util,
  ]
  
-@@ -188,6 +189,7 @@ libvulkan_runtime = static_library(
+@@ -188,6 +188,7 @@ libvulkan_runtime = static_library(
    c_args : [c_msvc_compat_args],
    gnu_symbol_visibility : 'hidden',
    build_by_default : false,
@@ -922,7 +999,7 @@ index fa2257d53e6..c39544671b5 100644
  )
  
  idep_vulkan_runtime_headers = declare_dependency(
-@@ -204,14 +206,14 @@ idep_vulkan_common_entrypoints_h = declare_dependency(
+@@ -204,14 +205,14 @@ idep_vulkan_common_entrypoints_h = declare_dependency(
  # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506 
  if get_option('backend').startswith('vs')
    idep_vulkan_runtime = declare_dependency(
@@ -940,16 +1017,17 @@ index fa2257d53e6..c39544671b5 100644
    )
  endif
 diff --git a/src/vulkan/util/meson.build b/src/vulkan/util/meson.build
-index 4eaa8e70d71..234235dea4f 100644
+index 4eaa8e70d71..02c64f30354 100644
 --- a/src/vulkan/util/meson.build
 +++ b/src/vulkan/util/meson.build
-@@ -101,10 +101,12 @@ libvulkan_util = static_library(
+@@ -101,10 +101,13 @@ libvulkan_util = static_library(
    'vulkan_util',
    [files_vulkan_util, vk_dispatch_table, vk_enum_to_str, vk_extensions],
    include_directories : [inc_include, inc_src, inc_gallium],
 -  dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
-+#  dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
-+  dependencies : [vulkan_wsi_deps, idep_nir_headers],
++  dependencies : [vulkan_wsi_deps,
++                  idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++                  idep_nir_headers],
    c_args : [c_msvc_compat_args],
    gnu_symbol_visibility : 'hidden',
    build_by_default : false,
@@ -957,7 +1035,7 @@ index 4eaa8e70d71..234235dea4f 100644
  )
  
  idep_vulkan_util_headers = declare_dependency(
-@@ -113,6 +115,6 @@ idep_vulkan_util_headers = declare_dependency(
+@@ -113,6 +116,6 @@ idep_vulkan_util_headers = declare_dependency(
  )
  
  idep_vulkan_util = declare_dependency(
