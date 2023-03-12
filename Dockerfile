@@ -145,6 +145,10 @@ ARG DEP_BUILD_SCRIPTS="\
 [libusb] autoreconf -i\n\
 [libusb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libusb] make install\n\
+[libusb] PC_FILE=/usr/local/lib/pkgconfig/libusb-1.0.pc\n\
+[libusb] [ -f \$PC_FILE ] && sed -i 's/-ludev//' \$PC_FILE\n\
+[libusb] [ -f \$PC_FILE ] && echo 'Requires.private: libudev' >> \$PC_FILE\n\
+[libusb] pkg-config --libs --static libusb-1.0\n\
 [pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
 [pulseaudio] find . -name meson.build -exec sed -i 's/=[[:space:]]*shared_library(/= library(/g' {} \\;\n\
 [pulseaudio] meson setup build $MESON_PROLOGUE -Ddaemon=false -Ddoxygen=false \
@@ -154,6 +158,10 @@ ARG DEP_BUILD_SCRIPTS="\
 pulsecommon-`echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/'` \
 pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] meson install --tags devel --no-rebuild\n\
+[pulseaudio] PC_FILE=/usr/local/lib/pkgconfig/libpulse.pc\n\
+[pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \\1 -ldl -lm -lrt/' \$PC_FILE\n\
+[pulseaudio] [ -f \$PC_FILE ] && echo 'Requires.private: dbus-1' >> \$PC_FILE\n\
+[pulseaudio] pkg-config --libs --static libpulse\n\
 [alsa-lib] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [alsa-lib] autoreconf -i\n\
 [alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
@@ -164,10 +172,13 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-plugins] make install\n\
 [alsa-plugins] PC_FILE=/usr/local/lib/pkgconfig/alsa.pc\n\
-[alsa-plugins] [ -f \$PC_FILE ] && echo 'Requires.private: libpulse dbus-1' > \$PC_FILE\n\
-[alsa-plugins] [ -f \$PC_FILE ] && echo 'Libs.private: asound_module_ctl_arcam_av asound_module_pcm_upmix \
-asound_module_ctl_oss asound_module_pcm_usb_stream asound_module_ctl_pulse asound_module_pcm_vdownmix \
-asound_module_rate_speexrate asound_module_pcm_oss' > \$PC_FILE\n\
+[alsa-plugins] [ -f \$PC_FILE ] && echo 'Requires.private: libpulse' >> \$PC_FILE\n\
+[alsa-plugins] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \
+-L\${libdir}\\/alsa-lib -lasound_module_conf_pulse -lasound_module_pcm_pulse \
+-lasound_module_ctl_arcam_av -lasound_module_pcm_upmix -lasound_module_ctl_oss \
+-lasound_module_pcm_usb_stream -lasound_module_ctl_pulse -lasound_module_pcm_vdownmix \
+-lasound_module_rate_speexrate -lasound_module_pcm_oss \\1/' \$PC_FILE\n\
+[alsa-plugins] pkg-config --libs --static alsa\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
 [llvmorg] ${BUILD_WITH_LLVM:+echo} return\n\
@@ -239,7 +250,7 @@ vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [libsndfile] sed -i '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)' configure.ac\n\
 [libsndfile] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [libsndfile] make install\n\
-[cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
+[cups] LIBS=`pkg-config --libs --static gnutls` $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
 --with-components=libcups\n\
 [cups] make install\n\
 [v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
@@ -273,6 +284,9 @@ vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [isdn4k-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [isdn4k-utils] make install-libLTLIBRARIES install-pcDATA install-includeHEADERS\n\
 [isdn4k-utils] popd\n\
+[isdn4k-utils] PC_FILE=/usr/local/lib/pkgconfig/capi20.pc\n\
+[isdn4k-utils] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lrt -lpthread' >> \$PC_FILE\n\
+[isdn4k-utils] pkg-config --libs --static capi20\n\
 [tiff] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [tiff] sed -i 's/SUBDIRS = port libtiff tools build contrib test doc/SUBDIRS = port libtiff build test doc/' Makefile\n\
 [tiff] make install\n\
@@ -290,7 +304,13 @@ vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [openldap] make install\n\
 [krb5] cd src\n\
 [krb5] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[krb5] make && make install"
+[krb5] make && make install\n\
+[krb5] PC_FILE=/usr/local/lib/pkgconfig/krb5.pc\n\
+[krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
+[krb5] pkg-config --libs --static krb5\n\
+[krb5] PC_FILE=/usr/local/lib/pkgconfig/krb5-gssapi.pc\n\
+[krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
+[krb5] pkg-config --libs --static krb5-gssapi"
 
 ARG DEFAULT_BUILD_SCRIPT="\
 #!/bin/sh\n\

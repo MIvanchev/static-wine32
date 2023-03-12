@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index d6777418..8f2540b8 100644
+index 058f1f84..95b35302 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -25,7 +25,7 @@ find_package(PythonInterp 3 QUIET)
@@ -229,10 +229,10 @@ index 00000000..6461c9ab
 +)
 diff --git a/scripts/static_icds_h.template b/scripts/static_icds_h.template
 new file mode 100644
-index 00000000..676784c0
+index 00000000..9078018e
 --- /dev/null
 +++ b/scripts/static_icds_h.template
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,50 @@
 +#ifndef __STATIC_ICDS_H__
 +#define __STATIC_ICDS_H__
 +
@@ -283,4 +283,3 @@ index 00000000..676784c0
 +static const struct loader_static_icds static_icds = { static_icd_list, {{ icds|length }} };
 +
 +#endif // __STATIC_ICDS_H__
-+
