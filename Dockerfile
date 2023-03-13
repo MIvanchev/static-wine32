@@ -201,7 +201,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
 -Ddri3=enabled \
--Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600${BUILD_WITH_LLVM:+,radeonsi} \
+-Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600${BUILD_WITH_LLVM:+,radeonsi} \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
@@ -224,6 +224,10 @@ ${BUILD_WITH_LLVM:+-Dllvm=enabled} \
 vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
 vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [mesa] meson install --no-rebuild\n\
+[mesa] PC_FILE=/usr/local/lib/pkgconfig/gl.pc\n\
+[mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \
+\\1 -lvulkan/' \$PC_FILE\n\
+[mesa] pkg-config --libs --static gl\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
 [Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
@@ -238,6 +242,8 @@ vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [vkcube] meson setup build $MESON_PROLOGUE\n\
 [vkcube] meson compile -C build\n\
 [vkcube] cp build/vkcube /usr/local/bin/\n\
+[mesa-demos] $CONFIGURE_FLAGS eval gcc \\\$CFLAGS -c -o src/xdemos/glxgears.o src/xdemos/glxgears.c\n\
+[mesa-demos] $CONFIGURE_FLAGS eval gcc \\\$LDFLAGS -o /usr/local/bin/glxgears src/xdemos/glxgears.o \$(pkg-config --libs --static vulkan)\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\
