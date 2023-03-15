@@ -34,7 +34,7 @@ COPY meson-cross-i386 /build/
 
 # Set to the desired number of parallel build jobs; this should losely
 # correspond to the number of CPU cores.
-ARG BUILD_JOBS=4
+ARG BUILD_JOBS=8
 
 ARG PATH="$PATH:/usr/local/bin"
 
@@ -159,7 +159,7 @@ pulsecommon-`echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\
 pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] meson install --tags devel --no-rebuild\n\
 [pulseaudio] PC_FILE=/usr/local/lib/pkgconfig/libpulse.pc\n\
-[pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \\1 -ldl -lm -lrt/' \$PC_FILE\n\
+[pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lm -lrt/' \$PC_FILE\n\
 [pulseaudio] [ -f \$PC_FILE ] && echo 'Requires.private: dbus-1' >> \$PC_FILE\n\
 [pulseaudio] pkg-config --libs --static libpulse\n\
 [alsa-lib] patch -p1 < ../patches/`basename \$PWD`.patch\n\
@@ -225,7 +225,9 @@ vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
 vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [mesa] meson install --no-rebuild\n\
 [mesa] PC_FILE=/usr/local/lib/pkgconfig/gl.pc\n\
-[mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \
+[mesa] [ -f \$PC_FILE ] && { grep -q 'Libs\\.private:' \$PC_FILE || \
+echo 'Libs.private:' >> \$PC_FILE; }\n\
+[mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\
 \\1 -lvulkan/' \$PC_FILE\n\
 [mesa] pkg-config --libs --static gl\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
@@ -311,10 +313,10 @@ vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [krb5] cd src\n\
 [krb5] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [krb5] make && make install\n\
-[krb5] PC_FILE=/usr/local/lib/pkgconfig/krb5.pc\n\
-[krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
+[krb5] PC_FILE=/usr/local/lib/pkgconfig/mit-krb5.pc\n\
+[krb5] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lresolv/' \$PC_FILE\n\
 [krb5] pkg-config --libs --static krb5\n\
-[krb5] PC_FILE=/usr/local/lib/pkgconfig/krb5-gssapi.pc\n\
+[krb5] PC_FILE=/usr/local/lib/pkgconfig/mit-krb5-gssapi.pc\n\
 [krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
 [krb5] pkg-config --libs --static krb5-gssapi"
 
