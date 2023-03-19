@@ -4,6 +4,8 @@
 *"Bro, unreal!! Latest Wine, latest Mesa, latest everything!" – Gandalf, a
 famous 🧙*
 
+*"See, eh, now Little Tony can finally enjoy all his games, eh, yeah." – the Mob 🇮🇹*
+
 **TL;DR** Does it even work?! Yes, absolutely. But it shouldn't, really. 🤡🤡
 
 ## Contents
@@ -24,11 +26,11 @@ famous 🧙*
   * [Is there any speed increase?](#is-there-any-speed-increase)
   * [What is known to work?](#what-is-known-to-work)
 * [Troubleshooting](#troubleshooting)
-  * [0048:err:vulkan:get_vulkan_driver Wine was built without Vulkan support.](#0048errvulkanget_vulkan_driver-wine-was-built-without-vulkan-support)
   * [Unhandled exception](#unhandled-exception)
   * [winedevice.exe causes 100% CPU usage](#winedeviceexe-causes-100-cpu-usage)
-* [Credits](https://github.com/MIvanchev/static-wine32#credits)
-* [License](https://github.com/MIvanchev/static-wine32#license)
+* [Related repositories](#related-repositories)
+* [Credits](#credits)
+* [License](#license)
 
 ## About
 
@@ -36,27 +38,32 @@ Welcome to the Docker recipe for building a statically linked 32-bit
 Wine for x86_64 targets. The build supports [most](#what-isnt-supported-yet)
 Wine features. The motivation for this bizarre experiment is to avoid having
 to install hundreds of `:i386` dependencies in order to run Wine but it might
-be useful beyond that as well. Just do a `sudo apt install wine32` on a freshly
+be useful beyond that as well, i.e. to get an extremely optimized and
+performant Wine. Just do a `sudo apt install wine32` on a freshly
 installed Ubuntu and see what burden people have to struggle with every day just
 to run their favorite Deus Ex and System Shock 2. Never again lose your temper
-over unavailable packages which you'll never need! The recipe should be
-straightforward to adapt for targets other than x86.
+over unavailable packages which you'll never need anyhow! Gentoo users, no
+need to thank me, I'm just doing my job *\*tips hat\** ! The recipe should
+be straightforward to adapt for targets other than x86.
 
 Actually, in retrospect, just compiling the (dynamic) Wine dependencies
 and bundling them should be enough to make people happy but where's the fun in
-that? It's much better to have libz statically linked 20+ times.
+that? It's much better to have libz statically linked 20+ times. Also, static
+linking allows us to go berserk with treats like link time optimization (LTO).
 
 All dependencies except for critical stuff like libc, libstdc++, libm,
-libresolv, libdl, librt, libpthread and libgnutls are statically linked in
+libresolv, libdl, librt, libpthread are statically linked in
 Wine's `.so` and `.dll` modules. This includes graphics drivers, scanner
-drivers, multimedia codecs etc. The included graphics drivers are
+drivers, multimedia codecs etc. The graphics drivers are
 [Mesa's](https://mesa3d.org/). They're awesome if you have Intel or AMD
 hardware. For Nvidia you'll be stuck with nouveau which is probably not what
-you want. Vendor provided drivers are **NOT** supported.
+you want. Vendor provided drivers are **NOT** supported. Why are you even
+wasting your time with Linux if you're gonna use black box software operating
+at kernel level?
 
-The project uses a modifed version of Wine available at
-https://github.com/MIvanchev/wine/tree/static-dependencies which is
-continuously updated to the latest Wine release. The changes are
+The project uses a modified version of Wine available at
+https://github.com/MIvanchev/wine/tree/static-dependencies which I
+continuously update to the latest Wine release. The changes are
 only intended to make Wine compatible with statically linked dependencies as is
 clearly visible in the [diff](https://github.com/wine-mirror/wine/compare/master...MIvanchev:static-dependencies?expand=1).
 Basically I just removed the dynamic loading of libraries and replaced the
@@ -66,7 +73,8 @@ loading OpenGL symbols from `winex11.so` to avoid statically linking Mesa two
 times.
 
 This Wine build is **very** unorthodox. I cannot stress on this enough.
-Several libraries were patched (although lightly) to pull this off. Are you
+[Several libraries](https://github.com/MIvanchev/static-wine32#related-repositories)
+were patched (although lightly) to pull this off. Are you
 really gonna trust something like that? Also, using statically compiled
 software is in general a **bad** idea if you don't know what you're doing and
 comes with significant dangers. Use at your own risk and discretion. I assume no
@@ -86,17 +94,12 @@ couple of other closely related libraries like libm, librt, libphread etc. If
 you're on Ubuntu, start with `apt install libc6:i386 libstdc++6:i386`. That
 might be all you'll have to do. For other distros you'll have to figure it out.
 
-GnuTLS is also compiled but because of the security implications it's not linked
-statically. Instead it's bundled as a shared library and you'll have to modify
-your `LD_LIBRARY_PATH` to let Wine use it. If you're already sweating blood try
-using the official GnuTLS of your distro. I haven't tried but it should work.
-
 Statically linked Wine will also probably crash if you have an "official"
 32-bit Wine installation at a well-known location or if you've preinstalled
 32-bit versions of some of the Wine dependencies like libX11, SDL, GStreamer,
-LLVM etc. If you experience crashes remove the official 32-bit Wine, all `:i386`
-dependencies and start over. You won't be needing them anyhow. Consult the
-[troubleshooting](#troubleshooting) section when in trouble.
+LLVM, GnuTLS etc. If you experience crashes remove the official 32-bit Wine,
+all `:i386` dependencies and start over. You won't be needing them anyhow.
+Consult the [troubleshooting](#troubleshooting) section when in trouble.
 
 Now, the installation involves two major steps. Building a Docker image with all
 dependencies compiled as statically linkable libraries (`.a` files) and
@@ -111,11 +114,15 @@ directory `<static-wine-dir>`.
 the source code of the dependencies to your machine. They will be copied
 into the Docker image when we start building.
 
-3. In `Dockerfile`, set the following variables to the values you want:
-* `WITH_LLVM=0|1`: set to `1` if you need support for AMD GPUs or want a
-better software renderer. This will increase the build time significantly.
-* `WITH_GNUTLS=0|1`: set to `1` if you need secure networking. Note that
-GnuTLS is the only dynamic library static-wine32 uses.
+3. In `Dockerfile`, set the following variables:
+* `PLATFORM=<your CPU's architecture>`: see the available values for the
+`-march` option of GCC here https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html and
+set to the value that matches your CPU's architecture, i.e. `broadwell` for the
+i7-5600U CPU. This optimizes static-wine32 for your machine.
+* `BUILD_WITH_LLVM=y`: uncomment this variable to compile the AMD OpenGL
+driver, the Vulkan software renderer and a faster OpenGL software renderer;
+they require LLVM to compile code on the fly. This will increase the build
+time and size significantly.
 * `BUILD_JOBS=1|2|3|4|...`: set to number of parallel build jobs you'd like.
 Usually the number of your CPU cores. Be careful not to melt your CPU, we have
 chip shortages.
@@ -124,11 +131,11 @@ chip shortages.
 
        DOCKER_BUILDKIT=0 docker build -t static-wine32:latest . 2>&1 | tee build.log
 
-   This will take forever with `WITH_LLVM=1`. Otherwise about 45 minutes on 4
+   This will take forever with `BUILD_WITH_LLVM`. Otherwise about 45 minutes on 4
 cores.
 
 If all goes well you'll have a Docker image with statically linkable Wine
-dependencies and maybe a shared GnuTLS. You can open a shell to a container
+dependencies. You can open a shell to a container
 using this image by
 
 ```
@@ -162,47 +169,41 @@ also clone from within the container of course but for me this way is easier.
 
    Make sure Wine is mounted with `ls /build/wine`.
 
-3. Build and install Wine in the container. Because the build size is initially
-huge due to the static libraries, we want to strip as much as we can before
-installing locally
+3. Build and install Wine in the container.
 
        INSTALL_DIR=/build/wine-build
        cd /build/wine
        autoreconf -f
-       ./configure --disable-tests --prefix="$INSTALL_DIR"
+       CFLAGS="-m32 -march=<your CPU's architecture> -O2 -pipe"
+       CPPFLAGS=$CFLAGS
+       CXXFLAGS=$CFLAGS
+       LDFLAGS=-fno-lto
+       CFLAGS=$CFLAGS CPPFLAGS=$CPPFLAGS CXXFLAGS=$CXXFLAGS LDFLAGS=$LDFLAGS ./configure --disable-tests --prefix="$INSTALL_DIR"
        make -j$(nproc) install
-       [ ! -f /usr/local/lib/libgnutls.so ] || mkdir "$INSTALL_DIR/lib/wine/i386-unix/custom" && cp /usr/local/lib/libgnutls.so "$INSTALL_DIR/lib/wine/i386-unix/custom/"
 
-4. This step is optional; minimize the build size by stripping away unneccessary
+4. If you want a highly optimized build of Wine using LTO dependencies, before
+typing `make -j$(nproc) install` open the generated Makefile
+`/build/wine/Makefile`, find the line `LDFLAGS = -fno-lto` and replace it with
+`LDFLAGS = -flto -flto-partition=one -fuse-linker-plugin`.
+
+5. This step is optional; minimize the build size by stripping away unneccessary
 code and information
 
        strip -s "$INSTALL_DIR/lib/wine/i386-unix/"*
        strip -s "$INSTALL_DIR/lib/wine/i386-windows/"*
-       [ ! -d "$INSTALL_DIR/lib/wine/i386-unix/custom" ] || strip -s "$INSTALL_DIR/lib/wine/i386-unix/custom/"*
 
-5. Finally we create an installation package outside of the container
+6. Finally we create an installation package outside of the container
 for local installation
  
        tar czvf /build/wine/wine-build.tar.gz -C "$INSTALL_DIR" .
 
    The package is now available locally in `<wine-dir>/wine-build.tar.gz`.
 
-6. To install Wine I extract the contents of the package to `~/.local`
+7. To install Wine I extract the contents of the package to `~/.local`
 because it's a well-known location and nothing else is needed. You can
 however install it wherever you see fit. You can then just do
 `<wine-installation-dir>/bin/winecfg` or just `winecfg` if you install to a
 place like `~/.local` because `~/.local/bin` is most likely in your path.
-
-7. If you have used `WITH_GNUTLS=1` you need to modify `LD_LIBRARY_PATH` to
-include `<wine-installation-dir>/lib/wine/i386-unix/custom`
-because `libgnutls.so` is the only dynamic dependency. Consider adding
-`LD_LIBRARY_PATH` to your `~/.profile` so you don't have to set it manually.
- For instance I have the following in my `~/.profile`:
-
-       export LD_LIBRARY_PATH=~/.local/lib/wine/i386-unix/custom
-       export GALLIUM_HUD=simple,fps,cpu
-
-   Notice the usage of `GALLIUM_HUD` which shows me frame rate and CPU usage.
 
 ## What isn't supported yet?
 
@@ -232,6 +233,9 @@ is `<y>` which with a dynamic library will indeed be the case. Here's where
 Wine's architecture really shines. It's so well decoupled that assumptions
 like that seem to have been avoided entirely but be on your guard at all times.
 
+Static linking also allows us to perform whole program optimization which could
+potentially result in significant performance increases.
+
 ### What operating systems and hardware platforms are supported?
 
 For now only x64 Linux.
@@ -254,9 +258,13 @@ might not be for you.
 ### Is Vulkan supported?
 
 Yes it is! Intel, AMD and software rendering drivers are included, Nvidia
-users are out of luck. Vulkan employs a dynamic loading architecture for
-drivers and layers that wasn't easy to hack away but everything seems to be
-running OK. Please let me know if you have issues.
+users are out of luck. The Zink OpenGL driver is also included if Mesa
+provides no OpenGL driver for your hardware.
+
+Vulkan employs a dynamic loading architecture for drivers and layers that
+wasn't easy to hack away but everything seems to be running OK. However, I'm
+still working on preincluding the Mesa layers, it shouldn't be long now.
+Please let me know if you have issues.
 
 ### Is winetricks supported?
 
@@ -270,9 +278,14 @@ complicated but finding a way to make it cooperate with Wine is somewhat
 harder. Yes, I'm aware of
 [Gallium Nine Standalone](https://github.com/iXit/wine-nine-standalone).
 
+### Is DXVK supported?
+Not yet. I need some time to adapt it, but it shouldn't be too much work.
+
 ### Is there any speed increase?
 
-I haven't benchmarked but probably only minimal.
+I haven't benchmarked but probably only minimal with the default build flags.
+The REAL shit should happen if you compile with link time optimization (LTO),
+people sometimes report speed increase in Mesa alone of about 15-20%.
 
 ### What is known to work?
 
@@ -280,16 +293,10 @@ Among others the GOG versions of System Shock 2, Deus Ex,
 Hidden and Dangerous 2, Sid Meyer's Alpha Centauri, Hotline Miami,
 Hitman: Codename 47, Supreme Commander Gold Edition (sound doesn't work
 but seems to be a [Wine issue](https://bugs.winehq.org/show_bug.cgi?id=49970)),
-Total Annihilation: Commander Pack; Max Payne, Microsoft Office 2007,
-TeamViewer, Winamp Classic.
+Total Annihilation: Commander Pack; Max Payne, Rainbow Six: Rogue Spear,
+Microsoft Office 2007, TeamViewer, Winamp Classic.
 
 ## Troubleshooting
-
-### 0048:err:vulkan:get_vulkan_driver Wine was built without Vulkan support.
-
-You can safely ignore this message, it's actually a warning not an error and
-100% expected and normal. It's not the cause for whatever it is that you're
-experiencing.
 
 ### Unhandled exception
 
@@ -300,8 +307,7 @@ will load modules of the offical version.
 
 Next, check whether you have any official `:i386` libraries which Wine loads
 but shouldn't. Libraries like libc, libstdc++, librt, libpthread, libm are
-fine, but an official installation of libgnutls might confuse the statically
-linked Wine. You could try removing all `:i386` dependencies and starting over.
+fine, but anything else shouldn't be.
 
 A good way to see what libraries Wine is loading at runtime is
 `cat /proc/<id>/maps` where `<id>` is the process ID of one of Wine's processes.
@@ -313,6 +319,16 @@ jump to official Wine while you still can.
 ### winedevice.exe causes 100% CPU usage
 
 I've experienced this on one of my machines but have no I idea what causes it.
+
+## Related repositories
+
+The modifications I made to the major dependencies are available as forks and
+included as [patches](https://github.com/MIvanchev/static-wine32/tree/master/dependencies/patches)
+in static-wine32.
+
+* Wine: https://github.com/MIvanchev/wine/tree/static-dependencies
+* Mesa: https://gitlab.freedesktop.org/mivanchev/mesa/-/tree/mesa-23.0.0-patched
+* Vulkan loader: https://github.com/MIvanchev/Vulkan-Loader/tree/ver-1.3.242
 
 ## Credits
 
