@@ -29,6 +29,19 @@ ENV DISPLAY=:1
 COPY dependencies /build
 COPY meson-cross-i386 /build/
 
+# Set to "native" if building on the machine you're going to run Wine on
+# or the value that matches your CPU's architecture from the from the
+# possible values of the -march option of GCC. For example "broadwell" for
+# the i7-5600u CPU. The values are available on
+#
+# https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
+#
+# or you can find them out by executing:
+#
+# gcc -E -march=foo -xc /dev/null 2>&1 | sed -n 's/.* valid arguments to .* are: //p' | tr ' ' '\n'
+#
+ARG PLATFORM=
+
 # Leave empty or comment out to skip LLVM build
 # ARG BUILD_WITH_LLVM=y
 
@@ -39,15 +52,28 @@ ARG BUILD_JOBS=8
 ARG PATH="$PATH:/usr/local/bin"
 
 ARG CONFIGURE_PREFIX="--prefix=/usr/local"
-ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -O2\" CPPFLAGS=\"-m32 -O2\" CXXFLAGS=\"-m32 -O2\" OBJCFLAGS=\"-m32 -O2\" LDFLAGS=-m32"
+ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     CPPFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     CXXFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     OBJCFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     LDFLAGS=\"-m32 -march=$PLATFORM -fno-lto\" \
+                     AR=\"/usr/bin/gcc-ar\" \
+                     RANLIB=\"/usr/bin/gcc-ranlib\" \
+                     NM=\"/usr/bin/gcc-nm\""
 ARG CONFIGURE_PROLOGUE="$CONFIGURE_PREFIX --sysconfdir=/etc --datarootdir=/usr/share"
 ARG CONFIGURE_HOST="--host=i386-linux-gnu"
 ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --datadir=/usr/share --buildtype=release --cross-file=../meson-cross-i386 --default-library=static --prefer-static"
-ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DDATAROOTDIR=/usr/share -DCMAKE_BUILD_TYPE=Release"
+ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
+                    -DCMAKE_AR=/usr/bin/gcc-ar \
+                    -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
+                    -DCMAKE_NM=gcc-nm \
+                    -DSYSCONFDIR=/etc \
+                    -DDATAROOTDIR=/usr/share \
+                    -DCMAKE_BUILD_TYPE=Release"
 
 ARG DEP_BUILD_SCRIPTS="\
 [macros-util-macros] autoreconf -i\n\
-[macros-util-macros] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_FLAGS\n\
+[macros-util-macros] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE\n\
 [macros-util-macros] make install\n\
 [zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PREFIX --static\n\
 [zlib] make install\n\
@@ -63,6 +89,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [bzip2] make libbz2.a\n\
 [bzip2] cp libbz2.a /usr/local/lib/\n\
 [bzip2] cp bzlib.h /usr/local/include/\n\
+[elfutils] sed -i 's/^\([ \t]*\)int code;$/\\1int code = 0;/' libdwfl/gzip.c\n\
 [elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
 [elfutils] make install\n\
 [elfutils] rm /usr/local/lib/libasm*.so* /usr/local/lib/libdw*.so* /usr/local/lib/libelf*.so*\n\
@@ -71,7 +98,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [libexif] autoreconf -i\n\
 [libexif] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
 [libexif] make install\n\
-[gmp] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --libdir=/usr/local/lib --enable-static --disable-shared\n\
+[gmp] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --libdir=/usr/local/lib --enable-static --disable-shared\n\
 [gmp] make install\n\
 [nettle] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --disable-assembler\n\
 [nettle] make install\n\
@@ -347,7 +374,15 @@ make install\n"
 # pkg_dir          = xcb-proto-1.14.1
 # pkg_build_script = xcb-proto-1.14.1.sh
 
-RUN export MAKEFLAGS=-j$BUILD_JOBS && \
+RUN if [[ -z "$PLATFORM" ]]; then \
+        echo "You must set the PLATFORM variable in Dockerfile before building the image." 1>&2; \
+        echo "See https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html for a list of the" 1>&2; \
+        echo "allowed values and pick the one that matches your CPU's architecture." 1>&2; \
+        false; \
+    fi && \
+    gcc -E -march=$PLATFORM -xc /dev/null >/dev/null && \
+    sed -i "s/{PLATFORM}/$PLATFORM/g" /build/meson-cross-i386 && \
+    export MAKEFLAGS=-j$BUILD_JOBS && \
     export NINJAFLAGS=-j$BUILD_JOBS && \
     mkdir -p build && \
     cd build && \
