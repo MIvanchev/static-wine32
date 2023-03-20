@@ -8,7 +8,7 @@ RUN dpkg --add-architecture i386 && \
     DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         python3 python3-pip wget git ninja-build gperf automake \
-        autoconf-archive libtool autopoint gettext nasm && \
+        autoconf-archive libtool autopoint gettext nasm glslang-tools && \
     pip3 install mako jinja2 && \
     wget -q https://github.com/Kitware/CMake/releases/download/v3.25.2/cmake-3.25.2-linux-x86_64.tar.gz -P $HOME && \
     tar xf $HOME/cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
@@ -29,22 +29,51 @@ ENV DISPLAY=:1
 COPY dependencies /build
 COPY meson-cross-i386 /build/
 
-ARG WITH_LLVM=0
-ARG WITH_GNUTLS=1
-ARG BUILD_JOBS=4
+# Set to "native" if building on the machine you're going to run Wine on
+# or the value that matches your CPU's architecture from the from the
+# possible values of the -march option of GCC. For example "broadwell" for
+# the i7-5600u CPU. The values are available on
+#
+# https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
+#
+# or you can find them out by executing:
+#
+# gcc -E -march=foo -xc /dev/null 2>&1 | sed -n 's/.* valid arguments to .* are: //p' | tr ' ' '\n'
+#
+ARG PLATFORM=
+
+# Leave empty or comment out to skip LLVM build
+# ARG BUILD_WITH_LLVM=y
+
+# Set to the desired number of parallel build jobs; this should losely
+# correspond to the number of CPU cores.
+ARG BUILD_JOBS=8
 
 ARG PATH="$PATH:/usr/local/bin"
 
 ARG CONFIGURE_PREFIX="--prefix=/usr/local"
-ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -O2\" CPPFLAGS=\"-m32 -O2\" CXXFLAGS=\"-m32 -O2\" OBJCFLAGS=\"-m32 -O2\" LDFLAGS=-m32"
+ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     CPPFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     CXXFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     OBJCFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+                     LDFLAGS=\"-m32 -march=$PLATFORM -fno-lto\" \
+                     AR=\"/usr/bin/gcc-ar\" \
+                     RANLIB=\"/usr/bin/gcc-ranlib\" \
+                     NM=\"/usr/bin/gcc-nm\""
 ARG CONFIGURE_PROLOGUE="$CONFIGURE_PREFIX --sysconfdir=/etc --datarootdir=/usr/share"
 ARG CONFIGURE_HOST="--host=i386-linux-gnu"
 ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --datadir=/usr/share --buildtype=release --cross-file=../meson-cross-i386 --default-library=static --prefer-static"
-ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local -DSYSCONFDIR=/etc -DDATAROOTDIR=/usr/share -DCMAKE_BUILD_TYPE=Release"
+ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
+                    -DCMAKE_AR=/usr/bin/gcc-ar \
+                    -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
+                    -DCMAKE_NM=gcc-nm \
+                    -DSYSCONFDIR=/etc \
+                    -DDATAROOTDIR=/usr/share \
+                    -DCMAKE_BUILD_TYPE=Release"
 
 ARG DEP_BUILD_SCRIPTS="\
 [macros-util-macros] autoreconf -i\n\
-[macros-util-macros] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_FLAGS\n\
+[macros-util-macros] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE\n\
 [macros-util-macros] make install\n\
 [zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PREFIX --static\n\
 [zlib] make install\n\
@@ -60,6 +89,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [bzip2] make libbz2.a\n\
 [bzip2] cp libbz2.a /usr/local/lib/\n\
 [bzip2] cp bzlib.h /usr/local/include/\n\
+[elfutils] sed -i 's/^\([ \t]*\)int code;$/\\1int code = 0;/' libdwfl/gzip.c\n\
 [elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
 [elfutils] make install\n\
 [elfutils] rm /usr/local/lib/libasm*.so* /usr/local/lib/libdw*.so* /usr/local/lib/libelf*.so*\n\
@@ -68,11 +98,10 @@ ARG DEP_BUILD_SCRIPTS="\
 [libexif] autoreconf -i\n\
 [libexif] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
 [libexif] make install\n\
-[gmp] ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --libdir=/usr/local/lib --enable-static --disable-shared\n\
+[gmp] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --libdir=/usr/local/lib --enable-static --disable-shared\n\
 [gmp] make install\n\
 [nettle] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --disable-assembler\n\
 [nettle] make install\n\
-[gnutls] [ \"$WITH_GNUTLS\" -eq 0 ] && return\n\
 [gnutls] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
 --with-included-unistring \
 --with-included-libtasn1 \
@@ -82,14 +111,6 @@ ARG DEP_BUILD_SCRIPTS="\
 --enable-openssl-compatibility \
 --host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
 [gnutls] make install\n\
-[gnutls] mkdir build_shared && cd build_shared && mkdir gnutls nettle hogweed gmp\n\
-[gnutls] rm /usr/local/lib/libgnutls*\n\
-[gnutls] ar -x --output gnutls ../lib/.libs/libgnutls.a\n\
-[gnutls] ar -x --output nettle /usr/local/lib/libnettle.a\n\
-[gnutls] ar -x --output hogweed /usr/local/lib/libhogweed.a\n\
-[gnutls] ar -x --output gmp /usr/local/lib/libgmp.a\n\
-[gnutls] gcc -m32 -shared -o libgnutls.so gnutls/* nettle/* hogweed/* gmp/* -lz -lzstd -lpthread\n\
-[gnutls] cp libgnutls.so /usr/local/lib/\n\
 [libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
 --without-python\n\
 [libxml2] make install\n\
@@ -138,6 +159,8 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] cd build\n\
 [systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc\n\
 [systemd] meson install --tags devel,libudev --no-rebuild\n\
+[systemd] PC_FILE=/usr/local/lib/pkgconfig/libudev.pc\n\
+[systemd] [ -f \$PC_FILE ] && echo 'Requires.private: libcap' >> \$PC_FILE\n\
 [libdrm] meson setup build $MESON_PROLOGUE\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
@@ -145,10 +168,14 @@ ARG DEP_BUILD_SCRIPTS="\
 [tdb] rm /usr/local/lib/libtdb*.so*\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
 [glib] ninja -C build install\n\
-[libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev) \\$(pkg-config --libs --static libcap)]/' configure.ac\n\
+[libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev)]/' configure.ac\n\
 [libusb] autoreconf -i\n\
 [libusb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libusb] make install\n\
+[libusb] PC_FILE=/usr/local/lib/pkgconfig/libusb-1.0.pc\n\
+[libusb] [ -f \$PC_FILE ] && sed -i 's/-ludev//' \$PC_FILE\n\
+[libusb] [ -f \$PC_FILE ] && echo 'Requires.private: libudev' >> \$PC_FILE\n\
+[libusb] pkg-config --libs --static libusb-1.0\n\
 [pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
 [pulseaudio] find . -name meson.build -exec sed -i 's/=[[:space:]]*shared_library(/= library(/g' {} \\;\n\
 [pulseaudio] meson setup build $MESON_PROLOGUE -Ddaemon=false -Ddoxygen=false \
@@ -158,6 +185,10 @@ ARG DEP_BUILD_SCRIPTS="\
 pulsecommon-`echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/'` \
 pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] meson install --tags devel --no-rebuild\n\
+[pulseaudio] PC_FILE=/usr/local/lib/pkgconfig/libpulse.pc\n\
+[pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lm -lrt/' \$PC_FILE\n\
+[pulseaudio] [ -f \$PC_FILE ] && echo 'Requires.private: dbus-1' >> \$PC_FILE\n\
+[pulseaudio] pkg-config --libs --static libpulse\n\
 [alsa-lib] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [alsa-lib] autoreconf -i\n\
 [alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
@@ -167,14 +198,17 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [alsa-plugins] autoreconf -i\n\
 [alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-plugins] make install\n\
-[alsa-plugins] sed -i 's/Requires:\\(.*\\)/Requires:\\1 libpulse dbus-1/' /usr/local/lib/pkgconfig/alsa.pc\n\
-[alsa-plugins] sed -i 's/Libs:\\(.*\\)/Libs:\\1 -L\${libdir}\\/alsa-lib -lasound_module_conf_pulse -lasound_module_pcm_pulse \
--lasound_module_ctl_arcam_av -lasound_module_pcm_upmix -lasound_module_ctl_oss -lasound_module_pcm_usb_stream \
--lasound_module_ctl_pulse -lasound_module_pcm_vdownmix -lasound_module_rate_speexrate -lasound_module_pcm_oss/' \
-/usr/local/lib/pkgconfig/alsa.pc\n\
+[alsa-plugins] PC_FILE=/usr/local/lib/pkgconfig/alsa.pc\n\
+[alsa-plugins] [ -f \$PC_FILE ] && echo 'Requires.private: libpulse' >> \$PC_FILE\n\
+[alsa-plugins] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \
+-L\${libdir}\\/alsa-lib -lasound_module_conf_pulse -lasound_module_pcm_pulse \
+-lasound_module_ctl_arcam_av -lasound_module_pcm_upmix -lasound_module_ctl_oss \
+-lasound_module_pcm_usb_stream -lasound_module_ctl_pulse -lasound_module_pcm_vdownmix \
+-lasound_module_rate_speexrate -lasound_module_pcm_oss \\1/' \$PC_FILE\n\
+[alsa-plugins] pkg-config --libs --static alsa\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
-[llvmorg] [ \"$WITH_LLVM\" -eq 0 ] && return\n\
+[llvmorg] ${BUILD_WITH_LLVM:+echo} return\n\
 [llvmorg] cmake $CMAKE_PROLOGUE -S llvm -B build \
 -DLLVM_BUILD_SHARED_LIBS=OFF \
 -DLLVM_TARGETS_TO_BUILD=\"X86;AMDGPU\" \
@@ -188,33 +222,57 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
-[mesa] sed -i 's/extra_libs_libglx = \\[\\]/extra_libs_libglx = \\[libgallium_dri\\]/' src/glx/meson.build\n\
-[mesa] sed -i 's/extra_deps_libgl = \\[\\]/extra_deps_libgl = \\[meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"')\\]/' src/glx/meson.build\n\
-[mesa] sed -i 's/driver_swrast/driver_swrast, meson.get_compiler('\"'\"'cpp'\"'\"').find_library('\"'\"'stdc++'\"'\"'),/' src/gallium/targets/osmesa/meson.build\n\
+[mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
 [mesa] echo '#!/usr/bin/env python3' > bin/install_megadrivers.py\n\
 [mesa] echo >> /bin/install_megadrivers.py\n\
 [mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
 -Ddri3=enabled \
--Dgallium-drivers=swrast,i915,iris,crocus,nouveau,r300,r600`if [ \"$WITH_LLVM\" -eq 1 ]; then echo \",radeonsi\"; fi` \
+-Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600${BUILD_WITH_LLVM:+,radeonsi} \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
--Dvulkan-drivers=\"\" \
+-Dvulkan-drivers=intel,intel_hasvk,amd${BUILD_WITH_LLVM:+,swrast} \
+-Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
 -Dgles2=disabled \
 -Dglx=dri \
--Dgbm=disabled \
+-Dgbm=enabled \
 -Degl=disabled \
--Dllvm=`if [ \"$WITH_LLVM\" -eq 1 ]; then echo enabled; else echo disabled; fi` \
+-Dllvm=disabled \
+${BUILD_WITH_LLVM:+-Dllvm=enabled} \
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile OSMesa GL glapi gallium_dri\n\
+[mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime \
+vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
+vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
 [mesa] meson install --no-rebuild\n\
+[mesa] PC_FILE=/usr/local/lib/pkgconfig/gl.pc\n\
+[mesa] [ -f \$PC_FILE ] && { grep -q 'Libs\\.private:' \$PC_FILE || \
+echo 'Libs.private:' >> \$PC_FILE; }\n\
+[mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\
+\\1 -lvulkan/' \$PC_FILE\n\
+[mesa] pkg-config --libs --static gl\n\
+[Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
+[Vulkan-Headers] make -C build install\n\
+[Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
+[Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
+[Vulkan-Loader] make -C build install\n\
+[Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
+[Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Requires.private: gl libudev' >> \$PC_FILE\n\
+[Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Libs.private: -Wl,--whole-archive \
+-lvulkan_radeon -lvulkan_intel -lvulkan_intel_hasvk' ${BUILD_WITH_LLVM:+-lvulkan_lvp} \
+'-lvulkan_runtime -lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive \
+-ldrm_amdgpu' >> \$PC_FILE\n\
+[vkcube] meson setup build $MESON_PROLOGUE\n\
+[vkcube] meson compile -C build\n\
+[vkcube] cp build/vkcube /usr/local/bin/\n\
+[mesa-demos] $CONFIGURE_FLAGS eval gcc \\\$CFLAGS -c -o src/xdemos/glxgears.o src/xdemos/glxgears.c\n\
+[mesa-demos] $CONFIGURE_FLAGS eval gcc \\\$LDFLAGS -o /usr/local/bin/glxgears src/xdemos/glxgears.o \$(pkg-config --libs --static vulkan)\n\
 [ogg] ./autogen.sh\n\
 [ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [ogg] make install\n\
@@ -227,7 +285,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [libsndfile] sed -i '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)' configure.ac\n\
 [libsndfile] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [libsndfile] make install\n\
-[cups] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
+[cups] LIBS=`pkg-config --libs --static gnutls` $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
 --with-components=libcups\n\
 [cups] make install\n\
 [v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
@@ -261,6 +319,9 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [isdn4k-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [isdn4k-utils] make install-libLTLIBRARIES install-pcDATA install-includeHEADERS\n\
 [isdn4k-utils] popd\n\
+[isdn4k-utils] PC_FILE=/usr/local/lib/pkgconfig/capi20.pc\n\
+[isdn4k-utils] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lrt -lpthread' >> \$PC_FILE\n\
+[isdn4k-utils] pkg-config --libs --static capi20\n\
 [tiff] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [tiff] sed -i 's/SUBDIRS = port libtiff tools build contrib test doc/SUBDIRS = port libtiff build test doc/' Makefile\n\
 [tiff] make install\n\
@@ -278,7 +339,13 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [openldap] make install\n\
 [krb5] cd src\n\
 [krb5] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[krb5] make && make install"
+[krb5] make && make install\n\
+[krb5] PC_FILE=/usr/local/lib/pkgconfig/mit-krb5.pc\n\
+[krb5] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lresolv/' \$PC_FILE\n\
+[krb5] pkg-config --libs --static krb5\n\
+[krb5] PC_FILE=/usr/local/lib/pkgconfig/mit-krb5-gssapi.pc\n\
+[krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
+[krb5] pkg-config --libs --static krb5-gssapi"
 
 ARG DEFAULT_BUILD_SCRIPT="\
 #!/bin/sh\n\
@@ -307,7 +374,15 @@ make install\n"
 # pkg_dir          = xcb-proto-1.14.1
 # pkg_build_script = xcb-proto-1.14.1.sh
 
-RUN export MAKEFLAGS=-j$BUILD_JOBS && \
+RUN if [[ -z "$PLATFORM" ]]; then \
+        echo "You must set the PLATFORM variable in Dockerfile before building the image." 1>&2; \
+        echo "See https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html for a list of the" 1>&2; \
+        echo "allowed values and pick the one that matches your CPU's architecture." 1>&2; \
+        false; \
+    fi && \
+    gcc -E -march=$PLATFORM -xc /dev/null >/dev/null && \
+    sed -i "s/{PLATFORM}/$PLATFORM/g" /build/meson-cross-i386 && \
+    export MAKEFLAGS=-j$BUILD_JOBS && \
     export NINJAFLAGS=-j$BUILD_JOBS && \
     mkdir -p build && \
     cd build && \
@@ -332,7 +407,7 @@ RUN export MAKEFLAGS=-j$BUILD_JOBS && \
        echo "pkg_dir:          $pkg_dir"; \
        echo "pkg_build_script: $pkg_build_script"; \
        echo "Build script contents:"; \
-       tar -xvf "$pkg_file" || exit; \
+       tar -xf "$pkg_file" || exit; \
        { echo -e "$DEP_BUILD_SCRIPTS" | grep "^\[$pkg_name\]" | sed "s/^\[$pkg_name\] //" > "$pkg_build_script"; } || exit; \
        if [ ! -s "$pkg_build_script" ]; \
        then \

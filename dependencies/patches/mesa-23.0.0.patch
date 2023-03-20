@@ -1,0 +1,1476 @@
+diff --git a/src/amd/common/meson.build b/src/amd/common/meson.build
+index 1262c3a056e..6fc5a8922c0 100644
+--- a/src/amd/common/meson.build
++++ b/src/amd/common/meson.build
+@@ -118,7 +118,9 @@ libamd_common = static_library(
+   ],
+   dependencies : [
+     dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
+-    idep_mesautil, idep_nir_headers, idep_nir
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir_headers,
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true)
+   ],
+   gnu_symbol_visibility : 'hidden',
+   c_args : ['-DADDR_FASTCALL=']
+diff --git a/src/amd/vulkan/meson.build b/src/amd/vulkan/meson.build
+index d7cd1f0d039..12c04f7978d 100644
+--- a/src/amd/vulkan/meson.build
++++ b/src/amd/vulkan/meson.build
+@@ -191,8 +191,11 @@ libvulkan_radeon = shared_library(
+   dependencies : [
+     dep_llvm, dep_libdrm_amdgpu, dep_thread, dep_elf, dep_dl, dep_m,
+     dep_valgrind, radv_deps, idep_aco,
+-    idep_mesautil, idep_nir, idep_vulkan_util, idep_vulkan_wsi,
+-    idep_vulkan_runtime, idep_amdgfxregs_h, idep_xmlconfig,
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util, idep_vulkan_wsi,
++    idep_vulkan_runtime, idep_amdgfxregs_h,
++    idep_xmlconfig.partial_dependency(compile_args : true, link_args : true, includes : true),
+     idep_vulkan_common_entrypoints_h, idep_vulkan_wsi_entrypoints_h
+   ],
+   c_args : [no_override_init_args, radv_flags, c_msvc_compat_args],
+diff --git a/src/amd/vulkan/radix_sort/radix_sort_vk.c b/src/amd/vulkan/radix_sort/radix_sort_vk.c
+index 70253884fc4..1e54c85b3ef 100644
+--- a/src/amd/vulkan/radix_sort/radix_sort_vk.c
++++ b/src/amd/vulkan/radix_sort/radix_sort_vk.c
+@@ -259,7 +259,7 @@ radix_sort_vk_create(VkDevice                           device,
+     {
+       plci.pPushConstantRanges = pcr + ii;
+ 
+-      if (vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
++      if (radix_vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
+         goto fail_layout;
+     }
+ 
+@@ -282,7 +282,7 @@ radix_sort_vk_create(VkDevice                           device,
+       smci.codeSize = spv_sizes[ii];
+       smci.pCode    = spv[ii];
+ 
+-      if (vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
++      if (radix_vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
+         goto fail_shader;
+     }
+ 
+@@ -358,7 +358,7 @@ radix_sort_vk_create(VkDevice                           device,
+   //
+   // Create the compute pipelines
+   //
+-  if (vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
++  if (radix_vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
+     goto fail_pipeline;
+ 
+   //
+@@ -366,7 +366,7 @@ radix_sort_vk_create(VkDevice                           device,
+   //
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyShaderModule(device, sms[ii], ac);
++      radix_vkDestroyShaderModule(device, sms[ii], ac);
+     }
+ 
+ #ifdef RS_VK_ENABLE_DEBUG_UTILS
+@@ -397,17 +397,17 @@ radix_sort_vk_create(VkDevice                           device,
+ fail_pipeline:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
++      radix_vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
+     }
+ fail_shader:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyShaderModule(device, sms[ii], ac);
++      radix_vkDestroyShaderModule(device, sms[ii], ac);
+     }
+ fail_layout:
+    for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
++      radix_vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
+     }
+ 
+   free(rs);
+@@ -425,13 +425,13 @@ radix_sort_vk_destroy(struct radix_sort_vk * rs, VkDevice d, VkAllocationCallbac
+   // destroy pipelines
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipeline(d, rs->pipelines.handles[ii], ac);
++      radix_vkDestroyPipeline(d, rs->pipelines.handles[ii], ac);
+     }
+ 
+   // destroy pipeline layouts
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipelineLayout(d, rs->pipeline_layouts.handles[ii], ac);
++      radix_vkDestroyPipelineLayout(d, rs->pipeline_layouts.handles[ii], ac);
+     }
+ 
+   free(rs);
+@@ -450,7 +450,7 @@ rs_get_devaddr(VkDevice device, VkDescriptorBufferInfo const * dbi)
+     .buffer = dbi->buffer
+   };
+ 
+-  VkDeviceAddress const devaddr = vkGetBufferDeviceAddress(device, &bdai) + dbi->offset;
++  VkDeviceAddress const devaddr = radix_vkGetBufferDeviceAddress(device, &bdai) + dbi->offset;
+ 
+   return devaddr;
+ }
+@@ -468,7 +468,7 @@ rs_ext_cmd_write_timestamp(struct radix_sort_vk_ext_timestamps * ext_timestamps,
+   if ((ext_timestamps != NULL) &&
+       (ext_timestamps->timestamps_set < ext_timestamps->timestamp_count))
+     {
+-      vkCmdWriteTimestamp(cb,
++      radix_vkCmdWriteTimestamp(cb,
+                           pipeline_stage,
+                           ext_timestamps->timestamps,
+                           ext_timestamps->timestamps_set++);
+@@ -679,16 +679,16 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+     .passes             = passes
+   };
+ 
+-  vkCmdPushConstants(cb,
++  radix_vkCmdPushConstants(cb,
+                      rs->pipeline_layouts.named.histogram,
+                      VK_SHADER_STAGE_COMPUTE_BIT,
+                      0,
+                      sizeof(push_histogram),
+                      &push_histogram);
+ 
+-  vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
++  radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
+ 
+-  vkCmdDispatch(cb, histo_blocks, 1, 1);
++  radix_vkCmdDispatch(cb, histo_blocks, 1, 1);
+ 
+   ////////////////////////////////////////////////////////////////////////
+   //
+@@ -707,16 +707,16 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+     .devaddr_histograms = devaddr_histograms,
+   };
+ 
+-  vkCmdPushConstants(cb,
++  radix_vkCmdPushConstants(cb,
+                      rs->pipeline_layouts.named.prefix,
+                      VK_SHADER_STAGE_COMPUTE_BIT,
+                      0,
+                      sizeof(push_prefix),
+                      &push_prefix);
+ 
+-  vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
++  radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
+ 
+-  vkCmdDispatch(cb, passes, 1, 1);
++  radix_vkCmdDispatch(cb, passes, 1, 1);
+ 
+   ////////////////////////////////////////////////////////////////////////
+   //
+@@ -746,14 +746,14 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+   {
+     uint32_t const pass_dword = pass_idx / 4;
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.scatter[pass_dword].even,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_scatter),
+                        &push_scatter);
+ 
+-    vkCmdBindPipeline(cb,
++    radix_vkCmdBindPipeline(cb,
+                       VK_PIPELINE_BIND_POINT_COMPUTE,
+                       rs->pipelines.named.scatter[pass_dword].even);
+   }
+@@ -762,7 +762,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+ 
+   while (true)
+     {
+-      vkCmdDispatch(cb, scatter_blocks, 1, 1);
++      radix_vkCmdDispatch(cb, scatter_blocks, 1, 1);
+ 
+       //
+       // Continue?
+@@ -788,7 +788,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+       //
+       VkPipelineLayout const pl = is_even ? rs->pipeline_layouts.named.scatter[pass_dword].even  //
+                                           : rs->pipeline_layouts.named.scatter[pass_dword].odd;
+-      vkCmdPushConstants(cb,
++      radix_vkCmdPushConstants(cb,
+                          pl,
+                          VK_SHADER_STAGE_COMPUTE_BIT,
+                          OFFSETOF_MACRO(struct rs_push_scatter, devaddr_histograms),
+@@ -801,7 +801,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+       VkPipeline const p = is_even ? rs->pipelines.named.scatter[pass_dword].even  //
+                                    : rs->pipelines.named.scatter[pass_dword].odd;
+ 
+-      vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
++      radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
+     }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -938,16 +938,16 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .passes        = passes
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.init,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_init),
+                        &push_init);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.init);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.init);
+ 
+-    vkCmdDispatch(cb, 1, 1, 1);
++    radix_vkCmdDispatch(cb, 1, 1, 1);
+   }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -967,14 +967,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .dword          = 0xFFFFFFFF
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.fill,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_pad),
+                        &push_pad);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
+ 
+     info->dispatch_indirect(cb, &info->indirect, offsetof(struct rs_indirect_info, dispatch.pad));
+   }
+@@ -992,14 +992,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .dword          = 0
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.fill,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_zero),
+                        &push_zero);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
+ 
+     info->dispatch_indirect(cb, &info->indirect, offsetof(struct rs_indirect_info, dispatch.zero));
+   }
+@@ -1021,14 +1021,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .passes             = passes
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.histogram,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_histogram),
+                        &push_histogram);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
+ 
+     info->dispatch_indirect(cb,
+                             &info->indirect,
+@@ -1049,16 +1049,16 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .devaddr_histograms = devaddr_histograms,
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.prefix,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_prefix),
+                        &push_prefix);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
+ 
+-    vkCmdDispatch(cb, passes, 1, 1);
++    radix_vkCmdDispatch(cb, passes, 1, 1);
+   }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -1088,14 +1088,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+     {
+       uint32_t const pass_dword = pass_idx / 4;
+ 
+-      vkCmdPushConstants(cb,
++      radix_vkCmdPushConstants(cb,
+                          rs->pipeline_layouts.named.scatter[pass_dword].even,
+                          VK_SHADER_STAGE_COMPUTE_BIT,
+                          0,
+                          sizeof(push_scatter),
+                          &push_scatter);
+ 
+-      vkCmdBindPipeline(cb,
++      radix_vkCmdBindPipeline(cb,
+                         VK_PIPELINE_BIND_POINT_COMPUTE,
+                         rs->pipelines.named.scatter[pass_dword].even);
+     }
+@@ -1134,7 +1134,7 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+         VkPipelineLayout const pl = is_even
+                                       ? rs->pipeline_layouts.named.scatter[pass_dword].even  //
+                                       : rs->pipeline_layouts.named.scatter[pass_dword].odd;
+-        vkCmdPushConstants(
++        radix_vkCmdPushConstants(
+           cb,
+           pl,
+           VK_SHADER_STAGE_COMPUTE_BIT,
+@@ -1148,7 +1148,7 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+         VkPipeline const p = is_even ? rs->pipelines.named.scatter[pass_dword].even  //
+                                      : rs->pipelines.named.scatter[pass_dword].odd;
+ 
+-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
++        radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
+       }
+   }
+ 
+@@ -1177,7 +1177,7 @@ radix_sort_vk_fill_buffer(VkCommandBuffer                     cb,
+                           VkDeviceSize                        size,
+                           uint32_t                            data)
+ {
+-  vkCmdFillBuffer(cb, buffer_info->buffer, buffer_info->offset + offset, size, data);
++  radix_vkCmdFillBuffer(cb, buffer_info->buffer, buffer_info->offset + offset, size, data);
+ }
+ 
+ //
+@@ -1221,7 +1221,7 @@ radix_sort_vk_dispatch_indirect(VkCommandBuffer                     cb,
+                                 radix_sort_vk_buffer_info_t const * buffer_info,
+                                 VkDeviceSize                        offset)
+ {
+-  vkCmdDispatchIndirect(cb, buffer_info->buffer, buffer_info->offset + offset);
++  radix_vkCmdDispatchIndirect(cb, buffer_info->buffer, buffer_info->offset + offset);
+ }
+ 
+ //
+diff --git a/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h b/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
+index 23dd808249a..98fc6c67db7 100644
+--- a/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
++++ b/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
+@@ -89,6 +89,62 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+                                     VkCommandBuffer                                    cb,
+                                     VkDeviceAddress *                                  keyvals_sorted);
+ 
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
++                     const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
++                      const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
++                       const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
++                        const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
++                         const VkComputePipelineCreateInfo *pCreateInfos,
++                         const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
++                     VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
++                     uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
++                     uint32_t bufferMemoryBarrierCount,
++                     const VkBufferMemoryBarrier *pBufferMemoryBarriers,
++                     uint32_t imageMemoryBarrierCount,
++                     const VkImageMemoryBarrier *pImageMemoryBarriers);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
++                   VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size,
++                   const void *pValues);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
++                  VkPipeline pipeline);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
++              uint32_t groupCountZ);
++
++VKAPI_ATTR VkDeviceAddress VKAPI_CALL
++radix_vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
++                VkDeviceSize size, uint32_t data);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset);
++
+ //
+ // clang-format on
+ //
+diff --git a/src/amd/vulkan/radix_sort/radv_radix_sort.c b/src/amd/vulkan/radix_sort/radv_radix_sort.c
+index 061461432c8..824521c1fb5 100644
+--- a/src/amd/vulkan/radix_sort/radv_radix_sort.c
++++ b/src/amd/vulkan/radix_sort/radv_radix_sort.c
+@@ -98,7 +98,7 @@ radv_create_radix_sort_u64(VkDevice device, VkAllocationCallbacks const *ac, VkP
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
++radix_vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
+                      const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -107,7 +107,7 @@ vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateIn
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
++radix_vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
+                       const VkAllocationCallbacks *pAllocator)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -115,7 +115,7 @@ vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
++radix_vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
+                        const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -124,7 +124,7 @@ vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCrea
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
++radix_vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
+                         const VkAllocationCallbacks *pAllocator)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+@@ -132,7 +132,7 @@ vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
++radix_vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
+                          const VkComputePipelineCreateInfo *pCreateInfos,
+                          const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
+ {
+@@ -142,14 +142,14 @@ vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
++radix_vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+    device->vk.dispatch_table.DestroyPipeline(_device, pipeline, pAllocator);
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
++radix_vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
+                      VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
+                      uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
+                      uint32_t bufferMemoryBarrierCount,
+@@ -165,7 +165,7 @@ vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStag
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
++radix_vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
+                    VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size,
+                    const void *pValues)
+ {
+@@ -175,7 +175,7 @@ vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
++radix_vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
+                   VkPipeline pipeline)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -184,7 +184,7 @@ vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBin
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
++radix_vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
+               uint32_t groupCountZ)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -193,14 +193,14 @@ vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t grou
+ }
+ 
+ VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+-vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
++radix_vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
+ {
+    RADV_FROM_HANDLE(radv_device, device, _device);
+    return device->vk.dispatch_table.GetBufferDeviceAddress(_device, pInfo);
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
++radix_vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
+                 VkDeviceSize size, uint32_t data)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -209,7 +209,7 @@ vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
++radix_vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
+ {
+    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+    cmd_buffer->device->vk.dispatch_table.CmdDispatchIndirect(commandBuffer, buffer, offset);
+diff --git a/src/amd/vulkan/radv_cmd_buffer.c b/src/amd/vulkan/radv_cmd_buffer.c
+index 0644bc08ce6..7313e76b4b4 100644
+--- a/src/amd/vulkan/radv_cmd_buffer.c
++++ b/src/amd/vulkan/radv_cmd_buffer.c
+@@ -1686,7 +1686,7 @@ radv_emit_shader_prefetch(struct radv_cmd_buffer *cmd_buffer, struct radv_shader
+ 
+    va = radv_shader_get_va(shader);
+ 
+-   si_cp_dma_prefetch(cmd_buffer, va, shader->code_size);
++   radv_si_cp_dma_prefetch(cmd_buffer, va, shader->code_size);
+ }
+ 
+ static void
+@@ -1707,7 +1707,7 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
+       radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_MESH]);
+ 
+    if (mask & RADV_PREFETCH_VBO_DESCRIPTORS)
+-      si_cp_dma_prefetch(cmd_buffer, state->vb_va, pipeline->vb_desc_alloc_size);
++      radv_si_cp_dma_prefetch(cmd_buffer, state->vb_va, pipeline->vb_desc_alloc_size);
+ 
+    if (mask & RADV_PREFETCH_TCS)
+       radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_TESS_CTRL]);
+@@ -1726,7 +1726,7 @@ radv_emit_prefetch_L2(struct radv_cmd_buffer *cmd_buffer,
+       if (pipeline->ps_epilog) {
+          struct radv_shader_part *ps_epilog = pipeline->ps_epilog;
+ 
+-         si_cp_dma_prefetch(cmd_buffer, ps_epilog->va, ps_epilog->code_size);
++         radv_si_cp_dma_prefetch(cmd_buffer, ps_epilog->va, ps_epilog->code_size);
+       }
+    }
+ 
+@@ -6060,13 +6060,13 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
+             return vk_error(cmd_buffer, result);
+       }
+ 
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+    }
+ 
+    /* Make sure CP DMA is idle at the end of IBs because the kernel
+     * doesn't wait for it.
+     */
+-   si_cp_dma_wait_for_idle(cmd_buffer);
++   radv_si_cp_dma_wait_for_idle(cmd_buffer);
+ 
+    radv_describe_end_cmd_buffer(cmd_buffer);
+ 
+@@ -7008,10 +7008,10 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
+    radv_emit_mip_change_flush_default(primary);
+ 
+    /* Emit pending flushes on primary prior to executing secondary */
+-   si_emit_cache_flush(primary);
++   radv_si_emit_cache_flush(primary);
+ 
+    /* Make sure CP DMA is idle on primary prior to executing secondary. */
+-   si_cp_dma_wait_for_idle(primary);
++   radv_si_cp_dma_wait_for_idle(primary);
+ 
+    for (uint32_t i = 0; i < commandBufferCount; i++) {
+       RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
+@@ -8705,7 +8705,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
+        * packets between the wait and the draw)
+        */
+       radv_emit_all_graphics_states(cmd_buffer, info, pipeline_is_dirty);
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+       /* <-- CUs are idle here --> */
+ 
+       radv_upload_graphics_shader_descriptors(cmd_buffer);
+@@ -8713,7 +8713,7 @@ radv_before_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_draw_info
+       /* If we don't wait for idle, start prefetches first, then set
+        * states, and draw at the end.
+        */
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+ 
+       if (has_prefetch && cmd_buffer->state.prefetch_L2_mask) {
+          /* Only prefetch the vertex shader and VBO descriptors
+@@ -8780,7 +8780,7 @@ radv_before_taskmesh_draw(struct radv_cmd_buffer *cmd_buffer, const struct radv_
+       radv_pipeline_emit_compute_state(pdevice, ace_cs, task_shader);
+    }
+ 
+-   si_emit_cache_flush(cmd_buffer);
++   radv_si_emit_cache_flush(cmd_buffer);
+ 
+    if (task_shader) {
+       radv_ace_internal_cache_flush(cmd_buffer);
+@@ -9702,7 +9702,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
+        * packets between the wait and the draw)
+        */
+       radv_emit_compute_pipeline(cmd_buffer, pipeline);
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+       /* <-- CUs are idle here --> */
+ 
+       radv_upload_compute_shader_descriptors(cmd_buffer, pipeline, bind_point);
+@@ -9721,7 +9721,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
+       /* If we don't wait for idle, start prefetches first, then set
+        * states, and dispatch at the end.
+        */
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+ 
+       if (has_prefetch && pipeline_is_dirty) {
+          radv_emit_shader_prefetch(cmd_buffer, pipeline->base.shaders[MESA_SHADER_COMPUTE]);
+@@ -10366,7 +10366,7 @@ radv_cp_dma_wait_for_stages(struct radv_cmd_buffer *cmd_buffer, VkPipelineStageF
+    if (stage_mask & (VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT |
+                      VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+                      VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
+-      si_cp_dma_wait_for_idle(cmd_buffer);
++      radv_si_cp_dma_wait_for_idle(cmd_buffer);
+ }
+ 
+ static void
+@@ -10477,7 +10477,7 @@ write_event(struct radv_cmd_buffer *cmd_buffer, struct radv_event *event,
+    struct radeon_cmdbuf *cs = cmd_buffer->cs;
+    uint64_t va = radv_buffer_get_va(event->bo);
+ 
+-   si_emit_cache_flush(cmd_buffer);
++   radv_si_emit_cache_flush(cmd_buffer);
+ 
+    radv_cs_add_buffer(cmd_buffer->device->ws, cs, event->bo);
+ 
+@@ -10625,7 +10625,7 @@ radv_CmdBeginConditionalRenderingEXT(
+       draw_visible = false;
+    }
+ 
+-   si_emit_cache_flush(cmd_buffer);
++   radv_si_emit_cache_flush(cmd_buffer);
+ 
+    if (cmd_buffer->qf == RADV_QUEUE_GENERAL &&
+        !cmd_buffer->device->physical_device->rad_info.has_32bit_predication) {
+@@ -10843,7 +10843,7 @@ radv_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer, uint32_t firstC
+        * flight.
+        */
+       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VS_PARTIAL_FLUSH;
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+    } else {
+       radv_flush_vgt_streamout(cmd_buffer);
+    }
+@@ -11057,7 +11057,7 @@ radv_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer, VkPipelineStageFlag
+    struct radeon_cmdbuf *cs = cmd_buffer->cs;
+    uint64_t va = radv_buffer_get_va(buffer->bo) + buffer->offset + dstOffset;
+ 
+-   si_emit_cache_flush(cmd_buffer);
++   radv_si_emit_cache_flush(cmd_buffer);
+ 
+    ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 12);
+ 
+diff --git a/src/amd/vulkan/radv_device.c b/src/amd/vulkan/radv_device.c
+index 4c2c3168d8c..fd70a368305 100644
+--- a/src/amd/vulkan/radv_device.c
++++ b/src/amd/vulkan/radv_device.c
+@@ -5961,19 +5961,27 @@ radv_GetInstanceProcAddr(VkInstance _instance, const char *pName)
+ #define PUBLIC
+ #endif
+ 
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
++radeon_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName);
++
+ /* The loader wants us to expose a second GetInstanceProcAddr function
+  * to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+-vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
++radeon_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
+ {
+    return radv_GetInstanceProcAddr(instance, pName);
+ }
+ 
+ PUBLIC
+ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+-vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
++radeon_vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName);
++
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
++radeon_vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
+ {
+    RADV_FROM_HANDLE(radv_instance, instance, _instance);
+    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
+@@ -7693,7 +7701,10 @@ radv_DestroySampler(VkDevice _device, VkSampler _sampler, const VkAllocationCall
+ }
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
++radeon_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion);
++
++PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
++radeon_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
+index 02a9a4401c1..9a77f7870fd 100644
+--- a/src/amd/vulkan/radv_image.c
++++ b/src/amd/vulkan/radv_image.c
+@@ -953,7 +953,7 @@ gfx9_border_color_swizzle(const struct util_format_description *desc)
+ }
+ 
+ bool
+-vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
++radv_vi_alpha_is_on_msb(struct radv_device *device, VkFormat format)
+ {
+    const struct util_format_description *desc = vk_format_description(format);
+ 
+@@ -1068,7 +1068,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
+       state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
+                   S_00A018_MAX_COMPRESSED_BLOCK_SIZE(
+                      image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size) |
+-                  S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
++                  S_00A018_ALPHA_IS_ON_MSB(radv_vi_alpha_is_on_msb(device, vk_format));
+    }
+ 
+    if (radv_image_get_iterate256(device, image)) {
+@@ -1238,7 +1238,7 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
+    }
+    if (!(image->planes[0].surface.flags & RADEON_SURF_Z_OR_SBUFFER) &&
+        image->planes[0].surface.meta_offset) {
+-      state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
++      state[6] = S_008F28_ALPHA_IS_ON_MSB(radv_vi_alpha_is_on_msb(device, vk_format));
+    } else {
+       if (device->instance->disable_aniso_single_level) {
+          /* The last dword is unused by hw. The shader uses it to clear
+diff --git a/src/amd/vulkan/radv_meta_buffer.c b/src/amd/vulkan/radv_meta_buffer.c
+index d4862b008e4..5d4a6005274 100644
+--- a/src/amd/vulkan/radv_meta_buffer.c
++++ b/src/amd/vulkan/radv_meta_buffer.c
+@@ -267,7 +267,7 @@ radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
+       flush_bits = RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE |
+                    radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT, image);
+    } else if (size)
+-      si_cp_dma_clear_buffer(cmd_buffer, va, size, value);
++      radv_si_cp_dma_clear_buffer(cmd_buffer, va, size, value);
+ 
+    return flush_bits;
+ }
+@@ -347,7 +347,7 @@ radv_update_buffer_cp(struct radv_cmd_buffer *cmd_buffer, uint64_t va, const voi
+ 
+    assert(size < RADV_BUFFER_UPDATE_THRESHOLD);
+ 
+-   si_emit_cache_flush(cmd_buffer);
++   radv_si_emit_cache_flush(cmd_buffer);
+    radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, words + 4);
+ 
+    radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + words, 0));
+diff --git a/src/amd/vulkan/radv_meta_clear.c b/src/amd/vulkan/radv_meta_clear.c
+index 47432ff93df..5d25b2bead1 100644
+--- a/src/amd/vulkan/radv_meta_clear.c
++++ b/src/amd/vulkan/radv_meta_clear.c
+@@ -1529,7 +1529,7 @@ gfx8_get_fast_clear_parameters(struct radv_device *device, const struct radv_ima
+        iview->vk.format == VK_FORMAT_R5G6B5_UNORM_PACK16 || iview->vk.format == VK_FORMAT_B5G6R5_UNORM_PACK16)
+       extra_channel = -1;
+    else if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN) {
+-      if (vi_alpha_is_on_msb(device, iview->vk.format))
++      if (radv_vi_alpha_is_on_msb(device, iview->vk.format))
+          extra_channel = desc->nr_channels - 1;
+       else
+          extra_channel = 0;
+@@ -1669,7 +1669,7 @@ gfx11_get_fast_clear_parameters(struct radv_device *device, const struct radv_im
+       return true;
+    }
+ 
+-   if (vi_alpha_is_on_msb(device, iview->vk.format)) {
++   if (radv_vi_alpha_is_on_msb(device, iview->vk.format)) {
+       if (desc->nr_channels == 2 && desc->channel[0].size == 8) {
+          if (value.ub[0] == 0x00 && value.ub[1] == 0xff) {
+             *reset_value = RADV_DCC_GFX11_CLEAR_0001_UNORM;
+diff --git a/src/amd/vulkan/radv_private.h b/src/amd/vulkan/radv_private.h
+index f49243904cb..24c85ef1369 100644
+--- a/src/amd/vulkan/radv_private.h
++++ b/src/amd/vulkan/radv_private.h
+@@ -1705,17 +1705,17 @@ void si_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_lev
+                             uint32_t *fence_ptr, uint64_t va, bool is_mec,
+                             enum radv_cmd_flush_bits flush_bits,
+                             enum rgp_flush_bits *sqtt_flush_bits, uint64_t gfx9_eop_bug_va);
+-void si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer);
++void radv_si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer);
+ void si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer, bool draw_visible,
+                                    unsigned pred_op, uint64_t va);
+ void si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer, uint64_t src_va, uint64_t dest_va,
+                            uint64_t size);
+ void si_cs_cp_dma_prefetch(const struct radv_device *device, struct radeon_cmdbuf *cs, uint64_t va,
+                            unsigned size, bool predicating);
+-void si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size);
+-void si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
++void radv_si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size);
++void radv_si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
+                             unsigned value);
+-void si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer);
++void radv_si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer);
+ 
+ void radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlusion_queries);
+ uint32_t radv_get_pa_su_sc_mode_cntl(const struct radv_cmd_buffer *cmd_buffer);
+@@ -2643,7 +2643,7 @@ bool radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, co
+                                      VkFormat format, VkImageCreateFlags flags,
+                                      bool *sign_reinterpret);
+ 
+-bool vi_alpha_is_on_msb(struct radv_device *device, VkFormat format);
++bool radv_vi_alpha_is_on_msb(struct radv_device *device, VkFormat format);
+ 
+ VkResult radv_image_from_gralloc(VkDevice device_h, const VkImageCreateInfo *base_info,
+                                  const VkNativeBufferANDROID *gralloc_info,
+diff --git a/src/amd/vulkan/radv_query.c b/src/amd/vulkan/radv_query.c
+index 60a7e564e6a..eb6e5995a95 100644
+--- a/src/amd/vulkan/radv_query.c
++++ b/src/amd/vulkan/radv_query.c
+@@ -1461,7 +1461,7 @@ emit_query_flush(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
+           * path. Small pools don't need any cache flushes
+           * because we use a CP dma clear.
+           */
+-         si_emit_cache_flush(cmd_buffer);
++         radv_si_emit_cache_flush(cmd_buffer);
+       }
+    }
+ }
+@@ -1743,7 +1743,7 @@ gfx10_copy_gds_query(struct radv_cmd_buffer *cmd_buffer, uint32_t gds_offset, ui
+ 
+    /* Make sure GDS is idle before copying the value. */
+    cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
+-   si_emit_cache_flush(cmd_buffer);
++   radv_si_emit_cache_flush(cmd_buffer);
+ 
+    radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+    radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_GDS) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+diff --git a/src/amd/vulkan/radv_sdma_copy_image.c b/src/amd/vulkan/radv_sdma_copy_image.c
+index 5fb6b1a4753..0ceedf9a370 100644
+--- a/src/amd/vulkan/radv_sdma_copy_image.c
++++ b/src/amd/vulkan/radv_sdma_copy_image.c
+@@ -166,7 +166,7 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct
+          radeon_emit(cmd_buffer->cs, (uint32_t)md_address);
+          radeon_emit(cmd_buffer->cs, (uint32_t)(md_address >> 32));
+          radeon_emit(cmd_buffer->cs,
+-                     hw_fmt | vi_alpha_is_on_msb(device, image->vk.format) << 8 | hw_type << 9 |
++                     hw_fmt | radv_vi_alpha_is_on_msb(device, image->vk.format) << 8 | hw_type << 9 |
+                         image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size << 24 |
+                         V_028C78_MAX_BLOCK_SIZE_256B << 26 | tmz << 29 |
+                         image->planes[0].surface.u.gfx9.color.dcc.pipe_aligned << 31);
+diff --git a/src/amd/vulkan/si_cmd_buffer.c b/src/amd/vulkan/si_cmd_buffer.c
+index 9d8724ab7e1..6bc320e1e2a 100644
+--- a/src/amd/vulkan/si_cmd_buffer.c
++++ b/src/amd/vulkan/si_cmd_buffer.c
+@@ -1525,7 +1525,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level, u
+ }
+ 
+ void
+-si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
++radv_si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
+ {
+    bool is_compute = cmd_buffer->qf == RADV_QUEUE_COMPUTE;
+ 
+@@ -1758,7 +1758,7 @@ si_cs_cp_dma_prefetch(const struct radv_device *device, struct radeon_cmdbuf *cs
+ }
+ 
+ void
+-si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size)
++radv_si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size)
+ {
+    si_cs_cp_dma_prefetch(cmd_buffer->device, cmd_buffer->cs, va, size,
+                          cmd_buffer->state.predicating);
+@@ -1776,7 +1776,7 @@ si_cp_dma_prepare(struct radv_cmd_buffer *cmd_buffer, uint64_t byte_count, uint6
+     * Also wait for the previous CP DMA operations.
+     */
+    if (cmd_buffer->state.flush_bits) {
+-      si_emit_cache_flush(cmd_buffer);
++      radv_si_emit_cache_flush(cmd_buffer);
+       *flags |= CP_DMA_RAW_WAIT;
+    }
+ 
+@@ -1884,7 +1884,7 @@ si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer, uint64_t src_va, uint6
+ }
+ 
+ void
+-si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
++radv_si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
+                        unsigned value)
+ {
+    if (!size)
+@@ -1922,7 +1922,7 @@ si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t
+ }
+ 
+ void
+-si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer)
++radv_si_cp_dma_wait_for_idle(struct radv_cmd_buffer *cmd_buffer)
+ {
+    if (cmd_buffer->device->physical_device->rad_info.gfx_level < GFX7)
+       return;
+diff --git a/src/gallium/drivers/zink/zink_screen.c b/src/gallium/drivers/zink/zink_screen.c
+index 5b4a649e983..d1d2f2129a7 100644
+--- a/src/gallium/drivers/zink/zink_screen.c
++++ b/src/gallium/drivers/zink/zink_screen.c
+@@ -1434,7 +1434,7 @@ zink_destroy_screen(struct pipe_screen *pscreen)
+    VKSCR(DestroyInstance)(screen->instance, NULL);
+    util_idalloc_mt_fini(&screen->buffer_ids);
+ 
+-   util_dl_close(screen->loader_lib);
++//   util_dl_close(screen->loader_lib);
+    if (screen->drm_fd != -1)
+       close(screen->drm_fd);
+ 
+@@ -2487,12 +2487,12 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
+    zink_debug = debug_get_option_zink_debug();
+    zink_descriptor_mode = debug_get_option_zink_descriptor_mode();
+ 
+-   screen->loader_lib = util_dl_open(VK_LIBNAME);
+-   if (!screen->loader_lib)
+-      goto fail;
++//   screen->loader_lib = util_dl_open(VK_LIBNAME);
++//   if (!screen->loader_lib)
++//      goto fail;
+ 
+-   screen->vk_GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)util_dl_get_proc_address(screen->loader_lib, "vkGetInstanceProcAddr");
+-   screen->vk_GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)util_dl_get_proc_address(screen->loader_lib, "vkGetDeviceProcAddr");
++   screen->vk_GetInstanceProcAddr = vkGetInstanceProcAddr;
++   screen->vk_GetDeviceProcAddr = vkGetDeviceProcAddr;
+    if (!screen->vk_GetInstanceProcAddr ||
+        !screen->vk_GetDeviceProcAddr)
+       goto fail;
+@@ -2814,8 +2814,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
+    return screen;
+ 
+ fail:
+-   if (screen->loader_lib)
+-      util_dl_close(screen->loader_lib);
++//   if (screen->loader_lib)
++//      util_dl_close(screen->loader_lib);
+    if (screen->threaded)
+       util_queue_destroy(&screen->flush_queue);
+ 
+diff --git a/src/gallium/frontends/lavapipe/lvp_device.c b/src/gallium/frontends/lavapipe/lvp_device.c
+index f33a902b825..ffd5e3d5726 100644
+--- a/src/gallium/frontends/lavapipe/lvp_device.c
++++ b/src/gallium/frontends/lavapipe/lvp_device.c
+@@ -1466,12 +1466,12 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_GetInstanceProcAddr(
+  * to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetInstanceProcAddr(
+    VkInstance                                  instance,
+    const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetInstanceProcAddr(
+    VkInstance                                  instance,
+    const char*                                 pName)
+ {
+@@ -1479,12 +1479,12 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
+ }
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetPhysicalDeviceProcAddr(
+    VkInstance                                  _instance,
+    const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetPhysicalDeviceProcAddr(
+    VkInstance                                  _instance,
+    const char*                                 pName)
+ {
+@@ -2304,10 +2304,10 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySamplerYcbcrConversionKHR(
+  * suppress Wmissing-prototypes.
+  */
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
++lvp_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
++lvp_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/gallium/frontends/lavapipe/meson.build b/src/gallium/frontends/lavapipe/meson.build
+index 8215cf0dacb..0fa7a055df9 100644
+--- a/src/gallium/frontends/lavapipe/meson.build
++++ b/src/gallium/frontends/lavapipe/meson.build
+@@ -45,6 +45,9 @@ liblavapipe_st = static_library(
+   c_args : [ c_msvc_compat_args, lvp_flags ],
+   gnu_symbol_visibility : 'hidden',
+   include_directories : [ inc_include, inc_src, inc_util, inc_gallium, inc_compiler, inc_gallium_aux ],
+-  dependencies : [ dep_llvm, idep_nir, idep_mesautil, idep_vulkan_util, idep_vulkan_wsi,
++  dependencies : [ dep_llvm,
++                   idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++                   idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++                   idep_vulkan_util, idep_vulkan_wsi,
+                    idep_vulkan_runtime, lvp_deps ]
+ )
+diff --git a/src/gallium/targets/dri/target.c b/src/gallium/targets/dri/target.c
+index d506869cbb4..31ce65652f2 100644
+--- a/src/gallium/targets/dri/target.c
++++ b/src/gallium/targets/dri/target.c
+@@ -3,27 +3,26 @@
+ 
+ #include "dri_screen.h"
+ 
++const __DRIextension **__driDriverGetExtensions(const char *name);
++
++const __DRIextension **__driDriverGetExtensions(const char *name)
++{
+ #define DEFINE_LOADER_DRM_ENTRYPOINT(drivername)                          \
+-const __DRIextension **__driDriverGetExtensions_##drivername(void);       \
+-PUBLIC const __DRIextension **__driDriverGetExtensions_##drivername(void) \
++if (!strcmp(name, #drivername))                                           \
+ {                                                                         \
+    return galliumdrm_driver_extensions;                                   \
+ }
+ 
+ #if defined(GALLIUM_SOFTPIPE)
+ 
+-const __DRIextension **__driDriverGetExtensions_swrast(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_swrast(void)
++if (!strcmp(name, "swrast"))
+ {
+    return galliumsw_driver_extensions;
+ }
+ 
+ #if defined(HAVE_LIBDRM)
+ 
+-const __DRIextension **__driDriverGetExtensions_kms_swrast(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
++if (!strcmp(name, "kms_swrast"))
+ {
+    return dri_swrast_kms_driver_extensions;
+ }
+@@ -93,7 +92,7 @@ DEFINE_LOADER_DRM_ENTRYPOINT(etnaviv)
+ #endif
+ 
+ #if defined(GALLIUM_TEGRA)
+-DEFINE_LOADER_DRM_ENTRYPOINT(tegra);
++DEFINE_LOADER_DRM_ENTRYPOINT(tegra)
+ #endif
+ 
+ #if defined(GALLIUM_KMSRO)
+@@ -129,18 +128,17 @@ DEFINE_LOADER_DRM_ENTRYPOINT(lima)
+ #endif
+ 
+ #if defined(GALLIUM_ZINK) && !defined(__APPLE__)
+-#if defined(ANDROID)
+-DEFINE_LOADER_DRM_ENTRYPOINT(zink);
+-#else
+-const __DRIextension **__driDriverGetExtensions_zink(void);
+ 
+-PUBLIC const __DRIextension **__driDriverGetExtensions_zink(void)
++const __DRIextension **__driDriverGetExtensions_zink(void);
+ {
+    return galliumvk_driver_extensions;
+ }
+-#endif
++
+ #endif
+ 
+ #if defined(GALLIUM_D3D12)
+-DEFINE_LOADER_DRM_ENTRYPOINT(d3d12);
++DEFINE_LOADER_DRM_ENTRYPOINT(d3d12)
+ #endif
++
++   return NULL;
++}
+diff --git a/src/gallium/targets/lavapipe/meson.build b/src/gallium/targets/lavapipe/meson.build
+index 46e9d9a93e4..2389656ab61 100644
+--- a/src/gallium/targets/lavapipe/meson.build
++++ b/src/gallium/targets/lavapipe/meson.build
+@@ -6,10 +6,10 @@ libvulkan_lvp = shared_library(
+   vs_module_defs : vulkan_api_def,
+   include_directories : [ inc_src, inc_util, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers ],
+   link_whole : [ liblavapipe_st ],
+-  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
++#  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
+   gnu_symbol_visibility : 'hidden',
+   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
+-  dependencies : driver_swrast,
++  dependencies : driver_swrast.partial_dependency(compile_args : true, includes : true),
+   name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
+   install : true,
+ )
+diff --git a/src/gallium/targets/lavapipe/target.c b/src/gallium/targets/lavapipe/target.c
+index 7ca11854032..53150b45e74 100644
+--- a/src/gallium/targets/lavapipe/target.c
++++ b/src/gallium/targets/lavapipe/target.c
+@@ -1,3 +1,3 @@
+-#include "target-helpers/drm_helper.h"
+-#include "target-helpers/sw_helper.h"
++//#include "target-helpers/drm_helper.h"
++//#include "target-helpers/sw_helper.h"
+ 
+diff --git a/src/gallium/targets/osmesa/meson.build b/src/gallium/targets/osmesa/meson.build
+index 024bac32b58..b979bba73dc 100644
+--- a/src/gallium/targets/osmesa/meson.build
++++ b/src/gallium/targets/osmesa/meson.build
+@@ -55,7 +55,8 @@ libosmesa = shared_library(
+     libmesa, libgallium, libws_null, osmesa_link_with,
+   ],
+   dependencies : [
+-    dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind, driver_swrast
++    dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind, driver_swrast,
++    meson.get_compiler('cpp').find_library('stdc++')
+   ],
+   name_prefix : host_machine.system() == 'windows' ? '' : 'lib',  # otherwise mingw will create libosmesa.dll
+   soversion : host_machine.system() == 'windows' ? '' : '8',
+diff --git a/src/glx/dri_common.c b/src/glx/dri_common.c
+index 1b17f80be01..db44ac4af43 100644
+--- a/src/glx/dri_common.c
++++ b/src/glx/dri_common.c
+@@ -55,6 +55,8 @@
+ #define GL_LIB_NAME "libGL.so.1"
+ #endif
+ 
++extern const __DRIextension **__driDriverGetExtensions(const char *driverName);
++
+ /**
+  * Try to \c dlopen the named driver.
+  *
+@@ -72,6 +74,7 @@
+ _X_HIDDEN const __DRIextension **
+ driOpenDriver(const char *driverName, void **out_driver_handle)
+ {
++#if 0
+    void *glhandle;
+ 
+    /* Attempt to make sure libGL symbols will be visible to the driver */
+@@ -88,6 +91,10 @@ driOpenDriver(const char *driverName, void **out_driver_handle)
+ 
+    if (glhandle)
+       dlclose(glhandle);
++#endif
++
++   const __DRIextension **extensions =
++      __driDriverGetExtensions(driverName);
+ 
+    return extensions;
+ }
+@@ -758,7 +765,7 @@ get_driver_config(const char *driverName)
+          break;
+       }
+    }
+-
++#if 0
+    if (!config) {
+       /* Fall back to the old method */
+       config = dlsym(handle, "__driConfigOptions");
+@@ -767,7 +774,7 @@ get_driver_config(const char *driverName)
+    }
+ 
+    dlclose(handle);
+-
++#endif
+    return config;
+ }
+ 
+diff --git a/src/glx/meson.build b/src/glx/meson.build
+index 20f04742894..e358a686e7a 100644
+--- a/src/glx/meson.build
++++ b/src/glx/meson.build
+@@ -73,8 +73,8 @@ files_libglx = files(
+   'xfont.c',
+ )
+ 
+-extra_libs_libglx = []
+-extra_deps_libgl = []
++extra_libs_libglx = [libgallium_dri]
++extra_deps_libgl = [meson.get_compiler('cpp').find_library('stdc++')]
+ extra_ld_args_libgl = []
+ 
+ # dri2
+diff --git a/src/intel/vulkan/anv_device.c b/src/intel/vulkan/anv_device.c
+index a1fc836f98f..e774ddd7741 100644
+--- a/src/intel/vulkan/anv_device.c
++++ b/src/intel/vulkan/anv_device.c
+@@ -2963,12 +2963,12 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
+  * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName)
+ {
+@@ -2979,11 +2979,11 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
+  * vk_icdGetPhysicalDeviceProcAddr()
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName);
+ 
+-PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
++PFN_vkVoidFunction intel_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName)
+ {
+@@ -4924,10 +4924,10 @@ void anv_GetPhysicalDeviceMultisamplePropertiesEXT(
+  * suppress Wmissing-prototypes.
+  */
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
++intel_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
++intel_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/intel/vulkan/meson.build b/src/intel/vulkan/meson.build
+index d09960a4b8c..f91f02fccf2 100644
+--- a/src/intel/vulkan/meson.build
++++ b/src/intel/vulkan/meson.build
+@@ -219,13 +219,18 @@ libvulkan_intel = shared_library(
+   ],
+   link_whole : [libanv_common, libanv_per_hw_ver_libs] + optional_libgrl,
+   link_with : [
+-    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
++#    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
+   ],
+   dependencies : [
+-    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
+-    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
+-    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+-    idep_intel_driver_ds,
++    dep_thread, dep_dl, dep_m, anv_deps,
++    idep_libintel_common.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_genxml.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util, idep_vulkan_wsi,
++    idep_vulkan_runtime,
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_xmlconfig.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_driver_ds.partial_dependency(compile_args : true, link_args : true, includes : true)
+   ],
+   c_args : anv_flags,
+   gnu_symbol_visibility : 'hidden',
+diff --git a/src/intel/vulkan_hasvk/anv_device.c b/src/intel/vulkan_hasvk/anv_device.c
+index a530ed64c3e..229cfb52690 100644
+--- a/src/intel/vulkan_hasvk/anv_device.c
++++ b/src/intel/vulkan_hasvk/anv_device.c
+@@ -2426,12 +2426,12 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
+  * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName);
+ 
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName)
+ {
+@@ -2442,11 +2442,11 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
+  * vk_icdGetPhysicalDeviceProcAddr()
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName);
+ 
+-PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
++PFN_vkVoidFunction intel_hasvk_vk_icdGetPhysicalDeviceProcAddr(
+     VkInstance  _instance,
+     const char* pName)
+ {
+@@ -4226,10 +4226,10 @@ void anv_GetPhysicalDeviceMultisamplePropertiesEXT(
+  * suppress Wmissing-prototypes.
+  */
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
++intel_hasvk_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+ 
+ PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
+-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
++intel_hasvk_vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+ {
+    /* For the full details on loader interface versioning, see
+     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
+diff --git a/src/intel/vulkan_hasvk/meson.build b/src/intel/vulkan_hasvk/meson.build
+index 7fcbc3b42cf..96abba3333b 100644
+--- a/src/intel/vulkan_hasvk/meson.build
++++ b/src/intel/vulkan_hasvk/meson.build
+@@ -24,10 +24,10 @@ anv_hasvk_entrypoints = custom_target(
+   output : ['anv_entrypoints.h', 'anv_entrypoints.c'],
+   command : [
+     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+-    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
++    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv_hasvk',
+     '--device-prefix', 'gfx7', '--device-prefix', 'gfx75',
+     '--device-prefix', 'gfx8',
+-    '--device-prefix', 'doom64',
++    '--device-prefix', 'doom64_hasvk',
+   ],
+   depend_files : vk_entrypoints_gen_depend_files,
+ )
+@@ -189,13 +189,16 @@ libvulkan_intel_hasvk = shared_library(
+   ],
+   link_whole : [libanv_hasvk_common, libanv_per_hw_ver_libs],
+   link_with : [
+-    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
++#    libintel_compiler, libintel_dev, libisl, libblorp, libintel_perf,
+   ],
+   dependencies : [
+-    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
+-    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
+-    idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+-    idep_intel_driver_ds,
++    idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_genxml.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_wsi,
++    idep_vulkan_runtime,
++    idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_driver_ds.partial_dependency(compile_args : true, link_args : true, includes : true)
+   ],
+   c_args : anv_flags,
+   gnu_symbol_visibility : 'hidden',
+diff --git a/src/vulkan/runtime/meson.build b/src/vulkan/runtime/meson.build
+index fa2257d53e6..e6c09cddce9 100644
+--- a/src/vulkan/runtime/meson.build
++++ b/src/vulkan/runtime/meson.build
+@@ -94,8 +94,8 @@ vulkan_runtime_files = files(
+ 
+ vulkan_runtime_deps = [
+   vulkan_wsi_deps,
+-  idep_mesautil,
+-  idep_nir,
++  idep_nir.partial_dependency(compile_args : true, link_args : true, includes : true),
++  idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
+   idep_vulkan_util,
+ ]
+ 
+@@ -188,6 +188,7 @@ libvulkan_runtime = static_library(
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_runtime_headers = declare_dependency(
+@@ -204,14 +205,14 @@ idep_vulkan_common_entrypoints_h = declare_dependency(
+ # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506 
+ if get_option('backend').startswith('vs')
+   idep_vulkan_runtime = declare_dependency(
+-    link_with : libvulkan_runtime,
++#    link_with : libvulkan_runtime,
+     dependencies : idep_vulkan_runtime_headers
+   )
+ else
+   idep_vulkan_runtime = declare_dependency(
+     # Instruct users of this library to link with --whole-archive.  Otherwise,
+     # our weak function overloads may not resolve properly.
+-    link_whole : libvulkan_runtime,
++#    link_whole : libvulkan_runtime,
+     dependencies : idep_vulkan_runtime_headers
+   )
+ endif
+diff --git a/src/vulkan/util/meson.build b/src/vulkan/util/meson.build
+index 4eaa8e70d71..02c64f30354 100644
+--- a/src/vulkan/util/meson.build
++++ b/src/vulkan/util/meson.build
+@@ -101,10 +101,13 @@ libvulkan_util = static_library(
+   'vulkan_util',
+   [files_vulkan_util, vk_dispatch_table, vk_enum_to_str, vk_extensions],
+   include_directories : [inc_include, inc_src, inc_gallium],
+-  dependencies : [vulkan_wsi_deps, idep_mesautil, idep_nir_headers],
++  dependencies : [vulkan_wsi_deps,
++                  idep_mesautil.partial_dependency(compile_args : true, link_args : true, includes : true),
++                  idep_nir_headers],
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_util_headers = declare_dependency(
+@@ -113,6 +116,6 @@ idep_vulkan_util_headers = declare_dependency(
+ )
+ 
+ idep_vulkan_util = declare_dependency(
+-  link_with : libvulkan_util,
++#  link_with : libvulkan_util,
+   dependencies : idep_vulkan_util_headers
+ )
+diff --git a/src/vulkan/wsi/meson.build b/src/vulkan/wsi/meson.build
+index a79e3a34789..fd61ab23a25 100644
+--- a/src/vulkan/wsi/meson.build
++++ b/src/vulkan/wsi/meson.build
+@@ -63,10 +63,12 @@ libvulkan_wsi = static_library(
+   include_directories : [inc_include, inc_src, inc_gallium],
+   dependencies : [
+     vulkan_wsi_deps, dep_libdrm, dep_libudev, idep_vulkan_util_headers,
+-    idep_vulkan_runtime_headers, idep_xmlconfig, idep_mesautil, platform_deps
++#    idep_vulkan_runtime_headers, idep_xmlconfig, idep_mesautil, platform_deps
++    idep_vulkan_runtime_headers
+   ],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_wsi_headers = declare_dependency(
+@@ -82,14 +84,14 @@ idep_vulkan_wsi_entrypoints_h = declare_dependency(
+ # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506
+ if get_option('backend').startswith('vs')
+   idep_vulkan_wsi = declare_dependency(
+-    link_with : libvulkan_wsi,
++#    link_with : libvulkan_wsi,
+     dependencies : idep_vulkan_wsi_headers
+   )
+ else
+   idep_vulkan_wsi = declare_dependency(
+     # Instruct users of this library to link with --whole-archive.  Otherwise,
+     # our weak function overloads may not resolve properly.
+-    link_whole : libvulkan_wsi,
++#    link_whole : libvulkan_wsi,
+     dependencies : [
+       idep_vulkan_wsi_headers, dep_libudev
+     ]

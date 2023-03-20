@@ -2,16 +2,18 @@
 c = '/usr/bin/gcc'
 cpp = '/usr/bin/g++'
 strip = '/usr/bin/strip'
-ar = '/usr/bin/ar'
+ar = '/usr/bin/gcc-ar'
+ranlib = '/usr/bin/gcc-ranlib'
+nm = '/usr/bin/gcc-nm'
 pkgconfig = '/usr/bin/pkg-config'
 cmake = '/usr/bin/cmake'
 #llvm-config = '/usr/local/bin/llvm-config'
 
 [built-in options]
-c_args = ['-m32', '-O2']
-c_link_args = ['-m32']
-cpp_args = ['-m32', '-O2']
-cpp_link_args = ['-m32']
+c_args = ['-m32', '-march={PLATFORM}', '-O2', '-flto', '-ffat-lto-objects', '-pipe']
+c_link_args = ['-m32', '-march={PLATFORM}', '-fno-lto']
+cpp_args = ['-m32', '-O2', '-march={PLATFORM}', '-flto', '-ffat-lto-objects', '-pipe']
+cpp_link_args = ['-m32', '-march={PLATFORM}', '-fno-lto']
 
 [host_machine]
 system = 'linux'
