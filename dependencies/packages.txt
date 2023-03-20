@@ -30,7 +30,7 @@ https://github.com/libffi/libffi/releases/download/v3.4.4/libffi-3.4.4.tar.gz
 https://gmplib.org/download/gmp/gmp-6.2.1.tar.xz
 https://ftp.gnu.org/gnu/nettle/nettle-3.8.1.tar.gz
 https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.0.tar.xz
-https://sourceforge.net/projects/freetype/files/freetype2/2.13.0/freetype-2.13.0.tar.xz/download freetype-2.12.1.tar.xz
+https://sourceforge.net/projects/freetype/files/freetype2/2.13.0/freetype-2.13.0.tar.xz/download freetype-2.13.0.tar.xz
 https://github.com/libexpat/libexpat/releases/download/R_2_5_0/expat-2.5.0.tar.gz
 https://download.gnome.org/sources/libxml2/2.10/libxml2-2.10.3.tar.xz
 https://freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz

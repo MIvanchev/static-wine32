@@ -114,7 +114,8 @@ directory `<static-wine-dir>`.
 the source code of the dependencies to your machine. They will be copied
 into the Docker image when we start building.
 
-3. In `Dockerfile`, set the following variables:
+3. In `Dockerfile`, search for the following variables and set them
+as follows:
 * `PLATFORM=<your CPU's architecture>`: see the available values for the
 `-march` option of GCC here https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html and
 set to the value that matches your CPU's architecture, i.e. `broadwell` for the
