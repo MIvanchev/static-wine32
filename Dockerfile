@@ -40,7 +40,7 @@ COPY meson-cross-i386 /build/
 #
 # gcc -E -march=foo -xc /dev/null 2>&1 | sed -n 's/.* valid arguments to .* are: //p' | tr ' ' '\n'
 #
-ARG PLATFORM=
+ARG PLATFORM=broadwell
 
 # Leave empty or comment out to skip LLVM build
 # ARG BUILD_WITH_LLVM=y
