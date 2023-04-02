@@ -293,6 +293,8 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [openh264] echo > codec/console/enc/meson.build\n\
 [openh264] meson setup build $MESON_PROLOGUE -Dtests=disabled\n\
 [openh264] ninja -C build install\n\
+[gstreamer] sed -i 's/^\\(float step_size\\[8\\] = {\\)$/static \\1/' subprojects/gst-plugins-bad/gst/siren/common.c\n\
+[gstreamer] sed -i 's/^\\(extern float step_size\\[8\\];\\)$/\/\/\\1/' subprojects/gst-plugins-bad/gst/siren/common.h\n\
 [gstreamer] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
 [gstreamer] sed -i 's/link_with: gstfull.get_shared_lib()/link_whole: gstfull/' meson.build\n\
 [gstreamer] meson setup build $MESON_PROLOGUE \
@@ -301,7 +303,6 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 -Dgst-plugins-bad:x11=disabled \
 -Dgst-plugins-bad:codectimestamper=disabled \
 -Dgst-plugins-good:ximagesrc=disabled \
--Dgst-plugins-bad:siren=disabled \
 -Dtools=disabled \
 -Ddevtools=disabled \
 -Dgst-examples=disabled \

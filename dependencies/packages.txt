@@ -69,7 +69,7 @@ https://github.com/libsdl-org/SDL.git release-2.26.1 SDL-2.26.1
 https://github.com/apple/cups/archive/refs/tags/v2.3.6.tar.gz cups-2.3.6.tar.gz
 https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.24.1.tar.bz2
 https://github.com/cisco/openh264/archive/refs/tags/v2.3.1.tar.gz openh264-2.3.1.tar.gz
-https://gitlab.freedesktop.org/gstreamer/gstreamer.git 1.22 gstreamer-1.22
+https://gitlab.freedesktop.org/gstreamer/gstreamer.git 1.22.1 gstreamer-1.22.1
 https://github.com/the-tcpdump-group/libpcap.git libpcap-1.10.3 libpcap-1.10.3
 https://github.com/marschap/isdn4k-utils.git master isdn4k-utils-3.0.6
 http://download.osgeo.org/libtiff/tiff-4.5.0.tar.gz
