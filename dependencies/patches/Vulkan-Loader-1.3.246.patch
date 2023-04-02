@@ -1,17 +1,17 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 058f1f84..95b35302 100644
+index 95aab612..5cbd354c 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -25,7 +25,7 @@ find_package(PythonInterp 3 QUIET)
- set(THREADS_PREFER_PTHREAD_FLAG ON)
- find_package(Threads REQUIRED)
+@@ -32,7 +32,7 @@ if (UNIX)
+     option(LOADER_ENABLE_THREAD_SANITIZER "Linux & macOS only: Advanced thread checking" OFF)
+ endif()
  
 -if(APPLE)
 +if(TRUE)
      option(BUILD_STATIC_LOADER "Build a loader that can be statically linked" OFF)
  endif()
  
-@@ -222,6 +222,25 @@ if(NOT MSVC AND NOT (HAVE_SECURE_GETENV OR HAVE___SECURE_GETENV))
+@@ -229,6 +229,25 @@ if(NOT MSVC AND NOT (HAVE_SECURE_GETENV OR HAVE___SECURE_GETENV))
      message(WARNING "Using non-secure environmental lookups. This loader will not properly disable environent variables when run with elevated permissions.")
  endif()
  
@@ -38,7 +38,7 @@ index 058f1f84..95b35302 100644
  if(PYTHONINTERP_FOUND)
      add_custom_target(VulkanLoader_generated_source
 diff --git a/loader/CMakeLists.txt b/loader/CMakeLists.txt
-index babe0213..c14527a7 100644
+index b386c839..ae55d877 100644
 --- a/loader/CMakeLists.txt
 +++ b/loader/CMakeLists.txt
 @@ -306,7 +306,7 @@ if(WIN32)
@@ -51,7 +51,7 @@ index babe0213..c14527a7 100644
          target_compile_definitions(vulkan PRIVATE BUILD_STATIC_LOADER)
      else()
 diff --git a/loader/loader.c b/loader/loader.c
-index ac2843c6..14dac5ae 100644
+index 01507e60..a6b0f31e 100644
 --- a/loader/loader.c
 +++ b/loader/loader.c
 @@ -70,6 +70,8 @@
@@ -63,7 +63,7 @@ index ac2843c6..14dac5ae 100644
  struct loader_struct loader = {0};
  
  struct activated_layer_info {
-@@ -1332,7 +1334,7 @@ void loader_scanned_icd_clear(const struct loader_instance *inst, struct loader_
+@@ -1330,7 +1332,7 @@ void loader_scanned_icd_clear(const struct loader_instance *inst, struct loader_
      if (0 != icd_tramp_list->capacity) {
          for (uint32_t i = 0; i < icd_tramp_list->count; i++) {
              if (icd_tramp_list->scanned_list[i].handle) {
@@ -72,7 +72,7 @@ index ac2843c6..14dac5ae 100644
                  icd_tramp_list->scanned_list[i].handle = NULL;
              }
              loader_instance_heap_free(inst, icd_tramp_list->scanned_list[i].lib_name);
-@@ -1595,6 +1597,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+@@ -1593,6 +1595,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
          goto out;
      }
  
@@ -80,7 +80,7 @@ index ac2843c6..14dac5ae 100644
      // TODO implement smarter opening/closing of libraries. For now this
      // function leaves libraries open and the scanned_icd_clear closes them
  #if defined(__Fuchsia__)
-@@ -1602,6 +1605,13 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+@@ -1600,6 +1603,13 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
  #else
      handle = loader_platform_open_library(filename);
  #endif
@@ -94,7 +94,7 @@ index ac2843c6..14dac5ae 100644
      if (NULL == handle) {
          loader_handle_load_library_error(inst, filename, lib_status);
          if (lib_status && *lib_status == LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY) {
-@@ -1613,13 +1623,13 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+@@ -1611,13 +1621,13 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
      }
  
      // Try to load the driver's exported vk_icdNegotiateLoaderICDInterfaceVersion
@@ -110,7 +110,7 @@ index ac2843c6..14dac5ae 100644
  
          // If we successfully loaded vk_icdGetInstanceProcAddr, try to get vk_icdNegotiateLoaderICDInterfaceVersion
          if (fp_get_proc_addr) {
-@@ -1640,7 +1650,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+@@ -1638,7 +1648,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
  
      // If we didn't already query vk_icdGetInstanceProcAddr, try now
      if (NULL == fp_get_proc_addr) {
@@ -119,7 +119,7 @@ index ac2843c6..14dac5ae 100644
      }
  
      // If vk_icdGetInstanceProcAddr is NULL, this ICD is using version 0 and so we should respond accordingly.
-@@ -1712,7 +1722,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
+@@ -1710,7 +1720,7 @@ static VkResult loader_scanned_icd_add(const struct loader_instance *inst, struc
                  (PFN_vk_icdGetPhysicalDeviceProcAddr)fp_get_proc_addr(NULL, "vk_icdGetPhysicalDeviceProcAddr");
          }
          if (NULL == fp_get_phys_dev_proc_addr && interface_vers >= 3) {
@@ -128,7 +128,7 @@ index ac2843c6..14dac5ae 100644
          }
  #if defined(VK_USE_PLATFORM_WIN32_KHR)
          // Query "vk_icdEnumerateAdapterPhysicalDevices" with vk_icdGetInstanceProcAddr if the library reports interface version 7
-@@ -3546,8 +3556,8 @@ struct ICDManifestInfo {
+@@ -3544,8 +3554,8 @@ struct ICDManifestInfo {
  
  // Takes a json file, opens, reads, and parses an ICD Manifest out of it.
  // Should only return VK_SUCCESS, VK_ERROR_INCOMPATIBLE_DRIVER, or VK_ERROR_OUT_OF_HOST_MEMORY
@@ -139,7 +139,7 @@ index ac2843c6..14dac5ae 100644
      VkResult res = VK_SUCCESS;
      cJSON *json = NULL;
      cJSON *item = NULL, *itemICD = NULL;
-@@ -3561,8 +3571,11 @@ VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *fil
+@@ -3559,8 +3569,11 @@ VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *fil
          goto out;
      }
  
@@ -153,7 +153,7 @@ index ac2843c6..14dac5ae 100644
          goto out;
      }
      if (res != VK_SUCCESS || NULL == json) {
-@@ -3772,20 +3785,20 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+@@ -3770,20 +3783,20 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
      if (VK_SUCCESS != res) {
          goto out;
      }
@@ -178,7 +178,7 @@ index ac2843c6..14dac5ae 100644
          if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_res) {
              res = icd_res;
              goto out;
-@@ -3795,11 +3808,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+@@ -3793,11 +3806,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
  
          if (select_filter.count > 0 || disable_filter.count > 0) {
              // Get only the filename for comparing to the filters
@@ -194,39 +194,34 @@ index ac2843c6..14dac5ae 100644
              }
 diff --git a/scripts/generate_static_icds_header.py b/scripts/generate_static_icds_header.py
 new file mode 100644
-index 00000000..6461c9ab
+index 00000000..f62a472b
 --- /dev/null
 +++ b/scripts/generate_static_icds_header.py
-@@ -0,0 +1,29 @@
-+from itertools import groupby
+@@ -0,0 +1,24 @@
 +from jinja2 import Template
-+from operator import itemgetter
 +from pathlib import Path
++from itertools import groupby
++from operator import itemgetter
 +
 +import glob
 +import re
 +
-+
 +def get_icds(files):
-+    for file in files:
-+        name = re.sub(r"_icd.i686.json$", "", file.name)
-+        yield {
-+            "libname": f"/usr/local/lib/libvulkan_{name}.so",
-+            "jsonname": file.name,
-+            "json": file.read_bytes(),
-+            "prefix": name,
-+        }
-+
++  for file in files:
++    name = re.sub(r"_icd.i686.json$", "", file.name)
++    yield {
++      "libname": f"/usr/local/lib/libvulkan_{name}.so",
++      "jsonname": file.name,
++      "json": file.read_bytes(),
++      "prefix": name
++    }
 +
 +files = Path("/usr/local/share/vulkan/icd.d").glob("*_icd.i686.json")
 +
 +path = Path(__file__).parent
-+template = Template(
-+    (path / "static_icds_h.template").read_text(), trim_blocks=True, lstrip_blocks=True
-+)
-+(path.parent / "loader" / "static_icds.h").write_text(
-+    template.render(icds=list(get_icds(files)))
-+)
++template = Template((path / "static_icds_h.template").read_text(),
++                    trim_blocks=True, lstrip_blocks=True)
++(path.parent / "loader" / "static_icds.h").write_text(template.render(icds=list(get_icds(files))))
 diff --git a/scripts/static_icds_h.template b/scripts/static_icds_h.template
 new file mode 100644
 index 00000000..9078018e
