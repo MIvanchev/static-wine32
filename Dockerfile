@@ -60,15 +60,26 @@ ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects 
                      AR=\"/usr/bin/gcc-ar\" \
                      RANLIB=\"/usr/bin/gcc-ranlib\" \
                      NM=\"/usr/bin/gcc-nm\""
-ARG CONFIGURE_PROLOGUE="$CONFIGURE_PREFIX --sysconfdir=/etc --datarootdir=/usr/share"
+ARG CONFIGURE_PROLOGUE="$CONFIGURE_PREFIX \
+                        --sysconfdir=/etc \
+                        --datarootdir=/usr/share \
+                        --mandir=/usr/local/man"
 ARG CONFIGURE_HOST="--host=i386-linux-gnu"
-ARG MESON_PROLOGUE="--prefix=/usr/local --sysconfdir=/etc --datadir=/usr/share --buildtype=release --cross-file=../meson-cross-i386 --default-library=static --prefer-static"
+ARG MESON_PROLOGUE="--prefix=/usr/local \
+                    --sysconfdir=/etc \
+                    --datadir=/usr/share \
+                    --mandir=/usr/local/man \
+                    --buildtype=release \
+                    --cross-file=../meson-cross-i386 \
+                    --default-library=static \
+                    --prefer-static"
 ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
                     -DCMAKE_AR=/usr/bin/gcc-ar \
                     -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
                     -DCMAKE_NM=gcc-nm \
                     -DSYSCONFDIR=/etc \
                     -DDATAROOTDIR=/usr/share \
+                    -DMANDIR=/usr/local/man \
                     -DCMAKE_BUILD_TYPE=Release"
 
 ARG DEP_BUILD_SCRIPTS="\
@@ -90,6 +101,9 @@ ARG DEP_BUILD_SCRIPTS="\
 [bzip2] cp libbz2.a /usr/local/lib/\n\
 [bzip2] cp bzlib.h /usr/local/include/\n\
 [elfutils] sed -i 's/^\([ \t]*\)int code;$/\\1int code = 0;/' libdwfl/gzip.c\n\
+[elfutils] sed -i 's/^\\(zstd_LIBS=.*\\)\"/\\1 \$(pkg-config --libs --static libzstd)\"/' configure.ac\n\
+[elfutils] sed -i 's/^\\(zip_LIBS=.*\\)\"/\\1 \$(pkg-config --libs --static libzstd)\"/' configure.ac\n\
+[elfutils] autoreconf -f\n\
 [elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
 [elfutils] make install\n\
 [elfutils] rm /usr/local/lib/libasm*.so* /usr/local/lib/libdw*.so* /usr/local/lib/libelf*.so*\n\

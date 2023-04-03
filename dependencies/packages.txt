@@ -22,7 +22,7 @@ https://github.com/madler/zlib/archive/refs/tags/v1.2.13.tar.gz zlib-1.2.13.tar.
 https://github.com/facebook/zstd/releases/download/v1.5.4/zstd-1.5.4.tar.gz
 https://tukaani.org/xz/xz-5.4.2.tar.gz
 https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
-https://sourceware.org/elfutils/ftp/0.188/elfutils-0.188.tar.bz2
+https://sourceware.org/elfutils/ftp/0.189/elfutils-0.189.tar.bz2
 https://sourceforge.net/projects/libjpeg-turbo/files/2.1.5.1/libjpeg-turbo-2.1.5.1.tar.gz/download libjpeg-turbo-2.1.5.1.tar.gz
 http://prdownloads.sourceforge.net/libpng/libpng-1.6.39.tar.xz?download libpng-1.6.39.tar.xz
 https://github.com/libexif/libexif/archive/refs/tags/v0.6.24.tar.gz libexif-0.6.24.tar.gz
