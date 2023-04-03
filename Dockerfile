@@ -190,6 +190,8 @@ ARG DEP_BUILD_SCRIPTS="\
 [libusb] [ -f \$PC_FILE ] && sed -i 's/-ludev//' \$PC_FILE\n\
 [libusb] [ -f \$PC_FILE ] && echo 'Requires.private: libudev' >> \$PC_FILE\n\
 [libusb] pkg-config --libs --static libusb-1.0\n\
+[pcsc-lite] $CONFIGURE_FLAGS LIBUDEV_LIBS=`pkg-config --libs --static libudev` ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-libsystemd\n\
+[pcsc-lite] make install\n\
 [pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
 [pulseaudio] find . -name meson.build -exec sed -i 's/=[[:space:]]*shared_library(/= library(/g' {} \\;\n\
 [pulseaudio] meson setup build $MESON_PROLOGUE -Ddaemon=false -Ddoxygen=false \

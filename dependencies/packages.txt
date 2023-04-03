@@ -62,6 +62,7 @@ https://www.samba.org/ftp/tdb/tdb-1.4.8.tar.gz
 https://sourceforge.net/projects/pcre/files/pcre/8.45/pcre-8.45.tar.gz/download pcre-8.45.tar.gz
 https://download.gnome.org/sources/glib/2.76/glib-2.76.0.tar.xz
 https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26.tar.bz2
+https://pcsclite.apdu.fr/files/pcsc-lite-1.9.9.tar.bz2
 https://freedesktop.org/software/pulseaudio/releases/pulseaudio-16.1.tar.xz
 https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.8.tar.bz2
 https://www.alsa-project.org/files/pub/plugins/alsa-plugins-1.2.7.1.tar.bz2
