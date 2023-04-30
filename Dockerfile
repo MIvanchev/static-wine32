@@ -310,22 +310,29 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [openh264] ninja -C build install\n\
 [gstreamer] sed -i 's/^\\(float step_size\\[8\\] = {\\)$/static \\1/' subprojects/gst-plugins-bad/gst/siren/common.c\n\
 [gstreamer] sed -i 's/^\\(extern float step_size\\[8\\];\\)$/\/\/\\1/' subprojects/gst-plugins-bad/gst/siren/common.h\n\
-[gstreamer] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
-[gstreamer] sed -i 's/link_with: gstfull.get_shared_lib()/link_whole: gstfull/' meson.build\n\
 [gstreamer] meson setup build $MESON_PROLOGUE \
--Dgst-plugins-base:gl=disabled \
--Dgst-plugins-base:x11=disabled  \
--Dgst-plugins-bad:x11=disabled \
--Dgst-plugins-bad:codectimestamper=disabled \
--Dgst-plugins-good:ximagesrc=disabled \
--Dtools=disabled \
+--prefer-static \
+--wrap-mode=nofallback \
+--force-fallback=libavfilter,dv,openh264,x264,fdk-aac,avtp,dssim,dav1d \
+-Dgst-full-target-type=static_library \
+-Dgst-full-libraries=gstreamer-app-1.0,gstreamer-video-1.0,gstreamer-audio-1.0,gstreamer-codecparsers-1.0,gstreamer-tag-1.0 \
 -Ddevtools=disabled \
 -Dgst-examples=disabled \
 -Dtests=disabled \
 -Dexamples=disabled \
 -Dintrospection=disabled \
 -Ddoc=disabled \
--Dgtk_doc=disabled\n\
+-Dgtk_doc=disabled \
+-Dtools=disabled \
+-Dges=disabled \
+-Drtsp_server=disabled \
+-Dgst-plugins-base:gl=disabled \
+-Dgst-plugins-base:x11=disabled  \
+-Dgst-plugins-good:ximagesrc=disabled \
+-Dgst-plugins-good:v4l2=disabled \
+-Dgst-plugins-bad:x11=disabled \
+-Dgst-plugins-bad:wayland=disabled \
+-Dgst-plugins-bad:codectimestamper=disabled\n\
 [gstreamer] ninja -C build install\n\
 [gstreamer] rm /usr/local/lib/liborc*.so*\n\
 [gstreamer] echo \"export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\" >> ~/.bashrc\n\
