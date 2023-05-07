@@ -1,0 +1,15 @@
+diff --git a/configure.ac b/configure.ac
+index 3215b96..754c077 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -17,8 +17,8 @@ AC_HEADER_STDC
+ CC_NOUNDEFINED
+ 
+ PKG_CHECK_MODULES(ALSA, alsa >= 1.1.6)
+-AC_CHECK_LIB(asound, snd_pcm_ioplug_create,,
+-	     AC_ERROR([*** libasound has no external plugin SDK]), -ldl)
++#AC_CHECK_LIB(asound, snd_pcm_ioplug_create,,
++#	     AC_ERROR([*** libasound has no external plugin SDK]), -ldl)
+ 
+ AC_ARG_ENABLE([oss],
+       AS_HELP_STRING([--disable-oss], [Disable building of OSS plugin]))

@@ -209,8 +209,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [alsa-lib] autoreconf -i\n\
 [alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-lib] make install\n\
-[alsa-plugins] sed -i 's/.*AC_CHECK_LIB(asound.*//' configure.ac\n\
-[alsa-plugins] sed -i 's/.*AC_ERROR.*libasound has no external plugin SDK.*//' configure.ac\n\
+[alsa-plugins] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [alsa-plugins] autoreconf -i\n\
 [alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-plugins] make install\n\

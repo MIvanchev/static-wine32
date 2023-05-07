@@ -1,0 +1,102 @@
+diff --git a/Makefile.am b/Makefile.am
+index ff4c963a..b203d549 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -8,7 +8,7 @@ if BUILD_MODULES
+ SUBDIRS += modules
+ endif
+ if BUILD_PCM_PLUGIN_SHM
+-SUBDIRS += aserver
++SUBDIRS +=
+ endif
+ if BUILD_MIXER
+ if BUILD_ALISP
+diff --git a/include/global.h b/include/global.h
+index 71a1b12f..a7c369d9 100644
+--- a/include/global.h
++++ b/include/global.h
+@@ -71,6 +71,8 @@ struct snd_dlsym_link {
+ 
+ extern struct snd_dlsym_link *snd_dlsym_start;
+ 
++#define __SND_DLSYM_NAME(name) #name
++
+ /** \hideinitializer \brief Helper macro for #SND_DLSYM_BUILD_VERSION. */
+ #define __SND_DLSYM_VERSION(prefix, name, version) _ ## prefix ## name ## version
+ /**
+@@ -82,7 +84,7 @@ extern struct snd_dlsym_link *snd_dlsym_start;
+   void __SND_DLSYM_VERSION(snd_dlsym_constructor_, name, version) (void) __attribute__ ((constructor)); \
+   void __SND_DLSYM_VERSION(snd_dlsym_constructor_, name, version) (void) { \
+     __SND_DLSYM_VERSION(snd_dlsym_, name, version).next = snd_dlsym_start; \
+-    __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_name = # name; \
++    __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_name = __SND_DLSYM_NAME(name); \
+     __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_ptr = (void *)&name; \
+     snd_dlsym_start = &__SND_DLSYM_VERSION(snd_dlsym_, name, version); \
+   }
+diff --git a/src/dlmisc.c b/src/dlmisc.c
+index f64c716a..5c008546 100644
+--- a/src/dlmisc.c
++++ b/src/dlmisc.c
+@@ -105,6 +105,22 @@ int snd_dlpath(char *path, size_t path_len, const char *name)
+ 	return 0;
+ }
+ 
++#define PLUGIN_CTOR(name, type) _snd_dlsym_constructor_ ## name ## _dlsym_ ## type ## _001
++#define DECLARE_PLUGIN(name, type) void PLUGIN_CTOR(name, type) (void)
++#define REGISTER_PLUGIN(name, type) PLUGIN_CTOR(name, type) ()
++
++DECLARE_PLUGIN(conf_pulse_hook_load_if_running, config_hook);
++DECLARE_PLUGIN(_snd_ctl_arcam_av_open, control);
++//DECLARE_PLUGIN(_snd_ctl_oss_open, control);
++DECLARE_PLUGIN(_snd_ctl_pulse_open, control);
++//DECLARE_PLUGIN(_snd_pcm_a52_open, pcm);
++//DECLARE_PLUGIN(_snd_pcm_aaf_open, pcm);
++//DECLARE_PLUGIN(_snd_pcm_oss_open, pcm);
++DECLARE_PLUGIN(_snd_pcm_pulse_open, pcm);
++DECLARE_PLUGIN(_snd_pcm_upmix_open, pcm);
++//DECLARE_PLUGIN(_snd_pcm_usb_stream_open, pcm);
++DECLARE_PLUGIN(_snd_pcm_vdownmix_open, pcm);
++
+ /**
+  * \brief Opens a dynamic library - ALSA wrapper for \c dlopen.
+  * \param name name of the library, similar to \c dlopen.
+@@ -123,8 +139,38 @@ void *snd_dlopen(const char *name, int mode, char *errbuf, size_t errbuflen)
+ #endif
+ {
+ #ifndef PIC
+-	if (name == NULL)
++	if (name == NULL
++		|| !strcmp(name, "libasound_module_conf_pulse.so")
++		|| !strcmp(name, "libasound_module_ctl_arcam_av.so")
++		|| !strcmp(name, "libasound_module_ctl_pulse.so")
++		|| !strcmp(name, "libasound_module_pcm_pulse.so")
++		|| !strcmp(name, "libasound_module_pcm_upmix.so")
++		|| !strcmp(name, "libasound_module_pcm_vdownmix.so")
++) {
++		struct snd_dlsym_link *link = snd_dlsym_start;
++		while (link) {
++			if (!strcmp(link->dlsym_name, "conf_pulse_hook_load_if_running")) {
++				break;
++			}
++			link = link->next;
++		}
++
++		if (link == NULL) {
++			REGISTER_PLUGIN(conf_pulse_hook_load_if_running, config_hook);
++			REGISTER_PLUGIN(_snd_ctl_arcam_av_open, control);
++//			REGISTER_PLUGIN(_snd_ctl_oss_open, control);
++			REGISTER_PLUGIN(_snd_ctl_pulse_open, control);
++//			REGISTER_PLUGIN(_snd_pcm_a52_open, pcm);
++//			REGISTER_PLUGIN(_snd_pcm_aaf_open, pcm);
++//			REGISTER_PLUGIN(_snd_pcm_oss_open, pcm);
++			REGISTER_PLUGIN(_snd_pcm_pulse_open, pcm);
++			REGISTER_PLUGIN(_snd_pcm_upmix_open, pcm);
++//			REGISTER_PLUGIN(_snd_pcm_usb_stream_open, pcm);
++			REGISTER_PLUGIN(_snd_pcm_vdownmix_open, pcm);
++	        }
++
+ 		return &snd_dlsym_start;
++}
+ #else
+ #ifdef HAVE_LIBDL
+ 	if (name == NULL) {
