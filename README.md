@@ -22,6 +22,7 @@ famous 🧙*
   * [Are external graphics drivers supported?](#are-external-graphics-drivers-supported)
   * [Is Vulkan supported?](#is-vulkan-supported)
   * [Is winetricks supported?](#is-winetricks-supported)
+  * [Is DXVK supported?](#is-dxvk-supported)
   * [Is Gallium Nine supported?](#is-gallium-nine-supported)
   * [Is there any speed increase?](#is-there-any-speed-increase)
   * [What is known to work?](#what-is-known-to-work)
@@ -273,15 +274,20 @@ Please let me know if you have issues.
 I don't use winetricks so I don't know but most of it should, yes. Please let
 me know if you try it out.
 
+### Is DXVK supported?
+
+Yes it is! DXVK runs perfectly fine with static-wine32. In fact it should be
+your first choice if you intend to run Direct3D software and your GPU supports
+Vulkan. If you're running software using Direct3D versions earlier than
+Direct3D 9 you should consider using
+[dgVoodoo](http://dege.freeweb.hu/dgVoodoo2/dgVoodoo2/) with DXVK.
+
 ### Is Gallium Nine supported?
 
 No but I'm working on it. Statically building the Mesa module is not
 complicated but finding a way to make it cooperate with Wine is somewhat
 harder. Yes, I'm aware of
 [Gallium Nine Standalone](https://github.com/iXit/wine-nine-standalone).
-
-### Is DXVK supported?
-Not yet. I need some time to adapt it, but it shouldn't be too much work.
 
 ### Is there any speed increase?
 
