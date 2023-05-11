@@ -177,7 +177,7 @@ also clone from within the container of course but for me this way is easier.
        INSTALL_DIR=/build/wine-build
        cd /build/wine
        autoreconf -f
-       CFLAGS="-m32 -march=$PLATFORM -O2 -pipe"
+       CFLAGS="-m32 -march=$PLATFORM -mfpmath=sse -O2 -pipe"
        CPPFLAGS=$CFLAGS
        CXXFLAGS=$CFLAGS
        LDFLAGS=-fno-lto

@@ -10,9 +10,9 @@ cmake = '/usr/bin/cmake'
 #llvm-config = '/usr/local/bin/llvm-config'
 
 [built-in options]
-c_args = ['-m32', '-march={PLATFORM}', '-O2', '-flto', '-ffat-lto-objects', '-pipe']
+c_args = ['-m32', '-march={PLATFORM}', '-mfpmath=sse', '-O2', '-flto', '-ffat-lto-objects', '-pipe']
 c_link_args = ['-m32', '-march={PLATFORM}', '-fno-lto']
-cpp_args = ['-m32', '-O2', '-march={PLATFORM}', '-flto', '-ffat-lto-objects', '-pipe']
+cpp_args = ['-m32', '-O2', '-march={PLATFORM}', '-mfpmath=sse', '-flto', '-ffat-lto-objects', '-pipe']
 cpp_link_args = ['-m32', '-march={PLATFORM}', '-fno-lto']
 
 [host_machine]

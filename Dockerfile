@@ -43,7 +43,7 @@ COPY meson-cross-i386 /build/
 ARG PLATFORM=
 
 # Leave empty or comment out to skip LLVM build
-# ARG BUILD_WITH_LLVM=y
+ARG BUILD_WITH_LLVM=
 
 # Set to the desired number of parallel build jobs; this should losely
 # correspond to the number of CPU cores.
@@ -52,10 +52,10 @@ ARG BUILD_JOBS=8
 ARG PATH="$PATH:/usr/local/bin"
 
 ARG CONFIGURE_PREFIX="--prefix=/usr/local"
-ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
-                     CPPFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
-                     CXXFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
-                     OBJCFLAGS=\"-m32 -march=$PLATFORM -O2 -flto -ffat-lto-objects -pipe\" \
+ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
+                     CPPFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
+                     CXXFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
+                     OBJCFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
                      LDFLAGS=\"-m32 -march=$PLATFORM -fno-lto\" \
                      AR=\"/usr/bin/gcc-ar\" \
                      RANLIB=\"/usr/bin/gcc-ranlib\" \
