@@ -46,7 +46,7 @@ https://www.x.org/releases/individual/lib/libpciaccess-0.17.tar.gz
 https://dri.freedesktop.org/libdrm/libdrm-2.4.115.tar.xz
 https://github.com/libunwind/libunwind/releases/download/v1.6.2/libunwind-1.6.2.tar.gz
 https://github.com/llvm/llvm-project.git llvmorg-16.0.5 llvmorg-16.0.5
-https://archive.mesa3d.org/mesa-23.1.0.tar.xz
+https://archive.mesa3d.org/mesa-23.1.1.tar.xz
 https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.250.tar.gz Vulkan-Headers-1.3.250.tar.gz
 https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/v1.3.250.tar.gz Vulkan-Loader-1.3.250.tar.gz
 https://github.com/krh/vkcube.git master vkcube-0.0.0
