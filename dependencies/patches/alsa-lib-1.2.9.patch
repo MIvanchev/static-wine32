@@ -33,6 +33,50 @@ index 71a1b12f..a7c369d9 100644
      __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_ptr = (void *)&name; \
      snd_dlsym_start = &__SND_DLSYM_VERSION(snd_dlsym_, name, version); \
    }
+diff --git a/include/local.h b/include/local.h
+index 151e3fd4..ba74d070 100644
+--- a/include/local.h
++++ b/include/local.h
+@@ -242,7 +242,7 @@ typedef enum _snd_set_mode {
+ } snd_set_mode_t;
+ 
+ size_t page_align(size_t size);
+-size_t page_size(void);
++size_t alsa_page_size(void);
+ size_t page_ptr(size_t object_offset, size_t object_size, size_t *offset, size_t *mmap_offset);
+ 
+ #define safe_strtoll_base _snd_safe_strtoll_base
+diff --git a/src/conf.c b/src/conf.c
+index da51182e..cbbaa75b 100644
+--- a/src/conf.c
++++ b/src/conf.c
+@@ -5810,7 +5810,7 @@ static void _snd_config_end(void)
+ }
+ #endif
+ 
+-size_t page_size(void)
++size_t alsa_page_size(void)
+ {
+ 	long s = sysconf(_SC_PAGE_SIZE);
+ 	assert(s > 0);
+@@ -5820,7 +5820,7 @@ size_t page_size(void)
+ size_t page_align(size_t size)
+ {
+ 	size_t r;
+-	long psz = page_size();
++	long psz = alsa_page_size();
+ 	r = size % psz;
+ 	if (r)
+ 		return size + psz - r;
+@@ -5830,7 +5830,7 @@ size_t page_align(size_t size)
+ size_t page_ptr(size_t object_offset, size_t object_size, size_t *offset, size_t *mmap_offset)
+ {
+ 	size_t r;
+-	long psz = page_size();
++	long psz = alsa_page_size();
+ 	assert(offset);
+ 	assert(mmap_offset);
+ 	*mmap_offset = object_offset;
 diff --git a/src/dlmisc.c b/src/dlmisc.c
 index f64c716a..5c008546 100644
 --- a/src/dlmisc.c
@@ -100,3 +144,29 @@ index f64c716a..5c008546 100644
  #else
  #ifdef HAVE_LIBDL
  	if (name == NULL) {
+diff --git a/src/rawmidi/rawmidi.c b/src/rawmidi/rawmidi.c
+index 570e0675..201d1302 100644
+--- a/src/rawmidi/rawmidi.c
++++ b/src/rawmidi/rawmidi.c
+@@ -160,7 +160,7 @@ static int snd_rawmidi_params_default(snd_rawmidi_t *rawmidi, snd_rawmidi_params
+ {
+ 	assert(rawmidi);
+ 	assert(params);
+-	params->buffer_size = page_size();
++	params->buffer_size = alsa_page_size();
+ 	params->avail_min = 1;
+ 	params->no_active_sensing = 1;
+ 	params->mode = 0;
+diff --git a/src/rawmidi/rawmidi_hw.c b/src/rawmidi/rawmidi_hw.c
+index e5bb3ee3..48fd5e1b 100644
+--- a/src/rawmidi/rawmidi_hw.c
++++ b/src/rawmidi/rawmidi_hw.c
+@@ -124,7 +124,7 @@ static int snd_rawmidi_hw_params(snd_rawmidi_t *rmidi, snd_rawmidi_params_t * pa
+ 		size_t alloc_size;
+ 		void *buf;
+ 
+-		alloc_size = page_size();
++		alloc_size = alsa_page_size();
+ 		if (params->buffer_size > alloc_size)
+ 			alloc_size = params->buffer_size;
+ 		if (alloc_size != hw->buf_size) {

@@ -171,7 +171,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] sed -i 's/install : true,/install : false,/' meson.build\n\
 [systemd] meson setup build $MESON_PROLOGUE -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\n\
 [systemd] cd build\n\
-[systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc\n\
+[systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc udev.pc systemd.pc\n\
 [systemd] meson install --tags devel,libudev --no-rebuild\n\
 [systemd] PC_FILE=/usr/local/lib/pkgconfig/libudev.pc\n\
 [systemd] [ -f \$PC_FILE ] && echo 'Requires.private: libcap' >> \$PC_FILE\n\
