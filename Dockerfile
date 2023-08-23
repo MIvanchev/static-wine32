@@ -137,6 +137,9 @@ ARG DEP_BUILD_SCRIPTS="\
 [libxkbcommon] meson install --no-rebuild\n\
 [fontconfig] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-docs $CONFIGURE_FLAGS\n\
 [fontconfig] make install\n\
+[dbus] autoreconf -i\n\
+[dbus] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
+[dbus] make install\n\
 [SDL] mkdir build\n\
 [SDL] cd build\n\
 [SDL] $CONFIGURE_FLAGS CFLAGS=\"\$CFLAGS -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1\" cmake $CMAKE_PROLOGUE \
@@ -249,6 +252,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
 -Dvulkan-drivers=intel,intel_hasvk,amd${BUILD_WITH_LLVM:+,swrast} \
+-Dvulkan-layers=overlay,intel-nullhw,device-select \
 -Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
@@ -264,7 +268,9 @@ ${BUILD_WITH_LLVM:+-Dllvm=enabled} \
 [mesa] cd build\n\
 [mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime \
 vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
-vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} gbm\n\
+vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} \
+VkLayer_INTEL_nullhw VkLayer_MESA_device_select VkLayer_MESA_overlay \
+gbm\n\
 [mesa] meson install --no-rebuild\n\
 [mesa] PC_FILE=/usr/local/lib/pkgconfig/gl.pc\n\
 [mesa] [ -f \$PC_FILE ] && { grep -q 'Libs\\.private:' \$PC_FILE || \
