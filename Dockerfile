@@ -10,10 +10,10 @@ RUN dpkg --add-architecture i386 && \
         python3 python3-pip wget git ninja-build gperf automake \
         autoconf-archive libtool autopoint gettext nasm glslang-tools && \
     pip3 install mako jinja2 && \
-    wget -q https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3-linux-x86_64.tar.gz -P $HOME && \
+    wget -q https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.27.5-linux-x86_64.tar.gz -P $HOME && \
     tar xf $HOME/cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     cmake --version && \
-    git clone --depth 1 --branch 1.1.0 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
+    git clone --depth 1 --branch 1.2.1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
     chmod +x /usr/bin/meson && meson --version && \
