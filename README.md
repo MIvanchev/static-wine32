@@ -210,12 +210,10 @@ place like `~/.local` because `~/.local/bin` is most likely in your path.
 
 ## What isn't supported yet?
 
+* Wayland – working on it.
 * OSS – honestly I have no idea about that, everything is so confusing with
 OSS... contributions welcome.
 * OpenCL – I have no idea about OpenCL, contributions welcome.
-* Web cameras – Wine uses libgphoto2 which is not designed for static linkage
-because the drivers are always loaded dynamically. This could be patched and
-I'll get to it. It's a fair amount of work.
 * Samba – the build process is little tough... I need to find a way to compile
 libnetapi.
 

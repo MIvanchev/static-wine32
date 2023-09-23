@@ -14,7 +14,7 @@ index c54e93921..1dc60872e 100644
  dist_doc_DATA = AUTHORS COPYING LICENSE NEWS PROBLEMS PROJECTS \
   README README.aix README.beos README.darwin README.djpeg README.freebsd \
 diff --git a/acinclude.m4 b/acinclude.m4
-index 9393278c2..867abd239 100644
+index df8abe148..ad51a46b1 100644
 --- a/acinclude.m4
 +++ b/acinclude.m4
 @@ -290,7 +290,7 @@ AC_DEFUN([SANE_CHECK_JPEG],
@@ -46,11 +46,20 @@ index 9393278c2..867abd239 100644
    if test "$sane_cv_use_libpng" = "yes" ; then
      AC_DEFINE(HAVE_LIBPNG,1,[Define to 1 if you have the libpng library.])
    fi
+@@ -421,7 +421,7 @@ AC_DEFUN([SANE_CHECK_GPHOTO2],
+       if pkg-config --exists libgphoto2 ; then
+         with_gphoto2="`pkg-config --modversion libgphoto2`"
+ 	GPHOTO2_CPPFLAGS="`pkg-config --cflags libgphoto2`"
+-        GPHOTO2_LIBS="`pkg-config --libs libgphoto2`"
++        GPHOTO2_LIBS="`pkg-config --libs --static libgphoto2`"
+ 
+         saved_CPPFLAGS="${CPPFLAGS}"
+         CPPFLAGS="${GPHOTO2_CPPFLAGS}"
 diff --git a/backend/Makefile.am b/backend/Makefile.am
-index e56e7f1f7..e55fd58bd 100644
+index 35ad206f9..d8e2366aa 100644
 --- a/backend/Makefile.am
 +++ b/backend/Makefile.am
-@@ -1983,7 +1983,7 @@ EXTRA_DIST += dll.aliases
+@@ -2007,7 +2007,7 @@ EXTRA_DIST += dll.aliases
  # what backends are preloaded.  It should include what is needed by
  # those backends that are actually preloaded.
  if preloadable_backends_enabled
@@ -86,7 +95,7 @@ index 3006a2523..b0a2f6475 100644
  {
    int i;
 diff --git a/configure.ac b/configure.ac
-index 6c8682aa8..08a4cde6e 100644
+index a763be518..9635b0d15 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -4,7 +4,7 @@ dnl ******************************************************************
@@ -94,21 +103,28 @@ index 6c8682aa8..08a4cde6e 100644
  dnl ******************************************************************
  AC_INIT([sane-backends],
 -        m4_esyscmd_s([tools/git-version-gen --prefix '' .tarball-version]),
-+        [1.1.1],
++        [1.2.1],
          [sane-devel@alioth-lists.debian.net])
  AC_PREREQ([2.69])               dnl minimum autoconf version required
  AC_CONFIG_MACRO_DIR([m4])
 diff --git a/tools/sane-backends.pc.in b/tools/sane-backends.pc.in
-index b4d9731f8..d6caffa20 100644
+index 43f3ac596..2785a53d3 100644
 --- a/tools/sane-backends.pc.in
 +++ b/tools/sane-backends.pc.in
-@@ -7,7 +7,7 @@ libs=@LIBS@ @DL_LIBS@ @LIBV4L_LIBS@ @MATH_LIB@ @TIFF_LIBS@ @JPEG_LIBS@ @GPHOTO2_
+@@ -2,12 +2,12 @@ prefix=@prefix@
+ exec_prefix=@exec_prefix@
+ libdir=@libdir@
+ includedir=@includedir@
+-libs=@LIBS@ @DL_LIBS@ @LIBV4L_LIBS@ @MATH_LIB@ @TIFF_LIBS@ @JPEG_LIBS@ @GPHOTO2_LIBS@ @SOCKET_LIBS@ @AVAHI_LIBS@ @USB_LIBS@ @SCSI_LIBS@ @RESMGR_LIBS@
++libs=@LIBS@ @DL_LIBS@ @LIBV4L_LIBS@ @MATH_LIB@ @TIFF_LIBS@ @JPEG_LIBS@ @GPHOTO2_LDFLAGS@ @GPHOTO2_LIBS@ @SOCKET_LIBS@ @AVAHI_LIBS@ @USB_LIBS@ @SCSI_LIBS@ @RESMGR_LIBS@
+ 
  Name: SANE Backends
  Description: Backends for SANE, the universal scanner interface
  Version: @VERSION@
 -Requires:
-+Requires: libudev libv4l2 libjpeg libpng libtiff-4 libxml-2.0
- Libs: -L${libdir} -lsane
+-Libs: -L${libdir} -lsane
 -Libs.private: ${libs}
++Requires: libudev libv4l2 libjpeg libpng libtiff-4 libxml-2.0
++Libs: -L${libdir} -lsane -lstdc++
 +Libs.private: ${libs} -lieee1284
  Cflags: -I${includedir}

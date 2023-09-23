@@ -1,0 +1,1449 @@
+diff --git a/Makefile.am b/Makefile.am
+index ade6dbe46..0e9339659 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -9,7 +9,7 @@ EXTRA_DIST = MAINTAINERS TESTERS installcheck.mk
+ EXTRA_DIST += HACKING.md SECURITY.md
+ 
+ # Note: $(subdirs) lists all the directories from AC_CONFIG_SUBDIRS()
+-SUBDIRS = $(subdirs) libgphoto2 camlibs tests examples po packaging doc
++SUBDIRS = $(subdirs) libgphoto2 camlibs po doc
+ 
+ EXTRA_DIST    += libgphoto2.pc.in
+ pkgconfig_DATA = libgphoto2.pc
+diff --git a/camlibs/ax203/ax203.c b/camlibs/ax203/ax203.c
+index 8214ee45b..e3f6bb3f7 100644
+--- a/camlibs/ax203/ax203.c
++++ b/camlibs/ax203/ax203.c
+@@ -1098,7 +1098,7 @@ ax203_decode_image(Camera *camera, char *src, int src_size, int **dest)
+ 		   handle the AX206' custom JPEG format (the AX3003 uses
+ 		   normal JPEG compression). */
+ 		if (!camera->pl->jdec) {
+-			camera->pl->jdec = tinyjpeg_init ();
++			camera->pl->jdec = ax203_tinyjpeg_init ();
+ 			if (!camera->pl->jdec)
+ 				return GP_ERROR_NO_MEMORY;
+ 		}
+@@ -1111,16 +1111,16 @@ ax203_decode_image(Camera *camera, char *src, int src_size, int **dest)
+ 			htobe16a(src + 2, height);
+ 			row_skip = (width - camera->pl->width) * 3;
+ 		}
+-		ret = tinyjpeg_parse_header (camera->pl->jdec,
++		ret = ax203_tinyjpeg_parse_header (camera->pl->jdec,
+ 					     (unsigned char *)src, src_size);
+ 		if (ret) {
+ 			gp_log (GP_LOG_ERROR, "ax203",
+ 				"Error parsing header: %s",
+-				tinyjpeg_get_errorstring (camera->pl->jdec));
++				ax203_tinyjpeg_get_errorstring (camera->pl->jdec));
+ 			return GP_ERROR_CORRUPTED_DATA;
+ 		}
+ 		if (!row_skip) {
+-			tinyjpeg_get_size (camera->pl->jdec, &width, &height);
++			ax203_tinyjpeg_get_size (camera->pl->jdec, &width, &height);
+ 			if (width  != camera->pl->width ||
+ 			    height != camera->pl->height) {
+ 				gp_log (GP_LOG_ERROR, "ax203",
+@@ -1130,14 +1130,14 @@ ax203_decode_image(Camera *camera, char *src, int src_size, int **dest)
+ 				return GP_ERROR_CORRUPTED_DATA;
+ 			}
+ 		}
+-		ret = tinyjpeg_decode (camera->pl->jdec);
++		ret = ax203_tinyjpeg_decode (camera->pl->jdec);
+ 		if (ret) {
+ 			gp_log (GP_LOG_ERROR, "ax203",
+ 				"Error decoding JPEG data: %s",
+-				tinyjpeg_get_errorstring (camera->pl->jdec));
++				ax203_tinyjpeg_get_errorstring (camera->pl->jdec));
+ 			return GP_ERROR_CORRUPTED_DATA;
+ 		}
+-		tinyjpeg_get_components (camera->pl->jdec, components);
++		ax203_tinyjpeg_get_components (camera->pl->jdec, components);
+ 		for (y = 0; y < camera->pl->height; y++) {
+ 			for (x = 0; x < camera->pl->width; x++) {
+ 				dest[y][x] = gdTrueColor (components[0][0],
+@@ -1745,7 +1745,7 @@ static void
+ ax203_exit(Camera *camera)
+ {
+ 	if (camera->pl->jdec) {
+-		tinyjpeg_free (camera->pl->jdec);
++		ax203_tinyjpeg_free (camera->pl->jdec);
+ 		camera->pl->jdec = NULL;
+ 	}
+ 	free (camera->pl->mem);
+diff --git a/camlibs/ax203/tinyjpeg-internal.h b/camlibs/ax203/tinyjpeg-internal.h
+index 8cf393494..174837265 100644
+--- a/camlibs/ax203/tinyjpeg-internal.h
++++ b/camlibs/ax203/tinyjpeg-internal.h
+@@ -117,6 +117,6 @@ struct jdec_private
+ };
+ 
+ #define IDCT tinyjpeg_idct_float
+-void tinyjpeg_idct_float (struct component *compptr, uint8_t *output_buf, int stride);
++void ax203_tinyjpeg_idct_float (struct component *compptr, uint8_t *output_buf, int stride);
+ 
+ #endif /* !defined(CAMLIBS_AX203_TINYJPEG_INTERNAL_H) */
+diff --git a/camlibs/ax203/tinyjpeg.c b/camlibs/ax203/tinyjpeg.c
+index 91c91f572..606f20431 100644
+--- a/camlibs/ax203/tinyjpeg.c
++++ b/camlibs/ax203/tinyjpeg.c
+@@ -723,7 +723,7 @@ static void resync(struct jdec_private *priv)
+  *
+  * Before calling any other functions, an object need to be called.
+  */
+-struct jdec_private *tinyjpeg_init(void)
++struct jdec_private *ax203_tinyjpeg_init(void)
+ {
+   struct jdec_private *priv;
+ 
+@@ -738,7 +738,7 @@ struct jdec_private *tinyjpeg_init(void)
+  *
+  * No others function can be called after this one.
+  */
+-void tinyjpeg_free(struct jdec_private *priv)
++void ax203_tinyjpeg_free(struct jdec_private *priv)
+ {
+   int i;
+ 
+@@ -755,7 +755,7 @@ void tinyjpeg_free(struct jdec_private *priv)
+  * Check if the jpeg can be decoded with this jpeg decoder.
+  * Fill some table used for preprocessing.
+  */
+-int tinyjpeg_parse_header(struct jdec_private *priv, const unsigned char *buf, unsigned int size)
++int ax203_tinyjpeg_parse_header(struct jdec_private *priv, const unsigned char *buf, unsigned int size)
+ {
+   const unsigned char *stream = buf;
+   struct component *c;
+@@ -848,7 +848,7 @@ static const convert_colorspace_fct convert_colorspace_rgb24[4] = {
+  *
+  * Note: components will be automaticaly allocated if no memory is attached.
+  */
+-int tinyjpeg_decode(struct jdec_private *priv)
++int ax203_tinyjpeg_decode(struct jdec_private *priv)
+ {
+   unsigned int x, y, xstride_by_mcu, ystride_by_mcu;
+   unsigned int bytes_per_blocklines[3], bytes_per_mcu[3];
+@@ -926,18 +926,18 @@ int tinyjpeg_decode(struct jdec_private *priv)
+   return 0;
+ }
+ 
+-const char *tinyjpeg_get_errorstring(struct jdec_private *priv)
++const char *ax203_tinyjpeg_get_errorstring(struct jdec_private *priv)
+ {
+   return priv->error_string;
+ }
+ 
+-void tinyjpeg_get_size(struct jdec_private *priv, unsigned int *width, unsigned int *height)
++void ax203_tinyjpeg_get_size(struct jdec_private *priv, unsigned int *width, unsigned int *height)
+ {
+   *width = priv->width;
+   *height = priv->height;
+ }
+ 
+-int tinyjpeg_get_components(struct jdec_private *priv, unsigned char **components)
++int ax203_tinyjpeg_get_components(struct jdec_private *priv, unsigned char **components)
+ {
+   int i;
+   for (i=0; i<COMPONENTS && priv->components[i]; i++)
+@@ -945,7 +945,7 @@ int tinyjpeg_get_components(struct jdec_private *priv, unsigned char **component
+   return 0;
+ }
+ 
+-int tinyjpeg_set_components(struct jdec_private *priv, unsigned char **components, unsigned int ncomponents)
++int ax203_tinyjpeg_set_components(struct jdec_private *priv, unsigned char **components, unsigned int ncomponents)
+ {
+   unsigned int i;
+   if (ncomponents > COMPONENTS)
+diff --git a/camlibs/ax203/tinyjpeg.h b/camlibs/ax203/tinyjpeg.h
+index 5d93555d7..4469f214e 100644
+--- a/camlibs/ax203/tinyjpeg.h
++++ b/camlibs/ax203/tinyjpeg.h
+@@ -49,15 +49,15 @@ extern "C" {
+ 
+ struct jdec_private;
+ 
+-struct jdec_private *tinyjpeg_init(void);
+-void tinyjpeg_free(struct jdec_private *priv);
++struct jdec_private *ax203_tinyjpeg_init(void);
++void ax203_tinyjpeg_free(struct jdec_private *priv);
+ 
+-int tinyjpeg_parse_header(struct jdec_private *priv, const unsigned char *buf, unsigned int size);
+-int tinyjpeg_decode(struct jdec_private *priv);
+-const char *tinyjpeg_get_errorstring(struct jdec_private *priv);
+-void tinyjpeg_get_size(struct jdec_private *priv, unsigned int *width, unsigned int *height);
+-int tinyjpeg_get_components(struct jdec_private *priv, unsigned char **components);
+-int tinyjpeg_set_components(struct jdec_private *priv, unsigned char **components, unsigned int ncomponents);
++int ax203_tinyjpeg_parse_header(struct jdec_private *priv, const unsigned char *buf, unsigned int size);
++int ax203_tinyjpeg_decode(struct jdec_private *priv);
++const char *ax203_tinyjpeg_get_errorstring(struct jdec_private *priv);
++void ax203_tinyjpeg_get_size(struct jdec_private *priv, unsigned int *width, unsigned int *height);
++int ax203_tinyjpeg_get_components(struct jdec_private *priv, unsigned char **components);
++int ax203_tinyjpeg_set_components(struct jdec_private *priv, unsigned char **components, unsigned int ncomponents);
+ 
+ #ifdef __cplusplus
+ }
+diff --git a/camlibs/digigr8/digi_postprocess.c b/camlibs/digigr8/digi_postprocess.c
+index 5c7819151..8cd5dcfa6 100644
+--- a/camlibs/digigr8/digi_postprocess.c
++++ b/camlibs/digigr8/digi_postprocess.c
+@@ -351,7 +351,7 @@ histogram (unsigned char *data, unsigned int size, int *htable_r,
+ }
+ 
+ int
+-white_balance (unsigned char *data, unsigned int size, float saturation)
++digi_white_balance (unsigned char *data, unsigned int size, float saturation)
+ {
+ 	unsigned int x, max;
+ 	int r, g, b, d;
+diff --git a/camlibs/digigr8/digigr8.h b/camlibs/digigr8/digigr8.h
+index 8201984d9..ee8321071 100644
+--- a/camlibs/digigr8/digigr8.h
++++ b/camlibs/digigr8/digigr8.h
+@@ -46,7 +46,7 @@ int digi_postprocess	(int width, int height, unsigned char* rgb);
+ int digi_delete_all	(GPPort *, CameraPrivateLibrary *priv);
+ 
+ int
+-white_balance (unsigned char *data, unsigned int size, float saturation);
++digi_white_balance (unsigned char *data, unsigned int size, float saturation);
+ 
+ 
+ #endif /* !defined(CAMLIBS_DIGIGR8_DIGIGR8_H) */
+diff --git a/camlibs/digigr8/library.c b/camlibs/digigr8/library.c
+index 1bbcbca39..3beb27b7f 100644
+--- a/camlibs/digigr8/library.c
++++ b/camlibs/digigr8/library.c
+@@ -312,7 +312,7 @@ get_file_func(CameraFilesystem *fs, const char *folder, const char *filename,
+ 		gp_gamma_fill_table (gtable, .65);
+ 		gp_gamma_correct_single(gtable,ptr,w*h);
+ 	} else
+-		white_balance (ptr, w*h, 1.1);
++		digi_white_balance (ptr, w*h, 1.1);
+ 	gp_file_set_mime_type (file, GP_MIME_PPM);
+ 	gp_file_set_data_and_size (file, (char *)ppm, size);
+ 	/* Reset camera when done, for more graceful exit. */
+@@ -399,7 +399,7 @@ camera_capture_preview(Camera *camera, CameraFile *file, GPContext *context)
+ 		gp_gamma_fill_table (gtable, .65);
+ 		gp_gamma_correct_single(gtable,ptr,w*h);
+ 	} else
+-		white_balance(ptr, w * h, 1.1);
++		digi_white_balance(ptr, w * h, 1.1);
+ 	gp_file_set_mime_type(file, GP_MIME_PPM);
+ 	gp_file_set_data_and_size(file, (char *)ppm, size);
+ 	digi_reset(camera->port);
+diff --git a/camlibs/jl2005a/jl2005a.c b/camlibs/jl2005a/jl2005a.c
+index eaf6e781b..81cd88cb9 100644
+--- a/camlibs/jl2005a/jl2005a.c
++++ b/camlibs/jl2005a/jl2005a.c
+@@ -107,7 +107,7 @@ jl2005a_get_pic_height (GPPort *port)
+ }
+ 
+ int
+-set_usb_in_endpoint	(Camera *camera, int inep)
++jl2005a_set_usb_in_endpoint	(Camera *camera, int inep)
+ {
+ 	GPPortSettings settings;
+ 	gp_port_get_settings ( camera ->port, &settings);
+@@ -146,7 +146,7 @@ jl2005a_read_picture_data (Camera *camera, GPPort *port,
+         gp_port_write (port, "\xa2\x08", 2);
+ 
+ 	/* Switch the inep over to 0x81. */
+-	set_usb_in_endpoint	(camera, 0x81);
++	jl2005a_set_usb_in_endpoint	(camera, 0x81);
+ 	while (size > maxdl) {
+ 		ret = gp_port_read(port, (char *)to_read, maxdl);
+ 		if (ret < GP_OK) return ret;
+@@ -158,7 +158,7 @@ jl2005a_read_picture_data (Camera *camera, GPPort *port,
+ 	if (ret < GP_OK) return ret;
+ 	if ((unsigned int)ret < size) return GP_ERROR;
+ 	/* Switch the inep back to 0x84. */
+-	set_usb_in_endpoint	(camera, 0x84);
++	jl2005a_set_usb_in_endpoint	(camera, 0x84);
+ 	return GP_OK;
+ }
+ 
+diff --git a/camlibs/jl2005a/jl2005a.h b/camlibs/jl2005a/jl2005a.h
+index c9ad4d71f..c583ad034 100644
+--- a/camlibs/jl2005a/jl2005a.h
++++ b/camlibs/jl2005a/jl2005a.h
+@@ -42,7 +42,7 @@ int jl2005a_init              (Camera *camera, GPPort *port,
+ int jl2005a_get_pic_data_size (GPPort *port, int n);
+ int jl2005a_get_pic_width (GPPort *port);
+ int jl2005a_get_pic_height (GPPort *port);
+-int set_usb_in_endpoint	     (Camera *camera, int inep);
++int jl2005a_set_usb_in_endpoint	     (Camera *camera, int inep);
+ int jl2005a_read_picture_data ( Camera *camera,
+ 				GPPort *port, unsigned char *data,
+ 				unsigned int size);
+diff --git a/camlibs/jl2005a/library.c b/camlibs/jl2005a/library.c
+index 867145314..b66cf34ad 100644
+--- a/camlibs/jl2005a/library.c
++++ b/camlibs/jl2005a/library.c
+@@ -50,7 +50,7 @@
+ 
+ #define GP_MODULE "jl2005a"
+ 
+-struct {
++static struct {
+ 	char *name;
+ 	CameraDriverStatus status;
+ 	unsigned short idVendor;
+diff --git a/camlibs/jl2005c/img_enhance.c b/camlibs/jl2005c/img_enhance.c
+index 57b865b83..dd653ff74 100644
+--- a/camlibs/jl2005c/img_enhance.c
++++ b/camlibs/jl2005c/img_enhance.c
+@@ -61,7 +61,7 @@
+ 	========================================================== */
+ 
+ int
+-histogram (unsigned char *data, unsigned int size, int *htable_r,
++jl2005c_histogram (unsigned char *data, unsigned int size, int *htable_r,
+ 						int *htable_g, int *htable_b)
+ {
+ 	unsigned int x;
+@@ -83,7 +83,7 @@ histogram (unsigned char *data, unsigned int size, int *htable_r,
+ }
+ 
+ int
+-white_balance (unsigned char *data, unsigned int size, float saturation)
++jl2005c_white_balance (unsigned char *data, unsigned int size, float saturation)
+ {
+ 	unsigned int x, max;
+ 	int r, g, b, d;
+@@ -94,7 +94,7 @@ white_balance (unsigned char *data, unsigned int size, float saturation)
+ 
+ 	/* ------------------- GAMMA CORRECTION ------------------- */
+ 
+-	histogram(data, size, htable_r, htable_g, htable_b);
++	jl2005c_histogram(data, size, htable_r, htable_g, htable_b);
+ 	x = 1;
+ 	for (r = 64; r < 192; r++)
+ 	{
+@@ -120,7 +120,7 @@ white_balance (unsigned char *data, unsigned int size, float saturation)
+ 
+ 	/* ---------------- BRIGHT DOTS ------------------- */
+ 	max = size / 200;
+-	histogram(data, size, htable_r, htable_g, htable_b);
++	jl2005c_histogram(data, size, htable_r, htable_g, htable_b);
+ 
+ 	for (r = 0xfe, x = 0; (r > 32) && (x < max); r--)
+ 		x += htable_r[r];
+@@ -178,7 +178,7 @@ white_balance (unsigned char *data, unsigned int size, float saturation)
+ 	}
+ 	/* ---------------- DARK DOTS ------------------- */
+ 	max = size / 200;  /*  1/200 = 0.5%  */
+-	histogram(data, size, htable_r, htable_g, htable_b);
++	jl2005c_histogram(data, size, htable_r, htable_g, htable_b);
+ 
+ 	for (r = 0, x = 0; (r < 96) && (x < max); r++)
+ 		x += htable_r[r];
+diff --git a/camlibs/jl2005c/img_enhance.h b/camlibs/jl2005c/img_enhance.h
+index 8580ecce7..3fa8743f4 100644
+--- a/camlibs/jl2005c/img_enhance.h
++++ b/camlibs/jl2005c/img_enhance.h
+@@ -27,9 +27,9 @@
+ 
+ 
+ int
+-histogram(unsigned char *data, unsigned int size, int *htable_r,
++jl2005c_histogram(unsigned char *data, unsigned int size, int *htable_r,
+ 						int *htable_g, int *htable_b);
+ int
+-white_balance(unsigned char *data, unsigned int size, float saturation);
++jl2005c_white_balance(unsigned char *data, unsigned int size, float saturation);
+ 
+ #endif /* !defined(CAMLIBS_JL2005C_IMG_ENHANCE_H) */
+diff --git a/camlibs/jl2005c/jl2005bcd_decompress.c b/camlibs/jl2005c/jl2005bcd_decompress.c
+index dff2d6264..2ca1ab482 100644
+--- a/camlibs/jl2005c/jl2005bcd_decompress.c
++++ b/camlibs/jl2005c/jl2005bcd_decompress.c
+@@ -140,7 +140,7 @@ jl2005bcd_decompress (unsigned char *output, unsigned char *input,
+ 				"255\n",
+ 				thumbnail_width,
+ 				thumbnail_height);
+-			white_balance (out, thumbnail_width * thumbnail_height,
++			jl2005c_white_balance (out, thumbnail_width * thumbnail_height,
+ 									1.6);
+ 			memcpy(output + out_headerlen, out,
+ 				thumbnail_width * thumbnail_height * 3);
+@@ -283,7 +283,7 @@ jl2005bcd_decompress (unsigned char *output, unsigned char *input,
+ 		free (out);
+ 		return ret;
+ 	}
+-	white_balance (out, width*height, 1.6);
++	jl2005c_white_balance (out, width*height, 1.6);
+ 
+ 	out_headerlen = snprintf((char *)output, 256,
+ 				"P6\n"
+diff --git a/camlibs/jl2005c/jl2005c.c b/camlibs/jl2005c/jl2005c.c
+index 8fe5872aa..b64552981 100644
+--- a/camlibs/jl2005c/jl2005c.c
++++ b/camlibs/jl2005c/jl2005c.c
+@@ -61,7 +61,7 @@ restart:
+ 		gp_port_open(port);
+ 	}
+ 
+-	set_usb_in_endpoint	(camera, 0x84);
++	jl2005c_set_usb_in_endpoint	(camera, 0x84);
+ 	gp_port_write (port, "\x08\x00", 2);
+ 	usleep (10000);
+ 	gp_port_write (port, "\x95\x60", 2);
+@@ -115,7 +115,7 @@ restart:
+ 	gp_port_write (port, "\x0a\x00", 2);
+ 	usleep (10000);
+ 	/* Switch the inep over to 0x82. It stays there ever after. */
+-	set_usb_in_endpoint	(camera, 0x82);
++	jl2005c_set_usb_in_endpoint	(camera, 0x82);
+ 
+ 	/* Read the first block of the allocation table. */
+ 	jl2005c_read_data (port, (char *)info, 0x200);
+@@ -220,7 +220,7 @@ jl2005c_get_start_of_photo(CameraPrivateLibrary *priv, Info *table,
+ 
+ 
+ int
+-set_usb_in_endpoint	(Camera *camera, int inep)
++jl2005c_set_usb_in_endpoint	(Camera *camera, int inep)
+ {
+ 	GPPortSettings settings;
+ 	gp_port_get_settings ( camera ->port, &settings);
+diff --git a/camlibs/jl2005c/jl2005c.h b/camlibs/jl2005c/jl2005c.h
+index 656425f47..32c66e6cc 100644
+--- a/camlibs/jl2005c/jl2005c.h
++++ b/camlibs/jl2005c/jl2005c.h
+@@ -50,7 +50,7 @@ int jl2005c_get_pic_data_size (CameraPrivateLibrary *priv, Info *table, int n);
+ unsigned long jl2005c_get_start_of_photo (CameraPrivateLibrary *priv,
+ 						Info *table, unsigned int n);
+ 
+-int set_usb_in_endpoint       (Camera *camera, int inep);
++int jl2005c_set_usb_in_endpoint       (Camera *camera, int inep);
+ int jl2005c_read_data  (GPPort *port, char *data, int size);
+ int jl2005c_reset (Camera *camera, GPPort *port);
+ int jl2005c_delete_all (Camera *camera, GPPort *port);
+diff --git a/camlibs/jl2005c/library.c b/camlibs/jl2005c/library.c
+index c896a455e..bfa2a6003 100644
+--- a/camlibs/jl2005c/library.c
++++ b/camlibs/jl2005c/library.c
+@@ -48,7 +48,7 @@
+ 
+ #define GP_MODULE "jl2005c"
+ 
+-struct {
++static struct {
+ 	char *name;
+ 	CameraDriverStatus status;
+ 	unsigned short idVendor;
+diff --git a/camlibs/mars/mars.c b/camlibs/mars/mars.c
+index b6f7da789..7465be68b 100644
+--- a/camlibs/mars/mars.c
++++ b/camlibs/mars/mars.c
+@@ -386,7 +386,7 @@ mars_routine (Info *info, GPPort *port, char param, int n)
+  */
+ 
+ int
+-histogram (unsigned char *data, unsigned int size, int *htable_r, int *htable_g, int *htable_b)
++mars_histogram (unsigned char *data, unsigned int size, int *htable_r, int *htable_g, int *htable_b)
+ {
+ 	unsigned int x;
+ 	/* Initializations */
+@@ -418,7 +418,7 @@ mars_white_balance (unsigned char *data, unsigned int size, float saturation,
+ 
+ 	/* ------------------- GAMMA CORRECTION ------------------- */
+ 
+-	histogram(data, size, htable_r, htable_g, htable_b);
++	mars_histogram(data, size, htable_r, htable_g, htable_b);
+ 	x = 1;
+ 	for (r = 48; r < 208; r++)
+ 	{
+@@ -442,7 +442,7 @@ mars_white_balance (unsigned char *data, unsigned int size, float saturation,
+ 
+ 	/* ---------------- BRIGHT DOTS ------------------- */
+ 	max = size / 200;
+-	histogram(data, size, htable_r, htable_g, htable_b);
++	mars_histogram(data, size, htable_r, htable_g, htable_b);
+ 
+ 	for (r=0xfe, x=0; (r > 32) && (x < max); r--)
+ 		x += htable_r[r];
+@@ -483,7 +483,7 @@ mars_white_balance (unsigned char *data, unsigned int size, float saturation,
+ 	}
+ 	/* ---------------- DARK DOTS ------------------- */
+ 	max = size / 200;  /*  1/200 = 0.5%  */
+-	histogram(data, size, htable_r, htable_g, htable_b);
++	mars_histogram(data, size, htable_r, htable_g, htable_b);
+ 
+ 	for (r=0, x=0; (r < 96) && (x < max); r++)
+ 		x += htable_r[r];
+diff --git a/camlibs/mars/mars.h b/camlibs/mars/mars.h
+index bb40828bb..d8ec4c94f 100644
+--- a/camlibs/mars/mars.h
++++ b/camlibs/mars/mars.h
+@@ -46,7 +46,7 @@ int mars_read_picture_data (Camera *camera, Info *info,
+ 				GPPort *port, char *data, int size, int n);
+ 
+ int mars_decompress (unsigned char *inp ,unsigned char *outp, int w, int h);
+-int histogram (unsigned char *data, unsigned int size, int *htable_r,
++int mars_histogram (unsigned char *data, unsigned int size, int *htable_r,
+                                         int *htable_g, int *htable_b);
+ int mars_white_balance (unsigned char *data, unsigned int size, float saturation,
+                                         float image_gamma);
+diff --git a/camlibs/pentax/pslr_model.c b/camlibs/pentax/pslr_model.c
+index 101a75a66..da48db086 100644
+--- a/camlibs/pentax/pslr_model.c
++++ b/camlibs/pentax/pslr_model.c
+@@ -49,6 +49,9 @@
+ #include "pslr_model.h"
+ #include "pslr.h"
+ 
++static char *shexdump(uint8_t *buf, uint32_t bufLen);
++static void hexdump(uint8_t *buf, uint32_t bufLen);
++
+ static uint8_t lastbuf[MAX_STATUS_BUF_SIZE];
+ static int first = 1;
+ static char *jsontext=NULL;
+diff --git a/camlibs/pentax/pslr_model.h b/camlibs/pentax/pslr_model.h
+index 4fbc11983..1a049cbaf 100644
+--- a/camlibs/pentax/pslr_model.h
++++ b/camlibs/pentax/pslr_model.h
+@@ -206,8 +206,8 @@ typedef uint32_t (*get_uint32_func)(uint8_t *buf);
+ typedef uint16_t (*get_uint16_func)(const uint8_t *buf);
+ typedef int32_t (*get_int32_func)(uint8_t *buf);
+ 
+-char *shexdump(uint8_t *buf, uint32_t bufLen);
+-void hexdump(uint8_t *buf, uint32_t bufLen);
++/* char *shexdump(uint8_t *buf, uint32_t bufLen); */
++/* void hexdump(uint8_t *buf, uint32_t bufLen); */
+ void hexdump_debug(uint8_t *buf, uint32_t bufLen);
+ const char* int_to_binary( uint16_t x );
+ 
+diff --git a/camlibs/sonix/library.c b/camlibs/sonix/library.c
+index d3e5e760b..3896582f4 100644
+--- a/camlibs/sonix/library.c
++++ b/camlibs/sonix/library.c
+@@ -386,7 +386,7 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
+                                             SAKAR_AVI_FRAME_HEADER_LENGTH,
+                                                             BAYER_TILE_GRBG);
+ 				}
+-				white_balance(ptr+SAKAR_AVI_FRAME_HEADER_LENGTH,
++				sonix_white_balance(ptr+SAKAR_AVI_FRAME_HEADER_LENGTH,
+ 						w * h, 1.2);
+ 				gp_file_append(file, (char *)ptr,
+ 				    3*frame_size+
+@@ -442,8 +442,8 @@ get_file_func (CameraFilesystem *fs, const char *folder, const char *filename,
+                         gp_ahd_decode(p_data, w, h, ptr, BAYER_TILE_RGGB);
+ 		}
+ 		free (p_data);
+-		white_balance(ptr, w * h, 1.2);
+-		GP_DEBUG("white_balance run on photo number %03d \n", k+1);
++		sonix_white_balance(ptr, w * h, 1.2);
++		GP_DEBUG("sonix_white_balance run on photo number %03d \n", k+1);
+ 		gp_file_set_mime_type (file, GP_MIME_PPM);
+ 		gp_file_set_data_and_size (file, (char *)ppm, size);
+ 		free (data);
+diff --git a/camlibs/sonix/sonix.c b/camlibs/sonix/sonix.c
+index f08afbbdc..fc50993b5 100644
+--- a/camlibs/sonix/sonix.c
++++ b/camlibs/sonix/sonix.c
+@@ -496,7 +496,7 @@ histogram (unsigned char *data, unsigned int size, int *htable_r,
+ 
+ 
+ int
+-white_balance (unsigned char *data, unsigned int size, float saturation)
++sonix_white_balance (unsigned char *data, unsigned int size, float saturation)
+ {
+ 	unsigned int x, max;
+ 	int r, g, b, d;
+diff --git a/camlibs/sonix/sonix.h b/camlibs/sonix/sonix.h
+index 8af1af04c..c390d6c45 100644
+--- a/camlibs/sonix/sonix.h
++++ b/camlibs/sonix/sonix.h
+@@ -53,7 +53,7 @@ int sonix_decode		(unsigned char * dst, unsigned char * src,
+ int sonix_byte_reverse (unsigned char *imagedata, int datasize);
+ int sonix_rows_reverse (unsigned char *imagedata, int width, int height);
+ int sonix_cols_reverse (unsigned char *imagedata, int width, int height);
+-int white_balance (unsigned char *data, unsigned int size, float saturation);
++int sonix_white_balance (unsigned char *data, unsigned int size, float saturation);
+ 
+ #endif /* !defined(CAMLIBS_SONIX_SONIX_H) */
+ 
+diff --git a/configure.ac b/configure.ac
+index d3b7125ec..6e8b42b26 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -245,8 +245,7 @@ LT_PREREQ([2.4.2])
+ dnl Disable building static library, as no one uses it anyway.
+ m4_pattern_forbid([^LT_INIT])dnl
+ LT_INIT([
+-  disable-static
+-  dlopen
++  disable-shared
+   win32-dll
+ ])
+ dnl
+@@ -381,6 +380,11 @@ GP_CHECK_LIBRARY([LIBGD],[gdlib],[>= 2.0],[gd.h],[gdImageCreateTrueColor],[
+ ],[],[default-on],[http://www.libgd.org/])
+ GP_CONFIG_MSG([libGD conversion support],[${have_LIBGD}])
+ 
++AC_SUBST([LIBGD_LIBS])
++AC_SUBST([LIBJPEG_LIBS])
++AC_SUBST([LIBXML2_LIBS])
++AC_SUBST([LIBCURL_LIBS])
++
+ dnl ---------------------------------------------------------------------------
+ dnl Checks for header files.
+ dnl ---------------------------------------------------------------------------
+diff --git a/libgphoto2.pc.in b/libgphoto2.pc.in
+index 3c9b303f5..0bd8daf29 100644
+--- a/libgphoto2.pc.in
++++ b/libgphoto2.pc.in
+@@ -4,6 +4,7 @@ libdir=@libdir@
+ includedir=@includedir@
+ VERSION=@VERSION@
+ driverdir=@camlibdir@
++libs=@GP_CAMLIB_SET_LINKER@ -lgphoto2 @LIBWS232_LIBS@ @MMAP_LIBS@ @LIBJPEG_LIBS@ @LIBXML2_LIBS@ @LIBCURL_LIBS@ @LIBGD_LIBS@
+ 
+ Name: libgphoto2
+ Description: Library for easy access to digital cameras
+@@ -11,5 +12,5 @@ URL: http://gphoto.org/proj/libgphoto2/
+ Version: @VERSION@
+ Requires: libgphoto2_port >= 0.12.1
+ Requires.private: @REQUIREMENTS_FOR_LIBEXIF@
+-Libs: -L${libdir} -lgphoto2 -lm
++Libs: -L${libdir} -L${driverdir} -lgphoto2 -lm ${libs} -lgphoto2
+ Cflags: -I${includedir} -I${includedir}/gphoto2
+diff --git a/libgphoto2/Makefile.am b/libgphoto2/Makefile.am
+index a3328d56d..fbf50f469 100644
+--- a/libgphoto2/Makefile.am
++++ b/libgphoto2/Makefile.am
+@@ -91,3 +91,56 @@ libgphoto2_la_SOURCES      += gphoto2-setting.c
+ libgphoto2_la_SOURCES      += gphoto2-widget.c
+ 
+ libgphoto2_la_DEPENDENCIES += $(top_srcdir)/gphoto2/gphoto2-version.h
++
++libgphoto2_la_SOURCES      += dll-preload.h
++
++BUILT_SOURCES = dll-preload.h
++
++CLEANFILES = dll-preload.h
++
++dll-preload.h:
++	$(AM_V_at)find ../camlibs -name "Makefile-files" -exec sed -i 's/^\(.*\)_la_\(C\|CPP\)FLAGS\s*=\s*\$$(camlib_\(c\|cpp\)flags)$$/\0 -Dcamera_id=\1_camera_id -Dcamera_abilities=\1_camera_abilities -Dcamera_init=\1_camera_init/g' {} \;
++	$(AM_V_at)rm -f $@
++	$(AM_V_at)echo "#ifndef __DLL_PRELOAD_H__" >> $@
++	$(AM_V_at)echo "#define __DLL_PRELOAD_H__" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "struct camlib {" >> $@
++	$(AM_V_at)echo "   const char *name;" >> $@
++	$(AM_V_at)echo "   const CameraLibraryIdFunc fp_camera_id;" >> $@
++	$(AM_V_at)echo "   const CameraLibraryAbilitiesFunc fp_camera_abilities;" >> $@
++	$(AM_V_at)echo "   const CameraLibraryInitFunc fp_camera_init;" >> $@
++	$(AM_V_at)echo "};" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "extern struct camlib camlibs[];" >> $@
++	$(AM_V_at)echo >> $@
++	echo "extern struct camlib *get_camlib_by_name(const char *name);" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "#ifdef DEFINE_CAMLIBS" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)list="$(GP_CAMLIB_SET)"; for be in $$list; do be=$${be%.la}; \
++	echo "extern int $${be}_camera_id(CameraText *id);" >> $@; \
++	echo "extern int $${be}_camera_abilities(CameraAbilitiesList *list);" >> $@; \
++	echo "extern int $${be}_camera_init(Camera *camera, GPContext *context);" >> $@; \
++	echo >> $@; \
++	done
++	$(AM_V_at)echo "struct camlib camlibs[] = {" >> $@
++	$(AM_V_at)list="$(GP_CAMLIB_SET)"; for be in $$list; do be=$${be%.la}; \
++	echo "    {\"$$be.la\", $${be}_camera_id, $${be}_camera_abilities, $${be}_camera_init}," >> $@; \
++	done
++	$(AM_V_at)echo "    { NULL, NULL, NULL, NULL }" >> $@
++	$(AM_V_at)echo "};" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "struct camlib *get_camlib_by_name(const char *name) {" >> $@
++	$(AM_V_at)echo "    struct camlib *lib;" >> $@
++	$(AM_V_at)echo "    for (lib = camlibs; lib->name; lib++) {" >> $@
++	$(AM_V_at)echo "        if (!strcmp(lib->name, name)) {" >> $@
++	$(AM_V_at)echo "            break;" >> $@
++	$(AM_V_at)echo "        }" >> $@
++	$(AM_V_at)echo "    }" >> $@
++	$(AM_V_at)echo "    return lib;" >> $@
++	$(AM_V_at)echo "}" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "#endif // DEFINE_CAMLIBS" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "#endif // __DLL_PRELOAD_H__" >> $@
++
+diff --git a/libgphoto2/gphoto2-abilities-list.c b/libgphoto2/gphoto2-abilities-list.c
+index 7db617aed..36215132d 100644
+--- a/libgphoto2/gphoto2-abilities-list.c
++++ b/libgphoto2/gphoto2-abilities-list.c
+@@ -31,7 +31,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ 
+-#include <ltdl.h>
++/* #include <ltdl.h> */
+ 
+ #include <gphoto2/gphoto2-result.h>
+ #include <gphoto2/gphoto2-port-log.h>
+@@ -39,7 +39,9 @@
+ #include <gphoto2/gphoto2-port-locking.h>
+ 
+ #include "libgphoto2/i18n.h"
+-
++#define DEFINE_CAMLIBS
++#include "libgphoto2/dll-preload.h"
++#undef DEFINE_CAMLIBS
+ 
+ /** \internal */
+ #define CHECK_RESULT(result) {int r = (result); if (r < 0) return (r);}
+@@ -175,7 +177,7 @@ typedef struct {
+ 
+ 
+ static int
+-foreach_func (const char *filename, lt_ptr data)
++foreach_func (const char *filename, void *data)
+ {
+ 	foreach_data_t *fd = data;
+ 	CameraList *list = fd->list;
+@@ -186,6 +188,20 @@ foreach_func (const char *filename, lt_ptr data)
+ 	return ((fd->result == GP_OK)?0:1);
+ }
+ 
++static int fake_lt_dlforeachfile (const char *search_path,
++                                  int (*func) (const char *filename, void * data),
++                                  void * data)
++{
++    int ret = 0;
++    struct camlib *lib;
++    for (lib = camlibs; lib->name; lib++) {
++        if ((ret = func(lib->name, data)) != 0) {
++            break;
++        }
++    }
++    return ret;
++}
++
+ static int
+ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 			    GPContext *context)
+@@ -198,8 +214,8 @@ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 	const char *filename;
+ 	CameraList *flist;
+ 	int count;
+-	lt_dlhandle lh;
+-
++	/* lt_dlhandle lh; */
++	struct camlib *lh;
+ 	C_PARAMS (list && dir);
+ 
+ 	GP_LOG_D ("Using ltdl to load camera libraries from '%s'...", dir);
+@@ -212,10 +228,11 @@ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 	if (1) { /* a new block in which we can define a temporary variable */
+ 		foreach_data_t foreach_data = { NULL, GP_OK };
+ 		foreach_data.list = flist;
+-		lt_dlinit ();
+-		lt_dladdsearchdir (dir);
+-		ret = lt_dlforeachfile (dir, foreach_func, &foreach_data);
+-		lt_dlexit ();
++		/* lt_dlinit (); */
++		/* lt_dladdsearchdir (dir); */
++		/* ret = lt_dlforeachfile (dir, foreach_func, &foreach_data); */
++		ret = fake_lt_dlforeachfile(dir, foreach_func, &foreach_data);
++		/* lt_dlexit (); */
+ 		if (ret != 0) {
+ 			gp_list_free (flist);
+ 			GP_LOG_E ("Internal error looking for camlibs (%d)", ret);
+@@ -231,7 +248,7 @@ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 		return ret;
+ 	}
+ 	GP_LOG_D ("Found %i camera drivers.", count);
+-	lt_dlinit ();
++	/* lt_dlinit (); */
+ 	p = gp_context_progress_start (context, count,
+ 		_("Loading camera drivers from '%s'..."), dir);
+ 	for (i = 0; i < count; i++) {
+@@ -240,20 +257,24 @@ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 			gp_list_free (flist);
+ 			return ret;
+ 		}
+-		lh = lt_dlopenext (filename);
++		/* lh = lt_dlopenext (filename); */
++		lh = get_camlib_by_name(filename);
+ 		if (!lh) {
+ 			GP_LOG_D ("Failed to load '%s': %s.", filename,
+-				lt_dlerror ());
++		/* 		lt_dlerror ()); */
++				"unknown error");
+ 			continue;
+ 		}
+ 
+ 		/* camera_id */
+-		id = lt_dlsym (lh, "camera_id");
++		/* id = lt_dlsym (lh, "camera_id"); */
++		id = lh->fp_camera_id;
+ 		if (!id) {
+ 			GP_LOG_D ("Library '%s' does not seem to "
+ 				"contain a camera_id function: %s",
+-				filename, lt_dlerror ());
+-			lt_dlclose (lh);
++				/* filename, lt_dlerror ()); */
++				filename, "unknown error.");
++			/* lt_dlclose (lh); */
+ 			continue;
+ 		}
+ 
+@@ -262,38 +283,40 @@ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 		 * loaded yet.
+ 		 */
+ 		if (id (&text) != GP_OK) {
+-			lt_dlclose (lh);
++			/* lt_dlclose (lh); */
+ 			continue;
+ 		}
+ 		if (gp_abilities_list_lookup_id (list, text.text) >= 0) {
+-			lt_dlclose (lh);
++			/* lt_dlclose (lh); */
+ 			continue;
+ 		}
+ 
+ 		/* camera_abilities */
+-		ab = lt_dlsym (lh, "camera_abilities");
++		/* ab = lt_dlsym (lh, "camera_abilities"); */
++		ab = lh->fp_camera_abilities;
+ 		if (!ab) {
+ 			GP_LOG_D ("Library '%s' does not seem to "
+ 				"contain a camera_abilities function: "
+-				"%s", filename, lt_dlerror ());
+-			lt_dlclose (lh);
++				/* "%s", filename, lt_dlerror ()); */
++				"%s", filename, "unknown error.");
++			/* lt_dlclose (lh); */
+ 			continue;
+ 		}
+ 
+ 		old_count = gp_abilities_list_count (list);
+ 		if (old_count < 0) {
+-			lt_dlclose (lh);
++			/* lt_dlclose (lh); */
+ 			continue;
+ 		}
+ 
+ 		if (ab (list) != GP_OK) {
+-			lt_dlclose (lh);
++			/* lt_dlclose (lh); */
+ 			continue;
+ 		}
+ 
+ 		/* do not free the library in valgrind mode */
+ #if !defined(VALGRIND)
+-		lt_dlclose (lh);
++		/* lt_dlclose (lh); */
+ #endif
+ 		new_count = gp_abilities_list_count (list);
+ 		if (new_count < 0)
+@@ -307,13 +330,13 @@ unlocked_gp_abilities_list_load_dir (CameraAbilitiesList *list, const char *dir,
+ 
+ 		gp_context_progress_update (context, p, i);
+ 		if (gp_context_cancel (context) == GP_CONTEXT_FEEDBACK_CANCEL) {
+-			lt_dlexit ();
++			/* lt_dlexit (); */
+ 			gp_list_free (flist);
+ 			return GP_ERROR_CANCEL;
+ 		}
+ 	}
+ 	gp_context_progress_stop (context, p);
+-	lt_dlexit ();
++	/* lt_dlexit (); */
+ 	gp_list_free (flist);
+ 
+ 	return GP_OK;
+diff --git a/libgphoto2/gphoto2-camera.c b/libgphoto2/gphoto2-camera.c
+index 745d7f988..8a69789d4 100644
+--- a/libgphoto2/gphoto2-camera.c
++++ b/libgphoto2/gphoto2-camera.c
+@@ -32,7 +32,7 @@
+ #include <stdarg.h>
+ #include <stdio.h>
+ 
+-#include <ltdl.h>
++/* #include <ltdl.h> */
+ 
+ #include <gphoto2/gphoto2-result.h>
+ #include <gphoto2/gphoto2-library.h>
+@@ -40,7 +40,7 @@
+ #include <gphoto2/gphoto2-port-locking.h>
+ 
+ #include "libgphoto2/i18n.h"
+-
++#include "libgphoto2/dll-preload.h"
+ 
+ #define CAMERA_UNUSED(c,ctx)						\
+ {									\
+@@ -210,7 +210,8 @@ struct _CameraPrivateCore {
+ 	CameraAbilities a;
+ 
+ 	/* Library handle */
+-	lt_dlhandle lh;
++	/* lt_dlhandle lh; */
++	struct camlib *lh;
+ 
+ 	char error[2048];
+ 
+@@ -281,8 +282,8 @@ gp_camera_exit (Camera *camera, GPContext *context)
+ 	if (camera->pc->lh) {
+ #if !defined(VALGRIND)
+ 		gpi_libltdl_lock();
+-		lt_dlclose (camera->pc->lh);
+-		lt_dlexit ();
++		/* lt_dlclose (camera->pc->lh); */
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ #endif
+ 		camera->pc->lh = NULL;
+@@ -781,27 +782,30 @@ gp_camera_init (Camera *camera, GPContext *context)
+ 	/* Load the library. */
+ 	GP_LOG_D ("Loading '%s'...", camera->pc->a.library);
+ 	gpi_libltdl_lock();
+-	lt_dlinit ();
+-	camera->pc->lh = lt_dlopenext (camera->pc->a.library);
++	/* lt_dlinit (); */
++	/* camera->pc->lh = lt_dlopenext (camera->pc->a.library); */
++	camera->pc->lh = get_camlib_by_name(camera->pc->a.library);
+ 	gpi_libltdl_unlock();
+ 	if (!camera->pc->lh) {
+ 		gpi_libltdl_lock();
+ 		gp_context_error (context, _("Could not load required "
+ 			"camera driver '%s' (%s)."), camera->pc->a.library,
+-			lt_dlerror ());
+-		lt_dlexit ();
++			/* lt_dlerror ()); */
++			"unknown error");
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ 		return (GP_ERROR_LIBRARY);
+ 	}
+ 
+ 	/* Initialize the camera */
+ 	gpi_libltdl_lock();
+-	init_func = lt_dlsym (camera->pc->lh, "camera_init");
++	/* init_func = lt_dlsym (camera->pc->lh, "camera_init"); */
++	init_func = camera->pc->lh->fp_camera_init;
+ 	gpi_libltdl_unlock();
+ 	if (!init_func) {
+ 		gpi_libltdl_lock();
+-		lt_dlclose (camera->pc->lh);
+-		lt_dlexit ();
++		/* lt_dlclose (camera->pc->lh); */
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ 		camera->pc->lh = NULL;
+ 		gp_context_error (context, _("Camera driver '%s' is "
+@@ -814,8 +818,8 @@ gp_camera_init (Camera *camera, GPContext *context)
+ 		result = gp_port_open (camera->port);
+ 		if (result < 0) {
+ 			gpi_libltdl_lock();
+-			lt_dlclose (camera->pc->lh);
+-			lt_dlexit ();
++			/* lt_dlclose (camera->pc->lh); */
++			/* lt_dlexit (); */
+ 			gpi_libltdl_unlock();
+ 			camera->pc->lh = NULL;
+ 			return (result);
+@@ -826,8 +830,8 @@ gp_camera_init (Camera *camera, GPContext *context)
+ 	if (result < 0) {
+ 		gp_port_close (camera->port);
+ 		gpi_libltdl_lock();
+-		lt_dlclose (camera->pc->lh);
+-		lt_dlexit ();
++		/* lt_dlclose (camera->pc->lh); */
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ 		camera->pc->lh = NULL;
+ 		memset (camera->functions, 0, sizeof (CameraFunctions));
+diff --git a/libgphoto2_port/Makefile.am b/libgphoto2_port/Makefile.am
+index 8f783057f..48dafb16f 100644
+--- a/libgphoto2_port/Makefile.am
++++ b/libgphoto2_port/Makefile.am
+@@ -26,7 +26,7 @@ bin_SCRIPTS = gphoto2-port-config
+ 
+ # The . stands for the current dir, i.e. the iolibs to build.
+ # Make sure the iolibs are built before running tests on them.
+-SUBDIRS = po libgphoto2_port . tests doc
++SUBDIRS = po libgphoto2_port . doc
+ 
+ include gphoto-m4/Makefile-files
+ 
+diff --git a/libgphoto2_port/configure.ac b/libgphoto2_port/configure.ac
+index 2b52a093d..801638a75 100644
+--- a/libgphoto2_port/configure.ac
++++ b/libgphoto2_port/configure.ac
+@@ -474,8 +474,10 @@ dnl ---------------------------------------------------------------------------
+ AC_SUBST([IOLIB_LIST])
+ for x in ${IOLIB_LIST}; do
+     IOLIB_LTLIST="${IOLIB_LTLIST} ${x}.la"
++    IOLIB_LIST_LINKER="${IOLIB_LIST_LINKER} -l:${x}.a"
+ done
+ AC_SUBST([IOLIB_LTLIST])
++AC_SUBST([IOLIB_LIST_LINKER])
+ 
+ sorted_iolib_list="$(echo "${IOLIB_LIST}" | tr ' ' '\n' | sort | ${SED} '/^$/d' | tr '\n' ' ' | ${SED} 's/ $//')"
+ AC_DEFINE_UNQUOTED([IOLIB_LIST], ["${sorted_iolib_list}"],
+@@ -540,6 +542,9 @@ AC_SUBST([AM_CXXFLAGS])
+ # LDFLAGS: Linker flags
+ AC_SUBST([AM_LDFLAGS])
+ 
++AC_SUBST([LIBEXIF_LIBS])
++AC_SUBST([LIBUSB_LIBS])
++AC_SUBST([LIBUSB1_LIBS])
+ 
+ # ---------------------------------------------------------------------------
+ # Create output files
+diff --git a/libgphoto2_port/disk/Makefile-files b/libgphoto2_port/disk/Makefile-files
+index 4625ee1e6..d18dab4b9 100644
+--- a/libgphoto2_port/disk/Makefile-files
++++ b/libgphoto2_port/disk/Makefile-files
+@@ -7,7 +7,7 @@ disk_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	$(INTL_CFLAGS) \
+ 	$(LIBUSB_CFLAGS) \
+-	$(CPPFLAGS)
++	$(CPPFLAGS) -Dgp_port_library_type=disk_gp_port_library_type -Dgp_port_library_list=disk_gp_port_library_list -Dgp_port_library_operations=disk_gp_port_library_operations
+ disk_la_DEPENDENCIES = $(iolib_dependencies)
+ disk_la_LIBADD = $(iolib_libadd)
+ disk_la_LIBADD += $(INTLLIBS)
+diff --git a/libgphoto2_port/gphoto-m4/gp-camlibs.m4 b/libgphoto2_port/gphoto-m4/gp-camlibs.m4
+index eb71211c0..e66937cc2 100644
+--- a/libgphoto2_port/gphoto-m4/gp-camlibs.m4
++++ b/libgphoto2_port/gphoto-m4/gp-camlibs.m4
+@@ -470,16 +470,20 @@ GP_SET_EQUAL_IFELSE([camlib-set], [camlib-set-standard], [dnl
+ ])dnl
+ 
+ m4_pattern_allow([GP_CAMLIB_SET])dnl
++m4_pattern_allow([GP_CAMLIB_SET_LINKER])dnl
+ AC_DEFINE_UNQUOTED([GP_CAMLIB_SET], ["${gp_camlib_set}"],
+                    [The actually defined set of camlibs to build])
+ 
+ AS_UNSET([GP_CAMLIB_SET])
++AS_UNSET([GP_CAMLIB_SET_LINKER])
+ for f in ${gp_camlib_set}
+ do
+     GP_CAMLIB_SET="${GP_CAMLIB_SET}${GP_CAMLIB_SET+ }${f}.la"
++    GP_CAMLIB_SET_LINKER="${GP_CAMLIB_SET_LINKER}${GP_CAMLIB_SET_LINKER+ }-l:${f}.a"
+ done
+ AS_UNSET([f])
+ AC_SUBST([GP_CAMLIB_SET])
++AC_SUBST([GP_CAMLIB_SET_LINKER])
+ 
+ m4_pattern_allow([GP_CAMLIB_SET_EVERYTHING])dnl
+ AC_SUBST([GP_CAMLIB_SET_EVERYTHING],
+diff --git a/libgphoto2_port/gphoto-m4/gp-check-library.m4 b/libgphoto2_port/gphoto-m4/gp-check-library.m4
+index 9232bc482..9200a9cc5 100644
+--- a/libgphoto2_port/gphoto-m4/gp-check-library.m4
++++ b/libgphoto2_port/gphoto-m4/gp-check-library.m4
+@@ -78,6 +78,7 @@ dnl     compilation.
+ dnl
+ m4_pattern_forbid([PKG_PROG_PKG_CONFIG])dnl
+ m4_pattern_forbid([PKG_CHECK_MODULES])dnl
++m4_pattern_forbid([PKG_CHECK_MODULES_STATIC])dnl
+ dnl
+ AC_DEFUN([_GP_CHECK_LIBRARY_SOEXT],[dnl
+ AC_MSG_CHECKING([for dynamic library extension])
+@@ -152,8 +153,8 @@ if test "x${[$1][_LIBS]}" = "x" && test "x${[$1][_CFLAGS]}" = "x"; then
+ 		if test "x${[have_][$1]}" = "xno"; then
+ 			# we need that line break after the PKG_CHECK_MODULES
+ 			m4_ifval([$3],
+-				[PKG_CHECK_MODULES([$1],[$2][ $3],[have_][$1][=yes],[:])],
+-				[PKG_CHECK_MODULES([$1],[$2],     [have_][$1][=yes],[:])]
++				[PKG_CHECK_MODULES_STATIC([$1],[$2][ $3],[have_][$1][=yes],[:])],
++				[PKG_CHECK_MODULES_STATIC([$1],[$2],     [have_][$1][=yes],[:])]
+ 			)
+ 		fi
+ 		# If pkg-config didn't find anything, try the libfoo-config program
+diff --git a/libgphoto2_port/gphoto-m4/gp-libjpeg.m4 b/libgphoto2_port/gphoto-m4/gp-libjpeg.m4
+index 774de024a..c9bb8e85c 100644
+--- a/libgphoto2_port/gphoto-m4/gp-libjpeg.m4
++++ b/libgphoto2_port/gphoto-m4/gp-libjpeg.m4
+@@ -128,7 +128,7 @@ libjpeg not found despite LIBJPEG_CFLAGS and/or LIBJPEG_LIBS being set.
+   ])
+ 
+   AS_VAR_IF([have_libjpeg], [no], [dnl
+-    PKG_CHECK_MODULES([LIBJPEG], [libjpeg], [dnl
++    PKG_CHECK_MODULES_STATIC([LIBJPEG], [libjpeg], [dnl
+       AC_MSG_CHECKING([linking with libjpeg works])
+       GP_LINK_LIBJPEG_IFELSE([dnl
+         have_libjpeg=yes
+diff --git a/libgphoto2_port/libgphoto2_port.pc.in b/libgphoto2_port/libgphoto2_port.pc.in
+index d03f58f6a..b046655fc 100644
+--- a/libgphoto2_port/libgphoto2_port.pc.in
++++ b/libgphoto2_port/libgphoto2_port.pc.in
+@@ -4,10 +4,11 @@ libdir=@libdir@
+ includedir=@includedir@
+ VERSION=@VERSION@
+ driverdir=@iolibdir@
++libs=@IOLIB_LIST_LINKER@ @SERIAL_LIBS@ @LIBEXIF_LIBS@ @LIBUSB_LIBS@ @LIBUSB1_LIBS@
+ 
+ Name: libgphoto2_port
+ Description: Device-independent access to serial, USB, and other ports
+ URL: http://gphoto.org/proj/libgphoto2/
+ Version: @VERSION@
+-Libs: -L${libdir} -lgphoto2_port -lm
++Libs: -L${libdir} -L${driverdir} -lgphoto2_port -lm ${libs} -lgphoto2_port
+ Cflags: -I${includedir} -I${includedir}/gphoto2
+diff --git a/libgphoto2_port/libgphoto2_port/Makefile.am b/libgphoto2_port/libgphoto2_port/Makefile.am
+index 1e211ba34..62033521e 100644
+--- a/libgphoto2_port/libgphoto2_port/Makefile.am
++++ b/libgphoto2_port/libgphoto2_port/Makefile.am
+@@ -76,3 +76,55 @@ libgphoto2_port_la_SOURCES      += gphoto2-port-result.c
+ libgphoto2_port_la_DEPENDENCIES += $(top_srcdir)/gphoto2/gphoto2-port-locking.h
+ libgphoto2_port_la_DEPENDENCIES += $(top_srcdir)/gphoto2/gphoto2-port-version.h
+ libgphoto2_port_la_DEPENDENCIES += $(top_srcdir)/gphoto2/gphoto2-port-library.h
++
++libgphoto2_port_la_SOURCES      += dll-preload.h
++
++BUILT_SOURCES = dll-preload.h
++
++CLEANFILES = dll-preload.h
++
++dll-preload.h:
++	$(AM_V_at)rm -f $@
++	$(AM_V_at)echo "#ifndef __DLL_PRELOAD_H__" >> $@
++	$(AM_V_at)echo "#define __DLL_PRELOAD_H__" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "struct iolib {" >> $@
++	$(AM_V_at)echo "   const char *name;" >> $@
++	$(AM_V_at)echo "   const GPPortLibraryType fp_gp_port_library_type;" >> $@
++	$(AM_V_at)echo "   const GPPortLibraryList fp_gp_port_library_list;" >> $@
++	$(AM_V_at)echo "   const GPPortLibraryOperations fp_gp_port_library_operations;" >> $@
++	$(AM_V_at)echo "};" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "extern struct iolib iolibs[];" >> $@
++	$(AM_V_at)echo >> $@
++	echo "extern struct iolib *get_iolib_by_name(const char *name);" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "#ifdef DEFINE_IOLIBS" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)list="$(IOLIB_LIST)"; for be in $$list; do be=$${be%.la}; \
++	echo "extern GPPortType $${be}_gp_port_library_type(void);" >> $@; \
++	echo "extern int $${be}_gp_port_library_list(GPPortInfoList *list);" >> $@; \
++	echo "extern GPPortOperations *$${be}_gp_port_library_operations(void);" >> $@; \
++	echo >> $@; \
++	done
++	$(AM_V_at)echo "struct iolib iolibs[] = {" >> $@
++	$(AM_V_at)list="$(IOLIB_LIST)"; for be in $$list; do be=$${be%.la}; \
++	echo "    {\"$$be.la\", $${be}_gp_port_library_type, $${be}_gp_port_library_list, $${be}_gp_port_library_operations}," >> $@; \
++	done
++	$(AM_V_at)echo "    { NULL, NULL, NULL, NULL }" >> $@
++	$(AM_V_at)echo "};" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "struct iolib *get_iolib_by_name(const char *name) {" >> $@
++	$(AM_V_at)echo "    struct iolib *lib;" >> $@
++	$(AM_V_at)echo "    for (lib = iolibs; lib->name; lib++) {" >> $@
++	$(AM_V_at)echo "        if (!strcmp(lib->name, name)) {" >> $@
++	$(AM_V_at)echo "            break;" >> $@
++	$(AM_V_at)echo "        }" >> $@
++	$(AM_V_at)echo "    }" >> $@
++	$(AM_V_at)echo "    return lib;" >> $@
++	$(AM_V_at)echo "}" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "#endif // DEFINE_IOLIBS" >> $@
++	$(AM_V_at)echo >> $@
++	$(AM_V_at)echo "#endif // __DLL_PRELOAD_H__" >> $@
++
+diff --git a/libgphoto2_port/libgphoto2_port/gphoto2-port-info-list.c b/libgphoto2_port/libgphoto2_port/gphoto2-port-info-list.c
+index 9a3ea40a9..1ca8d912c 100644
+--- a/libgphoto2_port/libgphoto2_port/gphoto2-port-info-list.c
++++ b/libgphoto2_port/libgphoto2_port/gphoto2-port-info-list.c
+@@ -39,7 +39,7 @@
+ #warning We need regex.h, but it has not been detected.
+ #endif
+ 
+-#include <ltdl.h>
++/* #include <ltdl.h> */
+ 
+ #include <gphoto2/gphoto2-port-result.h>
+ #include <gphoto2/gphoto2-port-library.h>
+@@ -48,7 +48,9 @@
+ 
+ #include "libgphoto2_port/gphoto2-port-info.h"
+ #include "libgphoto2_port/i18n.h"
+-
++#define DEFINE_IOLIBS
++#include "libgphoto2_port/dll-preload.h"
++#undef DEFINE_IOLIBS
+ 
+ /**
+  * \internal GPPortInfoList:
+@@ -229,10 +231,11 @@ gp_port_info_list_append (GPPortInfoList *list, GPPortInfo info)
+ 
+ 
+ static int
+-foreach_func (const char *filename, lt_ptr data)
++foreach_func (const char *filename, void *data)
+ {
+ 	GPPortInfoList *list = data;
+-	lt_dlhandle lh;
++	/* lt_dlhandle lh; */
++	struct iolib *lh;
+ 	GPPortLibraryType lib_type;
+ 	GPPortLibraryList lib_list;
+ 	GPPortType type;
+@@ -241,18 +244,23 @@ foreach_func (const char *filename, lt_ptr data)
+ 
+ 	GP_LOG_D ("Called for filename '%s'.", filename );
+ 
+-	lh = lt_dlopenext (filename);
++	/* lh = lt_dlopenext (filename); */
++	lh = get_iolib_by_name(filename);
+ 	if (!lh) {
+-		GP_LOG_D ("Could not load '%s': '%s'.", filename, lt_dlerror ());
++		/* GP_LOG_D ("Could not load '%s': '%s'.", filename, lt_dlerror ()); */
++		GP_LOG_D ("Could not load '%s': '%s'.", filename, "unknown error");
+ 		return (0);
+ 	}
+ 
+-	lib_type = lt_dlsym (lh, "gp_port_library_type");
+-	lib_list = lt_dlsym (lh, "gp_port_library_list");
++	/* lib_type = lt_dlsym (lh, "gp_port_library_type"); */
++	/* lib_list = lt_dlsym (lh, "gp_port_library_list"); */
++	lib_type = lh->fp_gp_port_library_type;
++	lib_list = lh->fp_gp_port_library_list;
+ 	if (!lib_type || !lib_list) {
+ 		GP_LOG_D ("Could not find some functions in '%s': '%s'.",
+-			filename, lt_dlerror ());
+-		lt_dlclose (lh);
++			/* filename, lt_dlerror ()); */
++			filename, "unknown error");
++		/* lt_dlclose (lh); */
+ 		return (0);
+ 	}
+ 
+@@ -262,13 +270,13 @@ foreach_func (const char *filename, lt_ptr data)
+ 			break;
+ 	if (j != list->count) {
+ 		GP_LOG_D ("'%s' already loaded", filename);
+-		lt_dlclose (lh);
++		/* lt_dlclose (lh); */
+ 		return (0);
+ 	}
+ 
+ 	result = lib_list (list);
+ #if !defined(VALGRIND)
+-	lt_dlclose (lh);
++	/* lt_dlclose (lh); */
+ #endif
+ 	if (result < 0) {
+ 		GP_LOG_E ("Error during assembling of port list: '%s' (%d).",
+@@ -293,6 +301,19 @@ foreach_func (const char *filename, lt_ptr data)
+ 	return (0);
+ }
+ 
++static int fake_lt_dlforeachfile (const char *search_path,
++                                  int (*func) (const char *filename, void * data),
++                                  void * data)
++{
++    int ret = 0;
++    struct iolib *lib;
++    for (lib = iolibs; lib->name; lib++) {
++        if ((ret = func(lib->name, data)) != 0) {
++            break;
++        }
++    }
++    return ret;
++}
+ 
+ /**
+  * \brief Load system ports
+@@ -317,10 +338,11 @@ gp_port_info_list_load (GPPortInfoList *list)
+ 
+ 	GP_LOG_D ("Using ltdl to load io-drivers from '%s'...", iolibs);
+ 	gpi_libltdl_lock();
+-	lt_dlinit ();
+-	lt_dladdsearchdir (iolibs);
+-	result = lt_dlforeachfile (iolibs, foreach_func, list);
+-	lt_dlexit ();
++	/* lt_dlinit (); */
++	/* lt_dladdsearchdir (iolibs); */
++	/* result = lt_dlforeachfile (iolibs, foreach_func, list); */
++	result = fake_lt_dlforeachfile (iolibs, foreach_func, list);
++	/* lt_dlexit (); */
+ 	gpi_libltdl_unlock();
+ 	if (result < 0)
+ 		return (result);
+diff --git a/libgphoto2_port/libgphoto2_port/gphoto2-port.c b/libgphoto2_port/libgphoto2_port/gphoto2-port.c
+index f481dff83..8858ba386 100644
+--- a/libgphoto2_port/libgphoto2_port/gphoto2-port.c
++++ b/libgphoto2_port/libgphoto2_port/gphoto2-port.c
+@@ -32,7 +32,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ 
+-#include <ltdl.h>
++/* #include <ltdl.h> */
+ 
+ #include <gphoto2/gphoto2-port-result.h>
+ #include <gphoto2/gphoto2-port-library.h>
+@@ -42,6 +42,7 @@
+ #include "libgphoto2_port/gphoto2-port-info.h"
+ 
+ #include "libgphoto2_port/i18n.h"
++#include "libgphoto2_port/dll-preload.h"
+ 
+ #define CHECK_RESULT(result) {int r=(result); if (r<0) return (r);}
+ #define CHECK_SUPP(p,t,o) {if (!(o)) {gp_port_set_error ((p), _("The operation '%s' is not supported by this device"), (t)); return (GP_ERROR_NOT_SUPPORTED);}}
+@@ -63,7 +64,7 @@ struct _GPPortPrivateCore {
+ 
+ 	struct _GPPortInfo info;	/**< Internal port information of this port. */
+ 	GPPortOperations *ops;	/**< Internal port operations. */
+-	lt_dlhandle lh;		/**< Internal libtool library handle. */
++	struct iolib *lh;		/**< Internal libtool library handle. */
+ };
+ 
+ /**
+@@ -161,34 +162,38 @@ gp_port_set_info (GPPort *port, GPPortInfo info)
+ 	if (port->pc->lh) {
+ #if !defined(VALGRIND)
+ 		gpi_libltdl_lock();
+-		lt_dlclose (port->pc->lh);
+-		lt_dlexit ();
++		/* lt_dlclose (port->pc->lh); */
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ #endif
+ 	}
+ 
+ 	gpi_libltdl_lock();
+-	lt_dlinit ();
+-	port->pc->lh = lt_dlopenext (info->library_filename);
++	/* lt_dlinit (); */
++	/* port->pc->lh = lt_dlopenext (info->library_filename); */
++	port->pc->lh = get_iolib_by_name(info->library_filename);
+ 	gpi_libltdl_unlock();
+ 	if (!port->pc->lh) {
+ 		gpi_libltdl_lock();
+-		GP_LOG_E ("Could not load '%s' ('%s').", info->library_filename, lt_dlerror ());
+-		lt_dlexit ();
++		/* GP_LOG_E ("Could not load '%s' ('%s').", info->library_filename, lt_dlerror ()); */
++		GP_LOG_E ("Could not load '%s' ('%s').", info->library_filename, "unknown error");
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ 		return (GP_ERROR_LIBRARY);
+ 	}
+ 
+ 	/* Load the operations */
+ 	gpi_libltdl_lock();
+-	ops_func = lt_dlsym (port->pc->lh, "gp_port_library_operations");
++	/* ops_func = lt_dlsym (port->pc->lh, "gp_port_library_operations"); */
++        ops_func = port->pc->lh->fp_gp_port_library_operations;
+ 	gpi_libltdl_unlock();
+ 	if (!ops_func) {
+ 		gpi_libltdl_lock();
+ 		GP_LOG_E ("Could not find 'gp_port_library_operations' in '%s' ('%s')",
+-			  info->library_filename, lt_dlerror ());
+-		lt_dlclose (port->pc->lh);
+-		lt_dlexit ();
++			  /* info->library_filename, lt_dlerror ()); */
++			  info->library_filename, "unknown error");
++		/* lt_dlclose (port->pc->lh); */
++		/* lt_dlexit (); */
+ 		gpi_libltdl_unlock();
+ 		port->pc->lh = NULL;
+ 		return (GP_ERROR_LIBRARY);
+@@ -356,8 +361,8 @@ gp_port_free (GPPort *port)
+ 		if (port->pc->lh) {
+ #if !defined(VALGRIND)
+ 			gpi_libltdl_lock();
+-			lt_dlclose (port->pc->lh);
+-			lt_dlexit ();
++			/* lt_dlclose (port->pc->lh); */
++			/* lt_dlexit (); */
+ 			gpi_libltdl_unlock();
+ #endif
+ 			port->pc->lh = NULL;
+diff --git a/libgphoto2_port/libusb1/Makefile-files b/libgphoto2_port/libusb1/Makefile-files
+index 8834973ff..9c2250c32 100644
+--- a/libgphoto2_port/libusb1/Makefile-files
++++ b/libgphoto2_port/libusb1/Makefile-files
+@@ -7,7 +7,7 @@ usb1_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	$(INTL_CFLAGS) \
+ 	$(LIBUSB1_CFLAGS) \
+-	$(CPPFLAGS)
++	$(CPPFLAGS) -Dgp_port_library_type=usb1_gp_port_library_type -Dgp_port_library_list=usb1_gp_port_library_list -Dgp_port_library_operations=usb1_gp_port_library_operations
+ usb1_la_DEPENDENCIES = $(iolib_dependencies)
+ usb1_la_LIBADD = $(iolib_libadd)
+ usb1_la_LIBADD += $(LIBUSB1_LIBS) $(INTLLIBS)
+diff --git a/libgphoto2_port/ptpip/Makefile-files b/libgphoto2_port/ptpip/Makefile-files
+index 37f321786..75abf74a6 100644
+--- a/libgphoto2_port/ptpip/Makefile-files
++++ b/libgphoto2_port/ptpip/Makefile-files
+@@ -6,7 +6,7 @@ ptpip_la_LDFLAGS = $(iolib_ldflags)
+ ptpip_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	$(INTL_CFLAGS) \
+-	$(CPPFLAGS) 
++	$(CPPFLAGS) -Dgp_port_library_type=ptpip_gp_port_library_type -Dgp_port_library_list=ptpip_gp_port_library_list -Dgp_port_library_operations=ptpip_gp_port_library_operations
+ ptpip_la_DEPENDENCIES = $(iolib_dependencies)
+ ptpip_la_LIBADD = $(iolib_libadd) $(INTLLIBS)
+ ptpip_la_SOURCES = ptpip/ptpip.c
+diff --git a/libgphoto2_port/serial/Makefile-files b/libgphoto2_port/serial/Makefile-files
+index cdb9e5dfc..66228a5f7 100644
+--- a/libgphoto2_port/serial/Makefile-files
++++ b/libgphoto2_port/serial/Makefile-files
+@@ -6,7 +6,7 @@ serial_la_LDFLAGS = $(iolib_ldflags)
+ serial_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	$(INTL_CFLAGS) \
+-	$(CPPFLAGS)
++	$(CPPFLAGS) -Dgp_port_library_type=serial_gp_port_library_type -Dgp_port_library_list=serial_gp_port_library_list -Dgp_port_library_operations=serial_gp_port_library_operations
+ serial_la_DEPENDENCIES = $(iolib_dependencies)
+ serial_la_LIBADD = $(iolib_libadd)
+ serial_la_LIBADD += $(SERIAL_LIBS) $(INTLLIBS)
+diff --git a/libgphoto2_port/usb/Makefile-files b/libgphoto2_port/usb/Makefile-files
+index c33929e44..7892ea551 100644
+--- a/libgphoto2_port/usb/Makefile-files
++++ b/libgphoto2_port/usb/Makefile-files
+@@ -7,7 +7,7 @@ usb_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	$(INTL_CFLAGS) \
+ 	$(LIBUSB_CFLAGS) \
+-	$(CPPFLAGS)
++	$(CPPFLAGS) -Dgp_port_library_type=usb_gp_port_library_type -Dgp_port_library_list=usb_gp_port_library_list -Dgp_port_library_operations=usb_gp_port_library_operations
+ usb_la_DEPENDENCIES = $(iolib_dependencies)
+ usb_la_LIBADD = $(iolib_libadd)
+ usb_la_LIBADD += $(LIBUSB_LIBS)	$(INTLLIBS)
+diff --git a/libgphoto2_port/usbdiskdirect/Makefile-files b/libgphoto2_port/usbdiskdirect/Makefile-files
+index 8195c7e72..017412b1c 100644
+--- a/libgphoto2_port/usbdiskdirect/Makefile-files
++++ b/libgphoto2_port/usbdiskdirect/Makefile-files
+@@ -4,7 +4,7 @@
+ EXTRA_LTLIBRARIES += usbdiskdirect.la
+ 
+ usbdiskdirect_la_LDFLAGS = $(iolib_ldflags)
+-usbdiskdirect_la_CPPFLAGS = $(AM_CPPFLAGS) $(INTL_CFLAGS) $(CPPFLAGS)
++usbdiskdirect_la_CPPFLAGS = $(AM_CPPFLAGS) $(INTL_CFLAGS) $(CPPFLAGS) -Dgp_port_library_type=usbdiskdirect_gp_port_library_type -Dgp_port_library_list=usbdiskdirect_gp_port_library_list -Dgp_port_library_operations=usbdiskdirect_gp_port_library_operations
+ usbdiskdirect_la_DEPENDENCIES = $(iolib_dependencies)
+ usbdiskdirect_la_LIBADD =  $(iolib_libadd) $(INTLLIBS) $(SERIAL_LIBS)
+ usbdiskdirect_la_SOURCES = usbdiskdirect/linux.c
+diff --git a/libgphoto2_port/usbscsi/Makefile-files b/libgphoto2_port/usbscsi/Makefile-files
+index 8f1c44eeb..6c917bf1f 100644
+--- a/libgphoto2_port/usbscsi/Makefile-files
++++ b/libgphoto2_port/usbscsi/Makefile-files
+@@ -4,7 +4,7 @@
+ EXTRA_LTLIBRARIES += usbscsi.la
+ 
+ usbscsi_la_LDFLAGS = $(iolib_ldflags)
+-usbscsi_la_CPPFLAGS = $(AM_CPPFLAGS) $(INTL_CFLAGS) $(CPPFLAGS)
++usbscsi_la_CPPFLAGS = $(AM_CPPFLAGS) $(INTL_CFLAGS) $(CPPFLAGS) -Dgp_port_library_type=usbscsi_gp_port_library_type -Dgp_port_library_list=usbscsi_gp_port_library_list -Dgp_port_library_operations=usbscsi_gp_port_library_operations
+ usbscsi_la_DEPENDENCIES = $(iolib_dependencies)
+ usbscsi_la_LIBADD =  $(iolib_libadd) $(INTLLIBS)
+ usbscsi_la_SOURCES = usbscsi/linux.c
+diff --git a/libgphoto2_port/vusb/Makefile-files b/libgphoto2_port/vusb/Makefile-files
+index 5dc394da0..f7b122e25 100644
+--- a/libgphoto2_port/vusb/Makefile-files
++++ b/libgphoto2_port/vusb/Makefile-files
+@@ -12,7 +12,7 @@ vusb_la_CPPFLAGS = \
+ 	$(AM_CPPFLAGS) \
+ 	$(INTL_CFLAGS) \
+         $(LIBEXIF_CFLAGS) \
+-	$(CPPFLAGS)
++	$(CPPFLAGS) -Dgp_port_library_type=vusb_gp_port_library_type -Dgp_port_library_list=vusb_gp_port_library_list -Dgp_port_library_operations=vusb_gp_port_library_operations
+ vusb_la_DEPENDENCIES = $(iolib_dependencies)
+ vusb_la_LIBADD = $(iolib_libadd)
+ vusb_la_LIBADD += $(INTLLIBS) $(LIBEXIF_LIBS)

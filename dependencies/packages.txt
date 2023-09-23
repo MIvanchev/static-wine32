@@ -46,7 +46,7 @@ https://www.x.org/releases/individual/lib/libpciaccess-0.17.tar.gz
 https://dri.freedesktop.org/libdrm/libdrm-2.4.116.tar.xz
 https://github.com/libunwind/libunwind/releases/download/v1.7.2/libunwind-1.7.2.tar.gz
 https://github.com/llvm/llvm-project.git llvmorg-16.0.6 llvmorg-16.0.6
-https://archive.mesa3d.org/mesa-23.1.7.tar.xz
+https://archive.mesa3d.org/mesa-23.1.8.tar.xz
 https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.3.264.tar.gz Vulkan-Headers-1.3.264.tar.gz
 https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/v1.3.264.tar.gz Vulkan-Loader-1.3.264.tar.gz
 https://github.com/krh/vkcube.git master vkcube-0.0.0
@@ -62,6 +62,7 @@ https://www.samba.org/ftp/tdb/tdb-1.4.9.tar.gz
 https://sourceforge.net/projects/pcre/files/pcre/8.45/pcre-8.45.tar.gz/download pcre-8.45.tar.gz
 https://download.gnome.org/sources/glib/2.78/glib-2.78.0.tar.xz
 https://github.com/libusb/libusb/releases/download/v1.0.26/libusb-1.0.26.tar.bz2
+https://github.com/gphoto/libgphoto2/releases/download/v2.5.31/libgphoto2-2.5.31.tar.bz2
 https://pcsclite.apdu.fr/files/pcsc-lite-2.0.0.tar.bz2
 https://freedesktop.org/software/pulseaudio/releases/pulseaudio-16.99.1.tar.xz
 https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.10.tar.bz2

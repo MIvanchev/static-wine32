@@ -208,6 +208,10 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lm -lrt/' \$PC_FILE\n\
 [pulseaudio] [ -f \$PC_FILE ] && echo 'Requires.private: dbus-1' >> \$PC_FILE\n\
 [pulseaudio] pkg-config --libs --static libpulse\n\
+[libgphoto2] patch -p1 < ../patches/`basename \$PWD`.patch\n\
+[libgphoto2] autoreconf -i\n\
+[libgphoto2] $CONFIGURE_FLAGS LIBLTDL=\"-lltdl -ldl\" ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
+[libgphoto2] make install\n\
 [alsa-lib] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [alsa-lib] autoreconf -i\n\
 [alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
