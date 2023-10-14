@@ -78,3 +78,4 @@ http://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz
 https://github.com/twaugh/libieee1284.git V0_2_11 ieee1284-0.2.11
 https://gitlab.com/sane-project/backends.git 1.2.1 sane-backends-1.2.1
 https://kerberos.org/dist/krb5/1.21/krb5-1.21.2.tar.gz
+https://github.com/MIvanchev/wine.git static-dependencies wine-8.17

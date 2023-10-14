@@ -29,10 +29,12 @@ ENV DISPLAY=:1
 COPY dependencies /build
 COPY meson-cross-i386 /build/
 
-# Set to "native" if building on the machine you're going to run Wine on
-# or the value that matches your CPU's architecture from the from the
-# possible values of the -march option of GCC. For example "broadwell" for
-# the i7-5600u CPU. The values are available on
+RUN build/checkvers.sh && build/download.sh
+
+# (required) Set to "native" if building on the machine you're going to run
+# Wine on  or the value that matches your CPU's architecture from the from
+# the possible values of the -march option of GCC. For example "broadwell"
+# for the i7-5600u CPU. The values are available on
 #
 # https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
 #
@@ -42,12 +44,22 @@ COPY meson-cross-i386 /build/
 #
 ARG PLATFORM=
 
-# Leave empty or comment out to skip LLVM build
+# (required) Set to Wine's installation directory on your machine,
+# e.g. $HOME/.local.
+ARG PREFIX=
+
+# (optional) Set to "y" to enable or something else to disable link time
+# optimizations.
+ARG BUILD_WITH_LTO=y
+
+# (optional) Leave empty or comment out to skip LLVM build
 ARG BUILD_WITH_LLVM=
 
-# Set to the desired number of parallel build jobs; this should losely
-# correspond to the number of CPU cores.
+# (optional) Set to the desired number of parallel build jobs; this should
+# losely correspond to the number of CPU cores.
 ARG BUILD_JOBS=8
+
+# Do NOT set these as this would make your life rather difficult.
 
 ARG PATH="$PATH:/usr/local/bin"
 
@@ -81,6 +93,15 @@ ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
                     -DDATAROOTDIR=/usr/share \
                     -DMANDIR=/usr/local/man \
                     -DCMAKE_BUILD_TYPE=Release"
+
+# wine recently modified configure.ac to use PKG_CONFIG_LIBDIR instead of
+# PKG_CONFIG_PATH and something broke so this is now required before
+# building wine, see:
+#
+# https://github.com/wine-mirror/wine/commit/c7a97b5d5d56ef00a0061b75412c6e0e489fdc99
+#
+
+ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig
 
 ARG DEP_BUILD_SCRIPTS="\
 [macros-util-macros] autoreconf -i\n\
@@ -337,8 +358,6 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 -Ddoc=disabled \
 -Dgtk_doc=disabled\n\
 [gstreamer] ninja -C build install\n\
-[gstreamer] rm /usr/local/lib/liborc*.so*\n\
-[gstreamer] echo \"export PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig\" >> ~/.bashrc\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
 [isdn4k-utils] pushd capi20\n\
@@ -371,7 +390,21 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [krb5] pkg-config --libs --static krb5\n\
 [krb5] PC_FILE=/usr/local/lib/pkgconfig/mit-krb5-gssapi.pc\n\
 [krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
-[krb5] pkg-config --libs --static krb5-gssapi"
+[krb5] pkg-config --libs --static krb5-gssapi\n\
+[wine] autoreconf -f\n\
+[wine] $CONFIGURE_FLAGS \
+CFLAGS=\"\${CFLAGS/-flto -ffat-lto-objects}\" \
+CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
+CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
+OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
+PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
+./configure --disable-tests --prefix=\"$PREFIX\"\n\
+[wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
+[wine] make install\n\
+[wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\
+[wine] tar czvf \"\$HOME/wine-build.tar.gz\" -C \"$PREFIX\" .\n\
+[wine] echo make uninstall \
+"
 
 ARG DEFAULT_BUILD_SCRIPT="\
 #!/bin/sh\n\
@@ -401,11 +434,19 @@ make install\n"
 # pkg_build_script = xcb-proto-1.14.1.sh
 
 RUN if [[ -z "$PLATFORM" ]]; then \
-        echo "You must set the PLATFORM variable in Dockerfile before building the image." 1>&2; \
-        echo "See https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html for a list of the" 1>&2; \
+        echo "You must set the PLATFORM variable in Dockerfile (or through --build-arg) " 1>&2; \
+        echo "before building the image. See " 1>&2; \
+        echo "https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html for a list of the " 1>&2; \
         echo "allowed values and pick the one that matches your CPU's architecture." 1>&2; \
         false; \
     fi && \
+    if [[ -z "$PREFIX" ]]; then \
+        echo "You must set the PREFIX variable in Dockerfile (or through --build-arg) " 1>&2; \
+        echo "before building the image. The value should be the path to the Wine " 1>&2; \
+        echo "installation directory on your machine, e.g. \$HOME/.local" 1>&2; \
+        false; \
+    fi && \
+    PREFIX=${PREFIX%/} && \
     gcc -E -march=$PLATFORM -xc /dev/null >/dev/null && \
     sed -i "s/{PLATFORM}/$PLATFORM/g" /build/meson-cross-i386 && \
     export MAKEFLAGS=-j$BUILD_JOBS && \
@@ -446,11 +487,3 @@ RUN if [[ -z "$PLATFORM" ]]; then \
          && rm -rf "$pkg_dir"  || exit; \
      done)
 
-# wine recently modified configure.ac to use PKG_CONFIG_LIBDIR instead of
-# PKG_CONFIG_PATH and something broke so this is now required before
-# building wine, see:
-#
-# https://github.com/wine-mirror/wine/commit/c7a97b5d5d56ef00a0061b75412c6e0e489fdc99
-#
-
-ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig
