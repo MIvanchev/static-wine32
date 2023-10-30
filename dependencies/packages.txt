@@ -1,3 +1,4 @@
+https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz
 https://gitlab.freedesktop.org/xorg/util/macros/-/archive/util-macros-1.20.0/macros-util-macros-1.20.0.tar.gz
 https://www.x.org/releases/individual/proto/xorgproto-2023.2.tar.gz
 https://www.x.org/releases/individual/proto/xcb-proto-1.16.0.tar.xz
@@ -71,7 +72,7 @@ https://github.com/libsdl-org/SDL.git release-2.28.4 SDL-2.28.4
 https://github.com/apple/cups/archive/refs/tags/v2.3.6.tar.gz cups-2.3.6.tar.gz
 https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.24.1.tar.bz2
 https://github.com/cisco/openh264/archive/refs/tags/v2.3.1.tar.gz openh264-2.3.1.tar.gz
-https://gitlab.freedesktop.org/gstreamer/gstreamer.git 1.22.5 gstreamer-1.22.5
+https://gitlab.freedesktop.org/gstreamer/gstreamer.git 1.22.6 gstreamer-1.22.6
 https://github.com/the-tcpdump-group/libpcap.git libpcap-1.10.4 libpcap-1.10.4
 https://github.com/marschap/isdn4k-utils.git master isdn4k-utils-3.0.6
 http://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz

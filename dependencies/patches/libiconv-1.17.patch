@@ -1,0 +1,28 @@
+diff --git a/configure.ac b/configure.ac
+index fec4920..d184ea0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -211,4 +211,5 @@ if test -d "${srcdir}/tests"; then
+ fi
+ AC_CONFIG_FILES([include/iconv.h:include/iconv.h.build.in])
+ AC_CONFIG_FILES([include/iconv.h.inst:include/iconv.h.in])
++AC_CONFIG_FILES([libiconv.pc])
+ AC_OUTPUT
+diff --git a/libiconv.pc.in b/libiconv.pc.in
+new file mode 100644
+index 0000000..5afeeef
+--- /dev/null
++++ b/libiconv.pc.in
+@@ -0,0 +1,12 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: libiconv
++Description: TODO
++URL: TODO
++Version: @VERSION@
++Requires:
++Libs: -L${libdir} -liconv -lcharset
++Cflags: -I${includedir}

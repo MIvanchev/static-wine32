@@ -1,0 +1,92 @@
+diff --git a/configure.ac b/configure.ac
+index 718546c9..152aa48d 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -283,6 +283,8 @@ else
+     fi
+ fi
+ 
++XML_PC_REQUIRES=
++
+ dnl
+ dnl Checks for header files.
+ dnl
+@@ -1034,39 +1036,24 @@ WITH_ICONV=0
+ if test "$with_iconv" = "no" ; then
+     echo Disabling ICONV support
+ else
+-    _cppflags=$CPPFLAGS
+-    _libs=$LIBS
+-    if test "$with_iconv" != "yes" && test "$with_iconv" != "" ; then
+-	ICONV_DIR=$with_iconv
+-	CPPFLAGS="$CPPFLAGS -I$ICONV_DIR/include"
+-	LIBS="$LIBS -L$ICONV_DIR/lib"
+-    fi
+-    AC_MSG_CHECKING([for libiconv])
+-    AC_LINK_IFELSE([
+-        AC_LANG_PROGRAM([#include <iconv.h>], [iconv_open(0,0);])
+-    ], [
+-        WITH_ICONV=1
+-        AC_MSG_RESULT([none required])
+-    ], [
+-        LIBS="$LIBS -liconv"
++    PKG_CHECK_MODULES([ICONV], [iconv], [
++        _cppflags=$CPPFLAGS
++        _libs=$LIBS
++        CPPFLAGS="$ICONV_CFLAGS"
++        LIBS="$LIBS $ICONV_LIBS"
++        AC_MSG_CHECKING([whether libiconv is usable])
+         AC_LINK_IFELSE([
+-            AC_LANG_PROGRAM([#include <iconv.h>], [iconv_open(0,0);])
+-        ], [
+-            WITH_ICONV=1
+-            ICONV_LIBS="-liconv"
+-            AC_MSG_RESULT([yes])
+-        ], [
+-            AC_MSG_RESULT([no])
+-        ])
++                AC_LANG_PROGRAM([#include <iconv.h>], [iconv_open(0,0);])
++            ],
++            [AC_MSG_RESULT([yes])
++             WITH_ICONV=1],
++            [AC_MSG_RESULT([no])
++             AC_MSG_ERROR([libiconv was found but not could be used to link a simple program])]
++        )
++        CPPFLAGS=$_cppflags
++        LIBS=$_libs
++        XML_PC_REQUIRES="${XML_PC_REQUIRES} iconv"
+     ])
+-    if test "$WITH_ICONV" = "1" && test "$ICONV_DIR" != ""; then
+-        ICONV_CFLAGS="-I$ICONV_DIR/include"
+-        ICONV_LIBS="-L$ICONV_DIR/lib $ICONV_LIBS"
+-	# Export this since our headers include iconv.h
+-	XML_INCLUDEDIR="$XML_INCLUDEDIR -I$ICONV_DIR/include"
+-    fi
+-    CPPFLAGS=$_cppflags
+-    LIBS=$_libs
+ fi
+ AC_SUBST(WITH_ICONV)
+ AC_SUBST(ICONV_CFLAGS)
+@@ -1146,6 +1133,9 @@ AC_SUBST(XML_PRIVATE_CFLAGS)
+ AC_SUBST(XML_LIBTOOLLIBS)
+ AC_SUBST(XML_INCLUDEDIR)
+ 
++AC_SUBST(XML_PC_REQUIRES)
++AM_SUBST_NOTMAKE(XML_PC_REQUIRES)
++
+ dnl for the spec file
+ RELDATE=`date +'%a %b %e %Y'`
+ AC_SUBST(RELDATE)
+diff --git a/libxml-2.0.pc.in b/libxml-2.0.pc.in
+index 88e3963b..0b7505eb 100644
+--- a/libxml-2.0.pc.in
++++ b/libxml-2.0.pc.in
+@@ -7,7 +7,7 @@ modules=@WITH_MODULES@
+ Name: libXML
+ Version: @VERSION@
+ Description: libXML library version2.
+-Requires:
++Requires: @XML_PC_REQUIRES@
+ Libs: -L${libdir} @XML_LIBS@
+ Libs.private: @XML_PRIVATE_LIBS@ @LIBS@
+ Cflags: @XML_INCLUDEDIR@ @XML_CFLAGS@

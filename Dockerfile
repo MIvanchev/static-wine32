@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -9,7 +9,7 @@ RUN dpkg --add-architecture i386 && \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         python3 python3-pip wget git ninja-build gperf automake \
         autoconf-archive libtool autopoint gettext nasm glslang-tools && \
-    pip3 install mako jinja2 && \
+    pip3 install mako jinja2 jinja2-cli && \
     wget -q https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.27.5-linux-x86_64.tar.gz -P $HOME && \
     tar xf $HOME/cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     cmake --version && \
@@ -104,6 +104,14 @@ ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
 ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig
 
 ARG DEP_BUILD_SCRIPTS="\
+[libiconv] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
+[libiconv] make install\n\
+[libiconv] mkdir -p /usr/local/lib/pkgconfig && jinja2 ../libiconv.pc.template \
+-D prefix=\"`sed -n 's/^prefix[ \\t]*=[ \\t]*//p' Makefile`\" \
+-D exec_prefix=\"`sed -n 's/^exec_prefix[ \\t]*=[ \\t]*//p' Makefile`\" \
+-D includedir=\"`sed -n 's/^includedir[ \\t]*=[ \\t]*//p' Makefile`\" \
+-D libdir=\"`sed -n 's/^libdir[ \\t]*=[ \\t]*//p' Makefile`\" \
+-D VERSION=\"`sed -n 's/^VERSION[ \\t]*=[ \\t]*//p' Makefile`\" | tee /usr/local/lib/pkgconfig/iconv.pc /usr/local/lib/pkgconfig/iconv-meson.pc\n\
 [macros-util-macros] autoreconf -i\n\
 [macros-util-macros] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE\n\
 [macros-util-macros] make install\n\
@@ -146,6 +154,7 @@ ARG DEP_BUILD_SCRIPTS="\
 --enable-openssl-compatibility \
 --host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
 [gnutls] make install\n\
+[libxml2] autoreconf -i\n\
 [libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
 --without-python\n\
 [libxml2] make install\n\
@@ -204,6 +213,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
 [tdb] make install\n\
 [tdb] rm /usr/local/lib/libtdb*.so*\n\
+[glib] sed -i \"s/dependency('iconv')/dependency('iconv-meson')/\" meson.build\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
 [glib] ninja -C build install\n\
 [libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev)]/' configure.ac\n\
@@ -229,15 +239,12 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lm -lrt/' \$PC_FILE\n\
 [pulseaudio] [ -f \$PC_FILE ] && echo 'Requires.private: dbus-1' >> \$PC_FILE\n\
 [pulseaudio] pkg-config --libs --static libpulse\n\
-[libgphoto2] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [libgphoto2] autoreconf -i\n\
 [libgphoto2] $CONFIGURE_FLAGS LIBLTDL=\"-lltdl -ldl\" ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
 [libgphoto2] make install\n\
-[alsa-lib] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [alsa-lib] autoreconf -i\n\
 [alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-lib] make install\n\
-[alsa-plugins] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [alsa-plugins] autoreconf -i\n\
 [alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
 [alsa-plugins] make install\n\
@@ -262,7 +269,6 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [llvmorg] make install\n\
 [llvmorg] rm /usr/local/lib/libRemarks.so* /usr/local/lib/libLTO.so*\n\
 [llvmorg] sed -i 's/#llvm-config =/llvm-config =/' ../../meson-cross-i386\n\
-[mesa] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
@@ -305,7 +311,6 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [mesa] pkg-config --libs --static gl\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
-[Vulkan-Loader] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
 [Vulkan-Loader] make -C build install\n\
 [Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
@@ -373,7 +378,6 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [ieee1284] ./bootstrap\n\
 [ieee1284] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --without-python\n\
 [ieee1284] make install-includeHEADERS install-libLTLIBRARIES\n\
-[sane-backends] patch -p1 < ../patches/`basename \$PWD`.patch\n\
 [sane-backends] autoreconf -i\n\
 [sane-backends] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --enable-dynamic --enable-preload\n\
 [sane-backends] make install\n\
@@ -398,6 +402,16 @@ CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
+ZLIB_PE_CFLAGS=\"\$(pkg-config --cflags zlib)\" \
+ZLIB_PE_LIBS=\"$(pkg-config --libs --static zlib)\" \
+TIFF_PE_CFLAGS=\"\$(pkg-config --cflags libtiff-4)\" \
+TIFF_PE_LIBS=\"$(pkg-config --libs --static libtiff-4)\" \
+JPEG_PE_CFLAGS=\"\$(pkg-config --cflags libjpeg)\" \
+JPEG_PE_LIBS=\"$(pkg-config --libs --static libjpeg)\" \
+PNG_PE_CFLAGS=\"\$(pkg-config --cflags libpng)\" \
+PNG_PE_LIBS=\"$(pkg-config --libs --static libpng)\" \
+XML2_PE_CFLAGS=\"\$(pkg-config --cflags libxml-2.0)\" \
+XML2_PE_LIBS=\"$(pkg-config --libs --static libxml-2.0)\" \
 ./configure --disable-tests --prefix=\"$PREFIX\"\n\
 [wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
 [wine] make install\n\
@@ -480,7 +494,9 @@ RUN if [[ -z "$PLATFORM" ]]; then \
        then \
          echo -e "$DEFAULT_BUILD_SCRIPT" > "$pkg_build_script" || exit; \
        else \
-         echo -e "#!/bin/sh\nset -e\n`cat $pkg_build_script`" > "$pkg_build_script" || exit; \
+         echo -e "#!/bin/sh\nset -e\n\
+if [ -f \"../patches/$pkg_dir.patch\" ]; then patch -p1 < \"../patches/$pkg_dir.patch\"; fi\n\
+`cat $pkg_build_script`" > "$pkg_build_script" || exit; \
        fi; \
        pushd "$pkg_dir" && cat "../$pkg_build_script" \
          && . "../$pkg_build_script" && set +e && popd \
