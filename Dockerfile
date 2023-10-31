@@ -208,7 +208,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] meson install --tags devel,libudev --no-rebuild\n\
 [systemd] PC_FILE=/usr/local/lib/pkgconfig/libudev.pc\n\
 [systemd] [ -f \$PC_FILE ] && echo 'Requires.private: libcap' >> \$PC_FILE\n\
-[libdrm] meson setup build $MESON_PROLOGUE\n\
+[libdrm] meson setup build $MESON_PROLOGUE -Dintel=enabled -Dradeon=enabled -Damdgpu=enabled -Dnouveau=enabled\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
 [tdb] make install\n\
@@ -354,6 +354,7 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 -Dgst-plugins-bad:x11=disabled \
 -Dgst-plugins-bad:codectimestamper=disabled \
 -Dgst-plugins-good:ximagesrc=disabled \
+-Dpython=disabled \
 -Dtools=disabled \
 -Ddevtools=disabled \
 -Dgst-examples=disabled \
@@ -402,6 +403,8 @@ CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
+LDAP_PE_CFLAGS=\"\$(pkg-config --cflags ldap)\" \
+LDAP_PE_LIBS=\"\$(pkg-config --libs --static ldap)\" \
 ZLIB_PE_CFLAGS=\"\$(pkg-config --cflags zlib)\" \
 ZLIB_PE_LIBS=\"$(pkg-config --libs --static zlib)\" \
 TIFF_PE_CFLAGS=\"\$(pkg-config --cflags libtiff-4)\" \
