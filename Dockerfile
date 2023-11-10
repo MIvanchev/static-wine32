@@ -1,24 +1,45 @@
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 SHELL ["/bin/bash", "-c"]
+
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN dpkg --add-architecture i386 && \
     apt update && \
     apt upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt install -y build-essential pkg-config \
+    apt-get install -y build-essential \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
-        python3 python3-pip wget git ninja-build gperf automake \
-        autoconf-archive libtool autopoint gettext nasm glslang-tools && \
+        python3 python3-pip wget git ninja-build gperf \
+        autopoint gettext nasm glslang-tools && \
     pip3 install mako jinja2 jinja2-cli && \
-    wget -q https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.27.5-linux-x86_64.tar.gz -P $HOME && \
-    tar xf $HOME/cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
-    cmake --version && \
-    git clone --depth 1 --branch 1.2.1 https://github.com/mesonbuild/meson.git "$HOME/meson" && \
+    pushd "$HOME" && \
+    apt-get -y remove autoconf autoconf-archive automake pkg-config cmake meson && \
+    apt-get -y autoremove && \
+    wget -q http://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz && \
+    tar xf autoconf-*.tar.* && \
+    pushd autoconf-*/ && ./configure --prefix=/usr && make install && popd && rm -rf autoconf-* && \
+    wget -q http://mirror.netcologne.de/gnu/autoconf-archive/autoconf-archive-2023.02.20.tar.xz && \
+    tar xf autoconf-archive-*.tar.* && \
+    pushd autoconf-archive-*/ && ./configure --prefix=/usr && make install && popd && rm -rf autoconf-archive-* && \
+    wget -q https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz && \
+    tar xf automake-*.tar.* && \
+    pushd automake-*/ && ./configure --prefix=/usr && make install && popd && rm -rf automake-* && \
+    wget -q https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz && \
+    tar xf pkg-config-*.tar.* && \
+    pushd pkg-config-*/ && ./configure -prefix=/usr --with-internal-glib && make install && popd && rm -rf pkg-config-* && \
+    wget -q https://mirror.checkdomain.de/gnu/libtool/libtool-2.4.7.tar.xz && \
+    tar xf libtool-*.tar.* && \
+    pushd libtool-*/ && ./configure --prefix=/usr && make install && popd && rm -rf libtool-* && \
+    wget -q https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.27.5-linux-x86_64.tar.gz && \
+    tar xf cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
+    rm -rf cmake-* && apt-get -y remove cmake && \
+    git clone --depth 1 --branch 1.2.1 https://github.com/mesonbuild/meson.git && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
-    chmod +x /usr/bin/meson && meson --version && \
-    DEBIAN_FRONTEND=noninteractive apt install -y nano xvfb x11-apps \
-        imagemagick && \
+    chmod +x /usr/bin/meson && \
+    apt-get -y remove meson && \
+    popd && \
+    apt-get install -y nano xvfb x11-apps imagemagick && \
     echo "#!/bin/sh" > /usr/bin/startx && \
     echo "Xvfb \"\$DISPLAY\" -screen 0 1200x800x24 &" >> /usr/bin/startx && \
     echo >> /usr/bin/startx && \
@@ -87,7 +108,7 @@ ARG MESON_PROLOGUE="--prefix=/usr/local \
                     --prefer-static"
 ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
                     -DCMAKE_AR=/usr/bin/gcc-ar \
-                    -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
+                   -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
                     -DCMAKE_NM=gcc-nm \
                     -DSYSCONFDIR=/etc \
                     -DDATAROOTDIR=/usr/share \
@@ -132,7 +153,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [elfutils] sed -i 's/^\([ \t]*\)int code;$/\\1int code = 0;/' libdwfl/gzip.c\n\
 [elfutils] sed -i 's/^\\(zstd_LIBS=.*\\)\"/\\1 \$(pkg-config --libs --static libzstd)\"/' configure.ac\n\
 [elfutils] sed -i 's/^\\(zip_LIBS=.*\\)\"/\\1 \$(pkg-config --libs --static libzstd)\"/' configure.ac\n\
-[elfutils] autoreconf -f\n\
+[elfutils] autoreconf -fi\n\
 [elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
 [elfutils] make install\n\
 [elfutils] rm /usr/local/lib/libasm*.so* /usr/local/lib/libdw*.so* /usr/local/lib/libelf*.so*\n\
@@ -155,7 +176,7 @@ ARG DEP_BUILD_SCRIPTS="\
 --host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
 [gnutls] make install\n\
 [libxml2] autoreconf -i\n\
-[libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
+[libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --without-python \
 --without-python\n\
 [libxml2] make install\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
@@ -403,24 +424,12 @@ CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
-LDAP_PE_CFLAGS=\"\$(pkg-config --cflags ldap)\" \
-LDAP_PE_LIBS=\"\$(pkg-config --libs --static ldap)\" \
-ZLIB_PE_CFLAGS=\"\$(pkg-config --cflags zlib)\" \
-ZLIB_PE_LIBS=\"$(pkg-config --libs --static zlib)\" \
-TIFF_PE_CFLAGS=\"\$(pkg-config --cflags libtiff-4)\" \
-TIFF_PE_LIBS=\"$(pkg-config --libs --static libtiff-4)\" \
-JPEG_PE_CFLAGS=\"\$(pkg-config --cflags libjpeg)\" \
-JPEG_PE_LIBS=\"$(pkg-config --libs --static libjpeg)\" \
-PNG_PE_CFLAGS=\"\$(pkg-config --cflags libpng)\" \
-PNG_PE_LIBS=\"$(pkg-config --libs --static libpng)\" \
-XML2_PE_CFLAGS=\"\$(pkg-config --cflags libxml-2.0)\" \
-XML2_PE_LIBS=\"$(pkg-config --libs --static libxml-2.0)\" \
 ./configure --disable-tests --prefix=\"$PREFIX\"\n\
 [wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
 [wine] make install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\
 [wine] tar czvf \"\$HOME/wine-build.tar.gz\" -C \"$PREFIX\" .\n\
-[wine] echo make uninstall \
+[wine] make uninstall\
 "
 
 ARG DEFAULT_BUILD_SCRIPT="\
@@ -485,8 +494,8 @@ RUN if [[ -z "$PLATFORM" ]]; then \
     (for pkg_file in `sed 's/.*\///' packages.txt | awk '{print $3 ? ($3 ".tar.gz") : ($2 ? $2 : $1)}' | tr '\n' ' '`; \
      do \
        pkg_name=`echo "$pkg_file" | sed 's/\(.\{1,\}\)-[0-9]\{1,\}\(\.[0-9]\{1,\}\)*.*/\1/'`; \
-       pkg_dir=`echo "$pkg_file" | sed -e 's/\.tar\.\(gz\|xz\|bz2\)$//' -e 's/\.tgz$//'`; \
-       pkg_build_script="${pkg_dir}.sh"; \
+       pkg_dir=`echo "$pkg_file" | sed -e 's/\.tar\.\(gz\|xz\|bz2\)\$//' -e 's/\.tgz\$//'`; \
+       pkg_build_script="${pkg_name}.sh"; \
        echo "pkg_name:         $pkg_name"; \
        echo "pkg_dir:          $pkg_dir"; \
        echo "pkg_build_script: $pkg_build_script"; \
