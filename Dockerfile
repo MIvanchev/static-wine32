@@ -234,7 +234,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
 [tdb] make install\n\
 [tdb] rm /usr/local/lib/libtdb*.so*\n\
-[glib] sed -i \"s/dependency('iconv')/dependency('iconv-meson')/\" meson.build\n\
+[glib] sed -i \"s/dependency('iconv'/dependency('iconv-meson'/\" meson.build\n\
 [glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
 [glib] ninja -C build install\n\
 [libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev)]/' configure.ac\n\
@@ -332,7 +332,7 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [mesa] pkg-config --libs --static gl\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
-[Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DBUILD_STATIC_LOADER=ON -B build .\n\
+[Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DAPPLE_STATIC_LOADER=ON .\n\
 [Vulkan-Loader] make -C build install\n\
 [Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Requires.private: gl libudev' >> \$PC_FILE\n\
@@ -360,8 +360,11 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [cups] LIBS=`pkg-config --libs --static gnutls` $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
 --with-components=libcups\n\
 [cups] make install\n\
-[v4l-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-v4l-utils\n\
-[v4l-utils] make install\n\
+[v4l-utils] sed -i \"s/dependency('iconv'/dependency('iconv-meson'/\" meson.build\n\
+[v4l-utils] meson setup build $MESON_PROLOGUE -Dv4l-utils=false\n\
+[v4l-utils] cd build\n\
+[v4l-utils] meson compile\n\
+[v4l-utils] meson install --no-rebuild\n\
 [openh264] echo > codec/console/enc/meson.build\n\
 [openh264] meson setup build $MESON_PROLOGUE -Dtests=disabled\n\
 [openh264] ninja -C build install\n\

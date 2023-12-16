@@ -49,7 +49,8 @@ for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
     name=${BASH_REMATCH[2]}
     ver=${BASH_REMATCH[3]}
     ext=${BASH_REMATCH[4]}
-    list="https://www.x.org/releases/individual/proto \
+    list="https://ftp.gnu.org/pub/gnu/libiconv \
+      https://www.x.org/releases/individual/proto \
       https://www.x.org/releases/individual/lib \
       https://sourceware.org/pub/bzip2 \
       https://gmplib.org/download/gmp \
