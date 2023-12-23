@@ -1,0 +1,26 @@
+[binaries]
+c = '/usr/bin/gcc'
+cpp = '/usr/bin/g++'
+strip = '/usr/bin/strip'
+ar = '/usr/bin/gcc-ar'
+ranlib = '/usr/bin/gcc-ranlib'
+nm = '/usr/bin/gcc-nm'
+pkgconfig = '/usr/bin/pkg-config'
+cmake = '/usr/bin/cmake'
+#llvm-config = '/usr/local/bin/llvm-config'
+
+[built-in options]
+{%- set c_args=c_args.split(' ') -%}
+{%- set c_link_args=c_link_args.split(' ') -%}
+{%- set cpp_args=cpp_args.split(' ') -%}
+{%- set cpp_link_args=cpp_link_args.split(' ') %}
+c_args = [{% for arg in c_args %}'{{ arg }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+c_link_args = [{% for arg in c_link_args %}'{{ arg }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+cpp_args = [{% for arg in cpp_args %}'{{ arg }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+cpp_link_args = [{% for arg in cpp_link_args %}'{{ arg }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86'
+cpu = 'i686'
+endian = 'little'

@@ -2,6 +2,40 @@ FROM ubuntu:20.04
 
 SHELL ["/bin/bash", "-c"]
 
+# (required) Set to "native" if building on the machine you're going to run
+# Wine on  or the value that matches your CPU's architecture from the from
+# the possible values of the -march option of GCC. For example "broadwell"
+# for the i7-5600u CPU. The values are available on
+#
+# https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
+#
+# or you can find them out by executing:
+#
+# gcc -E -march=foo -xc /dev/null 2>&1 | sed -n 's/.* valid arguments to .* are: //p' | tr ' ' '\n'
+#
+ARG PLATFORM=
+
+# (required) Set to Wine's installation directory on your machine,
+# e.g. $HOME/.local.
+ARG PREFIX=
+
+# (optional) Set to "y" to enable or something else to disable link time
+# optimizations.
+ARG BUILD_WITH_LTO=y
+
+# (optional) Leave empty or comment out to skip LLVM build
+ARG BUILD_WITH_LLVM=
+
+# (optional) Set to the desired number of parallel build jobs; this should
+# losely correspond to the number of CPU cores.
+ARG BUILD_JOBS=8
+
+# Do NOT set these as this would make your life rather difficult.
+
+ARG PATH="$PATH:/usr/local/bin"
+ARG MAKEFLAGS=-j$BUILD_JOBS
+ARG NINJAFLAGS=-j$BUILD_JOBS
+
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN dpkg --add-architecture i386 && \
@@ -48,48 +82,18 @@ RUN dpkg --add-architecture i386 && \
 ENV DISPLAY=:1
 
 COPY dependencies /build
-COPY meson-cross-i386 /build/
 
 RUN build/checkvers.sh && build/download.sh
 
-# (required) Set to "native" if building on the machine you're going to run
-# Wine on  or the value that matches your CPU's architecture from the from
-# the possible values of the -march option of GCC. For example "broadwell"
-# for the i7-5600u CPU. The values are available on
-#
-# https://gcc.gnu.org/onlinedocs/gcc/x86-Options.html
-#
-# or you can find them out by executing:
-#
-# gcc -E -march=foo -xc /dev/null 2>&1 | sed -n 's/.* valid arguments to .* are: //p' | tr ' ' '\n'
-#
-ARG PLATFORM=
-
-# (required) Set to Wine's installation directory on your machine,
-# e.g. $HOME/.local.
-ARG PREFIX=
-
-# (optional) Set to "y" to enable or something else to disable link time
-# optimizations.
-ARG BUILD_WITH_LTO=y
-
-# (optional) Leave empty or comment out to skip LLVM build
-ARG BUILD_WITH_LLVM=
-
-# (optional) Set to the desired number of parallel build jobs; this should
-# losely correspond to the number of CPU cores.
-ARG BUILD_JOBS=8
-
-# Do NOT set these as this would make your life rather difficult.
-
-ARG PATH="$PATH:/usr/local/bin"
+ARG COMPILE_FLAGS="-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe"
+ARG LINK_FLAGS="-m32 -march=$PLATFORM -fno-lto"
 
 ARG CONFIGURE_PREFIX="--prefix=/usr/local"
-ARG CONFIGURE_FLAGS="CFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
-                     CPPFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
-                     CXXFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
-                     OBJCFLAGS=\"-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe\" \
-                     LDFLAGS=\"-m32 -march=$PLATFORM -fno-lto\" \
+ARG CONFIGURE_FLAGS="CFLAGS=\"$COMPILE_FLAGS\" \
+                     CXXFLAGS=\"$COMPILE_FLAGS\" \
+                     OBJCFLAGS=\"$COMPILE_FLAGS\" \
+                     OBCXXFLAGS=\"$COMPILE_FLAGS\" \
+                     LDFLAGS=\"$LINK_FLAGS\" \
                      AR=\"/usr/bin/gcc-ar\" \
                      RANLIB=\"/usr/bin/gcc-ranlib\" \
                      NM=\"/usr/bin/gcc-nm\""
@@ -108,7 +112,7 @@ ARG MESON_PROLOGUE="--prefix=/usr/local \
                     --prefer-static"
 ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
                     -DCMAKE_AR=/usr/bin/gcc-ar \
-                   -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
+                    -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
                     -DCMAKE_NM=gcc-nm \
                     -DSYSCONFDIR=/etc \
                     -DDATAROOTDIR=/usr/share \
@@ -477,9 +481,12 @@ RUN if [[ -z "$PLATFORM" ]]; then \
     fi && \
     PREFIX=${PREFIX%/} && \
     gcc -E -march=$PLATFORM -xc /dev/null >/dev/null && \
-    sed -i "s/{PLATFORM}/$PLATFORM/g" /build/meson-cross-i386 && \
-    export MAKEFLAGS=-j$BUILD_JOBS && \
-    export NINJAFLAGS=-j$BUILD_JOBS && \
+    jinja2 build/meson-cross-i386.template \
+        -D c_args="$COMPILE_FLAGS" \
+        -D c_link_args="$LINK_FLAGS" \
+        -D cpp_args="$COMPILE_FLAGS" \
+        -D cpp_link_args="$LINK_FLAGS" > build/meson-cross-i386 && \
+    cat build/meson-cross-i386 && \
     mkdir -p build && \
     cd build && \
     # The packages.txt files contains 1 line for every dependency to build.
