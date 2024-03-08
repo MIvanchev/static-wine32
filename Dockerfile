@@ -233,6 +233,9 @@ ARG DEP_BUILD_SCRIPTS="\
 [systemd] meson install --tags devel,libudev --no-rebuild\n\
 [systemd] PC_FILE=/usr/local/lib/pkgconfig/libudev.pc\n\
 [systemd] [ -f \$PC_FILE ] && echo 'Requires.private: libcap' >> \$PC_FILE\n\
+[libpciaccess] sed -i 's/shared_library/library/' src/meson.build\n\
+[libpciaccess] meson setup build $MESON_PROLOGUE\n\
+[libpciaccess] meson install -C build\n\
 [libdrm] meson setup build $MESON_PROLOGUE -Dintel=enabled -Dradeon=enabled -Damdgpu=enabled -Dnouveau=enabled\n\
 [libdrm] meson install -C build\n\
 [tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
@@ -374,6 +377,30 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [openh264] ninja -C build install\n\
 [gstreamer] sed -i 's/^\\(float step_size\\[8\\] = {\\)$/static \\1/' subprojects/gst-plugins-bad/gst/siren/common.c\n\
 [gstreamer] sed -i 's/^\\(extern float step_size\\[8\\];\\)$/\/\/\\1/' subprojects/gst-plugins-bad/gst/siren/common.h\n\
+[gstreamer] meson setup build $MESON_PROLOGUE \
+--prefer-static \
+--wrap-mode=nofallback \
+--force-fallback=libavfilter,dv,openh264,x264,fdk-aac,avtp,dssim,dav1d \
+-Dgst-full-target-type=static_library \
+-Dgst-full-libraries=gstreamer-app-1.0,gstreamer-video-1.0,gstreamer-audio-1.0,gstreamer-codecparsers-1.0,gstreamer-tag-1.0 \
+-Ddevtools=disabled \
+-Dgst-examples=disabled \
+-Dtests=disabled \
+-Dexamples=disabled \
+-Dintrospection=disabled \
+-Ddoc=disabled \
+-Dgtk_doc=disabled \
+-Dtools=disabled \
+-Dges=disabled \
+-Drtsp_server=disabled \
+-Dgst-plugins-base:gl=disabled \
+-Dgst-plugins-base:x11=disabled  \
+-Dgst-plugins-good:ximagesrc=disabled \
+-Dgst-plugins-good:v4l2=disabled \
+-Dgst-plugins-bad:x11=disabled \
+-Dgst-plugins-bad:wayland=disabled\n\
+[gstreamer] ninja -C build install\n\
+[gstreamer] rm /usr/local/lib/liborc*.so*\n\
 [gstreamer] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
 [gstreamer] sed -i 's/link_with: gstfull.get_shared_lib()/link_whole: gstfull/' meson.build\n\
 [gstreamer] meson setup build $MESON_PROLOGUE \
