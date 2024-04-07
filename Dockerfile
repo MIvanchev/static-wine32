@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -43,13 +43,14 @@ RUN dpkg --add-architecture i386 && \
     apt upgrade -y && \
     apt-get install -y build-essential \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
-        python3 python3-pip wget git ninja-build gperf \
-        autopoint gettext nasm glslang-tools && \
-    pip3 install mako jinja2 jinja2-cli && \
+        rustc bindgen python3 python3-pip python3-dev wget git ninja-build gperf \
+        autopoint gettext nasm glslang-tools xmlto fop \
+        xsltproc doxygen asciidoc gtk-doc-tools docbook2x && \
+    pip3 install mako jinja2 jinja2-cli packaging && \
     pushd "$HOME" && \
     apt-get -y remove autoconf autoconf-archive automake pkg-config cmake meson && \
     apt-get -y autoremove && \
-    wget -q http://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz && \
+    wget -q http://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.xz && \
     tar xf autoconf-*.tar.* && \
     pushd autoconf-*/ && ./configure --prefix=/usr && make install && popd && rm -rf autoconf-* && \
     wget -q http://mirror.netcologne.de/gnu/autoconf-archive/autoconf-archive-2023.02.20.tar.xz && \
@@ -64,10 +65,10 @@ RUN dpkg --add-architecture i386 && \
     wget -q https://mirror.checkdomain.de/gnu/libtool/libtool-2.4.7.tar.xz && \
     tar xf libtool-*.tar.* && \
     pushd libtool-*/ && ./configure --prefix=/usr && make install && popd && rm -rf libtool-* && \
-    wget -q https://github.com/Kitware/CMake/releases/download/v3.27.5/cmake-3.27.5-linux-x86_64.tar.gz && \
+    wget -q https://github.com/Kitware/CMake/releases/download/v3.29.0/cmake-3.29.0-linux-x86_64.tar.gz && \
     tar xf cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     rm -rf cmake-* && apt-get -y remove cmake && \
-    git clone --depth 1 --branch 1.2.1 https://github.com/mesonbuild/meson.git && \
+    git clone --depth 1 --branch 1.4.0 https://github.com/mesonbuild/meson.git && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
     chmod +x /usr/bin/meson && \
@@ -146,6 +147,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [zstd] cd build/cmake/builddir\n\
 [zstd] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF ..\n\
 [zstd] make install\n\
+[xz] autoreconf -fi\n\
 [xz] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared \
 --disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links \
 --disable-scripts --disable-doc\n\
@@ -202,6 +204,8 @@ ARG DEP_BUILD_SCRIPTS="\
 [SDL] make install\n\
 [Linux-PAM] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --includedir=/usr/local/include/security --enable-static --disable-shared\n\
 [Linux-PAM] make install\n\
+[Linux-PAM] PC_FILE=/usr/local/lib/pkgconfig/pam.pc\n\
+[Linux-PAM] [ -f \$PC_FILE ] && sed -i 's/^\\(Libs:.*\\)/\\1 -ldl/' \$PC_FILE\n\
 [libcap] sed -i 's/.*\$(MAKE) -C tests \$@.*//' Makefile\n\
 [libcap] sed -i 's/.*\$(MAKE) -C progs \$@.*//' Makefile\n\
 [libcap] sed -i 's/.*\$(MAKE) -C doc \\\$@.*//' Makefile\n\
@@ -210,7 +214,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [libcap-ng] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --without-python3\n\
 [libcap-ng] make install\n\
 [util-linux] ./autogen.sh\n\
-[util-linux] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared \
+[util-linux] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-year2038 \
 --without-python --disable-fdisks --disable-mount --disable-losetup --disable-zramctl \
 --disable-fsck --disable-partx --disable-uuidd --disable-uuidgen --disable-blkid \
 --disable-wipefs --disable-mountpoint --disable-fallocate --disable-unshare \
@@ -223,7 +227,7 @@ ARG DEP_BUILD_SCRIPTS="\
 --disable-kill --disable-last --disable-utmpdump --disable-mesg --disable-raw \
 --disable-rename --disable-chfn-chsh --disable-login --disable-nologin --disable-sulogin \
 --disable-su --disable-runuser --disable-ul --disable-more --disable-setterm \
---disable-schedutils --disable-wall --disable-bash-completion\n\
+--disable-schedutils --disable-wall --disable-bash-completion --disable-liblastlog2\n\
 [util-linux] make install\n\
 [systemd] sed -i 's/install : pkgconfiglibdir != .no.,/install : false,/' src/libsystemd/meson.build\n\
 [systemd] sed -i 's/install : true,/install : false,/' meson.build\n\
@@ -252,6 +256,8 @@ ARG DEP_BUILD_SCRIPTS="\
 [libusb] [ -f \$PC_FILE ] && sed -i 's/-ludev//' \$PC_FILE\n\
 [libusb] [ -f \$PC_FILE ] && echo 'Requires.private: libudev' >> \$PC_FILE\n\
 [libusb] pkg-config --libs --static libusb-1.0\n\
+[polkit] meson setup build $MESON_PROLOGUE -Dlibs-only=true -Dintrospection=false\n\
+[polkit] ninja -C build install\n\
 [pcsc-lite] $CONFIGURE_FLAGS LIBUDEV_LIBS=`pkg-config --libs --static libudev` ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-libsystemd\n\
 [pcsc-lite] make install\n\
 [pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
@@ -458,7 +464,7 @@ CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
-./configure --disable-tests --prefix=\"$PREFIX\"\n\
+./configure --disable-tests --prefix=\"$PREFIX\" --disable-year2038\n\
 [wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
 [wine] make install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\

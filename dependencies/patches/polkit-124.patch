@@ -1,0 +1,13 @@
+diff --git a/meson.build b/meson.build
+index 2f81c90..5f5b2c9 100644
+--- a/meson.build
++++ b/meson.build
+@@ -239,7 +239,7 @@ auth_fw = get_option('authfw')
+ enable_pam = (auth_fw == 'pam')
+ if enable_pam
+   # Check for PAM
+-  pam_dep = cc.find_library('pam')
++  pam_dep = dependency('pam')
+   assert(pam_dep.found() and cc.has_function('pam_start', dependencies: pam_dep), 'Could not find pam/pam-devel, please install the needed packages.')
+ 
+   # how to call pam_strerror

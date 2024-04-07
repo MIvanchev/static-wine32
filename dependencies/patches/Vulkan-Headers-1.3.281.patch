@@ -1,0 +1,13 @@
+diff --git a/include/vulkan/vk_platform.h b/include/vulkan/vk_platform.h
+index 0ecd4f6..1507a1d 100644
+--- a/include/vulkan/vk_platform.h
++++ b/include/vulkan/vk_platform.h
+@@ -53,7 +53,7 @@ extern "C"
+     #define VKAPI_PTR  VKAPI_ATTR
+ #else
+     // On other platforms, use the default calling convention
+-    #define VKAPI_ATTR
++    #define VKAPI_ATTR __attribute__ ((visibility ("default")))
+     #define VKAPI_CALL
+     #define VKAPI_PTR
+ #endif

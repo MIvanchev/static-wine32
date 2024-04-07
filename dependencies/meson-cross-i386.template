@@ -1,6 +1,7 @@
 [binaries]
 c = '/usr/bin/gcc'
 cpp = '/usr/bin/g++'
+rust = '/usr/bin/rustc'
 strip = '/usr/bin/strip'
 ar = '/usr/bin/gcc-ar'
 ranlib = '/usr/bin/gcc-ranlib'
