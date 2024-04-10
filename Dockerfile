@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -46,7 +46,7 @@ RUN dpkg --add-architecture i386 && \
         rustc bindgen python3 python3-pip python3-dev wget git ninja-build gperf \
         autopoint gettext nasm glslang-tools xmlto fop \
         xsltproc doxygen asciidoc gtk-doc-tools docbook2x && \
-    pip3 install mako jinja2 jinja2-cli packaging && \
+    pip3 install --break-system-packages mako jinja2 jinja2-cli packaging && \
     pushd "$HOME" && \
     apt-get -y remove autoconf autoconf-archive automake pkg-config cmake meson && \
     apt-get -y autoremove && \
