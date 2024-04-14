@@ -43,10 +43,10 @@ RUN dpkg --add-architecture i386 && \
     apt upgrade -y && \
     apt-get install -y build-essential \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
-        rustc bindgen python3 python3-pip python3-dev wget git ninja-build gperf \
-        autopoint gettext nasm glslang-tools xmlto fop \
-        xsltproc doxygen asciidoc gtk-doc-tools docbook2x && \
-    pip3 install mako jinja2 jinja2-cli packaging && \
+        rustc bindgen python3 python3-pip python3-dev python3-mako python3-jinja2 \
+        python3-packaging wget git ninja-build gperf autopoint gettext nasm \
+        glslang-tools xmlto fop xsltproc doxygen asciidoc gtk-doc-tools docbook2x && \
+    pip3 install jinja2-cli && \
     pushd "$HOME" && \
     apt-get -y remove autoconf autoconf-archive automake pkg-config cmake meson && \
     apt-get -y autoremove && \
@@ -83,7 +83,6 @@ RUN dpkg --add-architecture i386 && \
 ENV DISPLAY=:1
 
 COPY dependencies /build
-
 RUN build/checkvers.sh && build/download.sh
 
 ARG COMPILE_FLAGS="-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe"
@@ -299,8 +298,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -DLLVM_BUILD_32_BITS=ON \
 -DLLVM_BUILD_TOOLS=ON \
 -DLLVM_ENABLE_RTTI=ON\n\
-[llvmorg] cd build\n\
-[llvmorg] make install\n\
+[llvmorg] make -C build install\n\
 [llvmorg] rm /usr/local/lib/libRemarks.so* /usr/local/lib/libLTO.so*\n\
 [llvmorg] sed -i 's/#llvm-config =/llvm-config =/' ../../meson-cross-i386\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
@@ -324,14 +322,14 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgles2=disabled \
 -Dglx=dri \
 -Dgbm=enabled \
--Degl=disabled \
+-Degl=enabled \
 -Dllvm=disabled \
 ${BUILD_WITH_LLVM:+-Dllvm=enabled} \
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
 -Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile OSMesa GL glapi gallium_dri vulkan_util vulkan_runtime \
+[mesa] meson compile OSMesa GL EGL glapi gallium_dri vulkan_util vulkan_runtime \
 vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
 vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} \
 VkLayer_INTEL_nullhw VkLayer_MESA_device_select VkLayer_MESA_overlay \
