@@ -301,6 +301,8 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [llvmorg] make -C build install\n\
 [llvmorg] rm /usr/local/lib/libRemarks.so* /usr/local/lib/libLTO.so*\n\
 [llvmorg] sed -i 's/#llvm-config =/llvm-config =/' ../../meson-cross-i386\n\
+[llvm-spirv] echo $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
+[llvm-spirv] echo make -C build install \
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
