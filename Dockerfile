@@ -23,9 +23,6 @@ ARG PREFIX=
 # optimizations.
 ARG BUILD_WITH_LTO=y
 
-# (optional) Leave empty or comment out to skip LLVM build
-ARG BUILD_WITH_LLVM=
-
 # (optional) Set to the desired number of parallel build jobs; this should
 # losely correspond to the number of CPU cores.
 ARG BUILD_JOBS=8
@@ -291,33 +288,39 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [alsa-plugins] pkg-config --libs --static alsa\n\
 [libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
 [libunwind] make install\n\
-[llvmorg] ${BUILD_WITH_LLVM:+echo} return\n\
-[llvmorg] cmake $CMAKE_PROLOGUE -S llvm -B build \
+[llvmorg] if [ -z \"\$LLVM_BUILD_COMPLETE\" ]; then\n\
+[llvmorg]     cmake $CMAKE_PROLOGUE -S llvm -B build \
+-DLLVM_ENABLE_PROJECTS=\"clang;clang-tools-extra\" \
 -DLLVM_BUILD_SHARED_LIBS=OFF \
 -DLLVM_TARGETS_TO_BUILD=\"X86;AMDGPU\" \
 -DLLVM_BUILD_32_BITS=ON \
 -DLLVM_BUILD_TOOLS=ON \
 -DLLVM_ENABLE_RTTI=ON\n\
-[llvmorg] make -C build install\n\
-[llvmorg] rm /usr/local/lib/libRemarks.so* /usr/local/lib/libLTO.so*\n\
-[llvmorg] sed -i 's/#llvm-config =/llvm-config =/' ../../meson-cross-i386\n\
-[llvm-spirv] echo $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
-[llvm-spirv] echo make -C build install \
+[llvmorg]     make -C build install\n\
+[llvmorg]     sed -i 's/#llvm-config =/llvm-config =/' ../meson-cross-i386\n\
+[llvmorg]     LLVM_BUILD_COMPLETE=true\n\
+[llvmorg] else\n\
+[llvmorg]     $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -S libclc -B build\n\
+[llvmorg]     make -C build install\n\
+[llvmorg] fi\n\
+[spirv-headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build\n\
+[spirv-headers] make -C build install\n\
+[spirv-tools] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DSPIRV-Headers_SOURCE_DIR=/usr/local\n\
+[spirv-tools] make -C build install\n\
+[llvm-spirv] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DSPIRV-Headers_SOURCE_DIR=/usr/local\n\
+[llvm-spirv] make -C build install\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
-[mesa] echo '#!/usr/bin/env python3' > bin/install_megadrivers.py\n\
-[mesa] echo >> /bin/install_megadrivers.py\n\
-[mesa] meson setup build $MESON_PROLOGUE \
+[mesa] PKG_CONFIG_PATH=/usr/local/share/pkgconfig meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
 -Ddri3=enabled \
--Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600${BUILD_WITH_LLVM:+,radeonsi} \
+-Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600,radeonsi \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
--Dvulkan-drivers=intel,intel_hasvk,amd${BUILD_WITH_LLVM:+,swrast} \
--Dvulkan-layers=overlay,intel-nullhw,device-select \
+-Dvulkan-drivers=intel,intel_hasvk,amd,swrast \
 -Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
 -Dgles1=disabled \
@@ -325,24 +328,29 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dglx=dri \
 -Dgbm=enabled \
 -Degl=enabled \
--Dllvm=disabled \
-${BUILD_WITH_LLVM:+-Dllvm=enabled} \
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
+-Dstatic-libclc=all \
 -Dosmesa=true\n\
 [mesa] cd build\n\
-[mesa] meson compile OSMesa GL EGL glapi gallium_dri vulkan_util vulkan_runtime \
-vulkan_wsi radeon_icd vulkan_radeon intel_icd vulkan_intel intel_hasvk_icd \
-vulkan_intel_hasvk ${BUILD_WITH_LLVM:+lvp_icd vulkan_lvp} \
-VkLayer_INTEL_nullhw VkLayer_MESA_device_select VkLayer_MESA_overlay \
+[mesa] meson compile OSMesa GL EGL glapi gallium_dri \
+mesa_util mesa_util_c11 xmlconfig \
+compiler nir blake3 glsl vtn \
+blorp blorp_elk intel_decoder_brw intel_decoder_elk \
+vulkan_util vulkan_lite_runtime vulkan_instance vulkan_runtime vulkan_wsi \
+radeon_icd vulkan_radeon \
+intel_icd vulkan_intel \
+intel_hasvk_icd vulkan_intel_hasvk \
+lvp_icd vulkan_lvp \
 gbm\n\
 [mesa] meson install --no-rebuild\n\
+[mesa] PC_FILE=/usr/local/lib/pkgconfig/gbm.pc\n\
+[mesa] [ -f \$PC_FILE ] && sed -i 's/Libs:\\(.*\\)/Libs:\
+\\1 -lnir -lblake3/' \$PC_FILE\n\
 [mesa] PC_FILE=/usr/local/lib/pkgconfig/gl.pc\n\
-[mesa] [ -f \$PC_FILE ] && { grep -q 'Libs\\.private:' \$PC_FILE || \
-echo 'Libs.private:' >> \$PC_FILE; }\n\
 [mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\
 \\1 -lvulkan/' \$PC_FILE\n\
-[mesa] pkg-config --libs --static gl\n\
+[mesa] echo pkg-config --libs --static gl\n\
 [Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
 [Vulkan-Headers] make -C build install\n\
 [Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DAPPLE_STATIC_LOADER=ON .\n\
@@ -350,8 +358,9 @@ echo 'Libs.private:' >> \$PC_FILE; }\n\
 [Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Requires.private: gl libudev' >> \$PC_FILE\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Libs.private: -Wl,--whole-archive \
--lvulkan_radeon -lvulkan_intel -lvulkan_intel_hasvk' ${BUILD_WITH_LLVM:+-lvulkan_lvp} \
-'-lvulkan_runtime -lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive \
+-lvulkan_radeon -lvulkan_intel -lvulkan_intel_hasvk -lvulkan_lvp \
+-lvulkan_runtime -lvulkan_lite_runtime -lvulkan_instance \
+-lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive \
 -ldrm_amdgpu' >> \$PC_FILE\n\
 [vkcube] meson setup build $MESON_PROLOGUE\n\
 [vkcube] meson compile -C build\n\
