@@ -130,11 +130,6 @@ you'll later install Wine, most likely `$HOME/.local` or `/usr/local`.
 
    * `--build-arg BUILD_WITH_LTO=n`: disables the link time optimizations.
 
-   * `--build-arg BUILD_WITH_LLVM=y`: compiles the AMD OpenGL driver, the
-Vulkan software renderer and a faster OpenGL software renderer; they
-require LLVM for on the fly code generation. Increases the build time
-and size significantly.
-
    * `--build-arg BUILD_JOBS=1|2|3|4|...`: set to number of parallel build jobs
 you'd like. By default it's set to 8. 🎶 It's gettin' hot in here 🎶
 
@@ -204,9 +199,8 @@ me and I'll guide you through it.
 
 No. The project features a statically compiled Mesa with the open-source
 video drivers you're likely to need but there's no way to use dynamic libraries
-supplied by your hardware's vendor (i.e. Nvidia). I'm working on allowing that
-because I understand the importance. If you have an Nvidia card static-wine32
-might not be for you.
+supplied by your hardware's vendor (i.e. Nvidia). If you have an Nvidia card
+static-wine32 might not be for you.
 
 ### Is Vulkan supported?
 
@@ -244,10 +238,11 @@ harder. Yes, I'm aware of
 Try building only the graphics drivers that you actually need. Open
 [Dockerfile](Dockerfile) and find the lines where the Mesa drivers are
 configured, something like
-`-Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600${BUILD_WITH_LLVM:+,radeonsi} \`
-and `-Dvulkan-drivers=intel,intel_hasvk,amd${BUILD_WITH_LLVM:+,swrast} \`.
-Change these to include only what you need, e.g. `-Dgallium-drivers=iris \`
-and `-Dvulkan-drivers=intel \`.
+`-Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600,radeonsi`
+and `-Dvulkan-drivers=intel,intel_hasvk,amd,swrast`. Change these to include
+only what you need, e.g. `-Dgallium-drivers=iris` and `-Dvulkan-drivers=intel`.
+With enough luck you might be able to remove the LLVM dependency completely
+and get a very slim build.
 
 ### Is there any speed increase?
 
