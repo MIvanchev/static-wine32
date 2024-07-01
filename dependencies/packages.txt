@@ -41,7 +41,7 @@ https://git.kernel.org/pub/scm/libs/libcap/libcap.git/snapshot/libcap-2.70.tar.g
 https://github.com/besser82/libxcrypt/releases/download/v4.4.36/libxcrypt-4.4.36.tar.xz
 https://github.com/linux-pam/linux-pam/releases/download/v1.6.1/Linux-PAM-1.6.1.tar.xz
 https://github.com/stevegrubb/libcap-ng/archive/refs/tags/v0.8.5.tar.gz libcap-ng-0.8.5.tar.gz
-https://github.com/util-linux/util-linux/archive/refs/tags/v2.40.tar.gz util-linux-2.40.tar.gz
+https://github.com/util-linux/util-linux/archive/refs/tags/v2.40.1.tar.gz util-linux-2.40.1.tar.gz
 https://github.com/systemd/systemd/archive/refs/tags/v256.1.tar.gz systemd-256.1.tar.gz
 https://www.x.org/releases/individual/lib/libpciaccess-0.18.1.tar.xz
 https://dri.freedesktop.org/libdrm/libdrm-2.4.122.tar.xz
@@ -77,7 +77,7 @@ https://github.com/libsdl-org/SDL.git release-2.30.4 SDL-2.30.4
 https://github.com/apple/cups/archive/refs/tags/v2.3.6.tar.gz cups-2.3.6.tar.gz
 https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.26.1.tar.xz
 https://github.com/cisco/openh264/archive/refs/tags/v2.4.1.tar.gz openh264-2.4.1.tar.gz
-https://gitlab.freedesktop.org/gstreamer/gstreamer.git 1.24.1 gstreamer-1.24.1
+https://gitlab.freedesktop.org/gstreamer/gstreamer.git 1.24.5 gstreamer-1.24.5
 https://github.com/the-tcpdump-group/libpcap.git libpcap-1.10.4 libpcap-1.10.4
 https://github.com/marschap/isdn4k-utils.git master isdn4k-utils-3.0.6
 http://download.osgeo.org/libtiff/tiff-4.6.0.tar.gz
