@@ -11,33 +11,11 @@ index ff4c963a..b203d549 100644
  endif
  if BUILD_MIXER
  if BUILD_ALISP
-diff --git a/include/global.h b/include/global.h
-index 71a1b12f..a7c369d9 100644
---- a/include/global.h
-+++ b/include/global.h
-@@ -71,6 +71,8 @@ struct snd_dlsym_link {
- 
- extern struct snd_dlsym_link *snd_dlsym_start;
- 
-+#define __SND_DLSYM_NAME(name) #name
-+
- /** \hideinitializer \brief Helper macro for #SND_DLSYM_BUILD_VERSION. */
- #define __SND_DLSYM_VERSION(prefix, name, version) _ ## prefix ## name ## version
- /**
-@@ -82,7 +84,7 @@ extern struct snd_dlsym_link *snd_dlsym_start;
-   void __SND_DLSYM_VERSION(snd_dlsym_constructor_, name, version) (void) __attribute__ ((constructor)); \
-   void __SND_DLSYM_VERSION(snd_dlsym_constructor_, name, version) (void) { \
-     __SND_DLSYM_VERSION(snd_dlsym_, name, version).next = snd_dlsym_start; \
--    __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_name = # name; \
-+    __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_name = __SND_DLSYM_NAME(name); \
-     __SND_DLSYM_VERSION(snd_dlsym_, name, version).dlsym_ptr = (void *)&name; \
-     snd_dlsym_start = &__SND_DLSYM_VERSION(snd_dlsym_, name, version); \
-   }
 diff --git a/include/local.h b/include/local.h
-index 151e3fd4..ba74d070 100644
+index 512e4455..005a10b4 100644
 --- a/include/local.h
 +++ b/include/local.h
-@@ -242,7 +242,7 @@ typedef enum _snd_set_mode {
+@@ -247,7 +247,7 @@ typedef enum _snd_set_mode {
  } snd_set_mode_t;
  
  size_t page_align(size_t size);
@@ -47,19 +25,19 @@ index 151e3fd4..ba74d070 100644
  
  #define safe_strtoll_base _snd_safe_strtoll_base
 diff --git a/src/conf.c b/src/conf.c
-index da51182e..cbbaa75b 100644
+index eca44c03..1ec34e75 100644
 --- a/src/conf.c
 +++ b/src/conf.c
-@@ -5810,7 +5810,7 @@ static void _snd_config_end(void)
- }
+@@ -5834,7 +5834,7 @@ static void _snd_config_end(void)
  #endif
  
+ #ifndef DOC_HIDDEN
 -size_t page_size(void)
 +size_t alsa_page_size(void)
  {
  	long s = sysconf(_SC_PAGE_SIZE);
  	assert(s > 0);
-@@ -5820,7 +5820,7 @@ size_t page_size(void)
+@@ -5844,7 +5844,7 @@ size_t page_size(void)
  size_t page_align(size_t size)
  {
  	size_t r;
@@ -68,7 +46,7 @@ index da51182e..cbbaa75b 100644
  	r = size % psz;
  	if (r)
  		return size + psz - r;
-@@ -5830,7 +5830,7 @@ size_t page_align(size_t size)
+@@ -5854,7 +5854,7 @@ size_t page_align(size_t size)
  size_t page_ptr(size_t object_offset, size_t object_size, size_t *offset, size_t *mmap_offset)
  {
  	size_t r;
@@ -78,7 +56,7 @@ index da51182e..cbbaa75b 100644
  	assert(mmap_offset);
  	*mmap_offset = object_offset;
 diff --git a/src/dlmisc.c b/src/dlmisc.c
-index f64c716a..5c008546 100644
+index d7aff456..934e01ab 100644
 --- a/src/dlmisc.c
 +++ b/src/dlmisc.c
 @@ -105,6 +105,22 @@ int snd_dlpath(char *path, size_t path_len, const char *name)
@@ -145,10 +123,10 @@ index f64c716a..5c008546 100644
  #ifdef HAVE_LIBDL
  	if (name == NULL) {
 diff --git a/src/rawmidi/rawmidi.c b/src/rawmidi/rawmidi.c
-index 570e0675..201d1302 100644
+index c4b45fa2..b2aba561 100644
 --- a/src/rawmidi/rawmidi.c
 +++ b/src/rawmidi/rawmidi.c
-@@ -160,7 +160,7 @@ static int snd_rawmidi_params_default(snd_rawmidi_t *rawmidi, snd_rawmidi_params
+@@ -161,7 +161,7 @@ static int snd_rawmidi_params_default(snd_rawmidi_t *rawmidi, snd_rawmidi_params
  {
  	assert(rawmidi);
  	assert(params);
@@ -158,10 +136,10 @@ index 570e0675..201d1302 100644
  	params->no_active_sensing = 1;
  	params->mode = 0;
 diff --git a/src/rawmidi/rawmidi_hw.c b/src/rawmidi/rawmidi_hw.c
-index e5bb3ee3..48fd5e1b 100644
+index 3b1d941e..72162b14 100644
 --- a/src/rawmidi/rawmidi_hw.c
 +++ b/src/rawmidi/rawmidi_hw.c
-@@ -124,7 +124,7 @@ static int snd_rawmidi_hw_params(snd_rawmidi_t *rmidi, snd_rawmidi_params_t * pa
+@@ -126,7 +126,7 @@ static int snd_rawmidi_hw_params(snd_rawmidi_t *rmidi, snd_rawmidi_params_t * pa
  		size_t alloc_size;
  		void *buf;
  

@@ -71,8 +71,8 @@ https://github.com/gphoto/libgphoto2/releases/download/v2.5.31/libgphoto2-2.5.31
 https://gitlab.freedesktop.org/polkit/polkit/-/archive/124/polkit-124.tar.gz polkit-124.tar.gz
 https://pcsclite.apdu.fr/files/pcsc-lite-2.0.3.tar.bz2
 https://freedesktop.org/software/pulseaudio/releases/pulseaudio-17.0.tar.xz
-https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.11.tar.bz2
-https://www.alsa-project.org/files/pub/plugins/alsa-plugins-1.2.7.1.tar.bz2
+https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
+https://www.alsa-project.org/files/pub/plugins/alsa-plugins-1.2.12.tar.bz2
 https://github.com/libsdl-org/SDL.git release-2.30.4 SDL-2.30.4
 https://github.com/apple/cups/archive/refs/tags/v2.3.6.tar.gz cups-2.3.6.tar.gz
 https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.26.1.tar.xz

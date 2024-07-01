@@ -320,6 +320,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dgallium-omx=disabled \
 -Dgallium-va=disabled \
 -Dgallium-xa=disabled \
+-Dgallium-nine=true \
 -Dvulkan-drivers=intel,intel_hasvk,amd,swrast \
 -Dvulkan-icd-dir=/usr/local/share/vulkan/icd.d \
 -Dshared-glapi=enabled \
@@ -342,7 +343,7 @@ radeon_icd vulkan_radeon \
 intel_icd vulkan_intel \
 intel_hasvk_icd vulkan_intel_hasvk \
 lvp_icd vulkan_lvp \
-gbm\n\
+d3dadapter9 gbm\n\
 [mesa] meson install --no-rebuild\n\
 [mesa] PC_FILE=/usr/local/lib/pkgconfig/gbm.pc\n\
 [mesa] [ -f \$PC_FILE ] && sed -i 's/Libs:\\(.*\\)/Libs:\
