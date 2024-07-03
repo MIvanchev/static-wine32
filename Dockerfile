@@ -416,25 +416,6 @@ d3dadapter9 gbm\n\
 -Dgst-plugins-bad:x11=disabled \
 -Dgst-plugins-bad:wayland=disabled\n\
 [gstreamer] ninja -C build install\n\
-[gstreamer] rm /usr/local/lib/liborc*.so*\n\
-[gstreamer] sed -i 's/= *both_libraries(/= static_library(/' meson.build\n\
-[gstreamer] sed -i 's/link_with: gstfull.get_shared_lib()/link_whole: gstfull/' meson.build\n\
-[gstreamer] meson setup build $MESON_PROLOGUE \
--Dgst-plugins-base:gl=disabled \
--Dgst-plugins-base:x11=disabled  \
--Dgst-plugins-bad:x11=disabled \
--Dgst-plugins-bad:codectimestamper=disabled \
--Dgst-plugins-good:ximagesrc=disabled \
--Dpython=disabled \
--Dtools=disabled \
--Ddevtools=disabled \
--Dgst-examples=disabled \
--Dtests=disabled \
--Dexamples=disabled \
--Dintrospection=disabled \
--Ddoc=disabled \
--Dgtk_doc=disabled\n\
-[gstreamer] ninja -C build install\n\
 [libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
 [libpcap] make install\n\
 [isdn4k-utils] pushd capi20\n\
