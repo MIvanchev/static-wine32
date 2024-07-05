@@ -123,7 +123,7 @@ ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
 # https://github.com/wine-mirror/wine/commit/c7a97b5d5d56ef00a0061b75412c6e0e489fdc99
 #
 
-ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig
+ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:/usr/local/share/pkgconfig
 
 ARG DEP_BUILD_SCRIPTS="\
 [libiconv] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
@@ -181,8 +181,11 @@ ARG DEP_BUILD_SCRIPTS="\
 [libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --without-python \
 --without-python\n\
 [libxml2] make install\n\
+[wayland-protocols] meson setup build $MESON_PROLOGUE --datadir=/usr/local/share -Dtests=false\n\
+[wayland-protocols] meson install -C build\n\
+[wayland] meson setup build $MESON_PROLOGUE -Dtests=false -Ddocumentation=false -Ddtd_validation=false\n\
+[wayland] meson install -C build\n\
 [libxkbcommon] meson setup build $MESON_PROLOGUE \
--Denable-wayland=false \
 -Denable-docs=false \
 -Denable-tools=false\n\
 [libxkbcommon] cd build\n\
@@ -312,7 +315,7 @@ pulse-mainloop-glib pulse pulsedsp\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
-[mesa] PKG_CONFIG_PATH=/usr/local/share/pkgconfig meson setup build $MESON_PROLOGUE \
+[mesa] meson setup build $MESON_PROLOGUE \
 -Dplatforms=x11 \
 -Ddri3=enabled \
 -Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600,radeonsi \
@@ -455,7 +458,7 @@ CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
-./configure --disable-tests --prefix=\"$PREFIX\" --disable-year2038\n\
+./configure --without-wayland --disable-tests --prefix=\"$PREFIX\" --disable-year2038\n\
 [wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
 [wine] make install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\

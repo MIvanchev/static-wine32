@@ -36,6 +36,8 @@ https://github.com/libexpat/libexpat/releases/download/R_2_6_2/expat-2.6.2.tar.b
 https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.1.tar.xz
 https://freedesktop.org/software/fontconfig/release/fontconfig-2.15.0.tar.gz
 https://xkbcommon.org/download/libxkbcommon-1.7.0.tar.xz
+https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.36/wayland-protocols-1.36.tar.bz2
+https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.23.0/wayland-1.23.0.tar.bz2
 https://dbus.freedesktop.org/releases/dbus/dbus-1.15.8.tar.xz
 https://git.kernel.org/pub/scm/libs/libcap/libcap.git/snapshot/libcap-2.70.tar.gz
 https://github.com/besser82/libxcrypt/releases/download/v4.4.36/libxcrypt-4.4.36.tar.xz
