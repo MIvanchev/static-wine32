@@ -463,7 +463,8 @@ PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
 [wine] make install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\
 [wine] tar czvf \"\$HOME/wine-build.tar.gz\" -C \"$PREFIX\" .\n\
-[wine] make uninstall\
+[wine] make uninstall\n\
+[wine-nine-standalone] echo \"Work in progress!\"\
 "
 
 ARG DEFAULT_BUILD_SCRIPT="\
