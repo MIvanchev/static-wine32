@@ -156,7 +156,6 @@ which is deleted immediately afterwards.
 
 ## What isn't supported yet?
 
-* Wayland – working on it.
 * Databases – working on it.
 * OSS – honestly I have no idea about that, everything is so confusing with
 OSS... contributions welcome.
@@ -228,10 +227,7 @@ Direct3D 9 you should consider using
 
 ### Is Gallium Nine supported?
 
-No but I'm working on it. Statically building the Mesa module is not
-complicated but finding a way to make it cooperate with Wine is somewhat
-harder. Yes, I'm aware of
-[Gallium Nine Standalone](https://github.com/iXit/wine-nine-standalone).
+Not yet but currently working on it with high priority.
 
 ### How can I reduce the size of the build?
 

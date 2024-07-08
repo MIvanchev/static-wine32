@@ -1,0 +1,1791 @@
+diff --git a/bin/install_megadrivers.py b/bin/install_megadrivers.py
+index 60ee4576c60..2d35c28d57e 100644
+--- a/bin/install_megadrivers.py
++++ b/bin/install_megadrivers.py
+@@ -80,4 +80,5 @@ def main():
+ 
+ 
+ if __name__ == '__main__':
+-    main()
++    # main()
++    pass
+diff --git a/src/amd/vulkan/meta/radv_meta_clear.c b/src/amd/vulkan/meta/radv_meta_clear.c
+index f27b38d4693..ba46e44d91d 100644
+--- a/src/amd/vulkan/meta/radv_meta_clear.c
++++ b/src/amd/vulkan/meta/radv_meta_clear.c
+@@ -1422,7 +1422,7 @@ gfx8_get_fast_clear_parameters(struct radv_device *device, const struct radv_ima
+        iview->vk.format == VK_FORMAT_B5G6R5_UNORM_PACK16)
+       extra_channel = -1;
+    else if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN) {
+-      if (vi_alpha_is_on_msb(device, iview->vk.format))
++      if (radv_vi_alpha_is_on_msb(device, iview->vk.format))
+          extra_channel = desc->nr_channels - 1;
+       else
+          extra_channel = 0;
+diff --git a/src/amd/vulkan/radix_sort/radix_sort_vk.c b/src/amd/vulkan/radix_sort/radix_sort_vk.c
+index 70253884fc4..1e54c85b3ef 100644
+--- a/src/amd/vulkan/radix_sort/radix_sort_vk.c
++++ b/src/amd/vulkan/radix_sort/radix_sort_vk.c
+@@ -259,7 +259,7 @@ radix_sort_vk_create(VkDevice                           device,
+     {
+       plci.pPushConstantRanges = pcr + ii;
+ 
+-      if (vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
++      if (radix_vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
+         goto fail_layout;
+     }
+ 
+@@ -282,7 +282,7 @@ radix_sort_vk_create(VkDevice                           device,
+       smci.codeSize = spv_sizes[ii];
+       smci.pCode    = spv[ii];
+ 
+-      if (vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
++      if (radix_vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
+         goto fail_shader;
+     }
+ 
+@@ -358,7 +358,7 @@ radix_sort_vk_create(VkDevice                           device,
+   //
+   // Create the compute pipelines
+   //
+-  if (vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
++  if (radix_vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
+     goto fail_pipeline;
+ 
+   //
+@@ -366,7 +366,7 @@ radix_sort_vk_create(VkDevice                           device,
+   //
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyShaderModule(device, sms[ii], ac);
++      radix_vkDestroyShaderModule(device, sms[ii], ac);
+     }
+ 
+ #ifdef RS_VK_ENABLE_DEBUG_UTILS
+@@ -397,17 +397,17 @@ radix_sort_vk_create(VkDevice                           device,
+ fail_pipeline:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
++      radix_vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
+     }
+ fail_shader:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyShaderModule(device, sms[ii], ac);
++      radix_vkDestroyShaderModule(device, sms[ii], ac);
+     }
+ fail_layout:
+    for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
++      radix_vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
+     }
+ 
+   free(rs);
+@@ -425,13 +425,13 @@ radix_sort_vk_destroy(struct radix_sort_vk * rs, VkDevice d, VkAllocationCallbac
+   // destroy pipelines
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipeline(d, rs->pipelines.handles[ii], ac);
++      radix_vkDestroyPipeline(d, rs->pipelines.handles[ii], ac);
+     }
+ 
+   // destroy pipeline layouts
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+     {
+-      vkDestroyPipelineLayout(d, rs->pipeline_layouts.handles[ii], ac);
++      radix_vkDestroyPipelineLayout(d, rs->pipeline_layouts.handles[ii], ac);
+     }
+ 
+   free(rs);
+@@ -450,7 +450,7 @@ rs_get_devaddr(VkDevice device, VkDescriptorBufferInfo const * dbi)
+     .buffer = dbi->buffer
+   };
+ 
+-  VkDeviceAddress const devaddr = vkGetBufferDeviceAddress(device, &bdai) + dbi->offset;
++  VkDeviceAddress const devaddr = radix_vkGetBufferDeviceAddress(device, &bdai) + dbi->offset;
+ 
+   return devaddr;
+ }
+@@ -468,7 +468,7 @@ rs_ext_cmd_write_timestamp(struct radix_sort_vk_ext_timestamps * ext_timestamps,
+   if ((ext_timestamps != NULL) &&
+       (ext_timestamps->timestamps_set < ext_timestamps->timestamp_count))
+     {
+-      vkCmdWriteTimestamp(cb,
++      radix_vkCmdWriteTimestamp(cb,
+                           pipeline_stage,
+                           ext_timestamps->timestamps,
+                           ext_timestamps->timestamps_set++);
+@@ -679,16 +679,16 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+     .passes             = passes
+   };
+ 
+-  vkCmdPushConstants(cb,
++  radix_vkCmdPushConstants(cb,
+                      rs->pipeline_layouts.named.histogram,
+                      VK_SHADER_STAGE_COMPUTE_BIT,
+                      0,
+                      sizeof(push_histogram),
+                      &push_histogram);
+ 
+-  vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
++  radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
+ 
+-  vkCmdDispatch(cb, histo_blocks, 1, 1);
++  radix_vkCmdDispatch(cb, histo_blocks, 1, 1);
+ 
+   ////////////////////////////////////////////////////////////////////////
+   //
+@@ -707,16 +707,16 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+     .devaddr_histograms = devaddr_histograms,
+   };
+ 
+-  vkCmdPushConstants(cb,
++  radix_vkCmdPushConstants(cb,
+                      rs->pipeline_layouts.named.prefix,
+                      VK_SHADER_STAGE_COMPUTE_BIT,
+                      0,
+                      sizeof(push_prefix),
+                      &push_prefix);
+ 
+-  vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
++  radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
+ 
+-  vkCmdDispatch(cb, passes, 1, 1);
++  radix_vkCmdDispatch(cb, passes, 1, 1);
+ 
+   ////////////////////////////////////////////////////////////////////////
+   //
+@@ -746,14 +746,14 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+   {
+     uint32_t const pass_dword = pass_idx / 4;
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.scatter[pass_dword].even,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_scatter),
+                        &push_scatter);
+ 
+-    vkCmdBindPipeline(cb,
++    radix_vkCmdBindPipeline(cb,
+                       VK_PIPELINE_BIND_POINT_COMPUTE,
+                       rs->pipelines.named.scatter[pass_dword].even);
+   }
+@@ -762,7 +762,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+ 
+   while (true)
+     {
+-      vkCmdDispatch(cb, scatter_blocks, 1, 1);
++      radix_vkCmdDispatch(cb, scatter_blocks, 1, 1);
+ 
+       //
+       // Continue?
+@@ -788,7 +788,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+       //
+       VkPipelineLayout const pl = is_even ? rs->pipeline_layouts.named.scatter[pass_dword].even  //
+                                           : rs->pipeline_layouts.named.scatter[pass_dword].odd;
+-      vkCmdPushConstants(cb,
++      radix_vkCmdPushConstants(cb,
+                          pl,
+                          VK_SHADER_STAGE_COMPUTE_BIT,
+                          OFFSETOF_MACRO(struct rs_push_scatter, devaddr_histograms),
+@@ -801,7 +801,7 @@ radix_sort_vk_sort_devaddr(radix_sort_vk_t const *                   rs,
+       VkPipeline const p = is_even ? rs->pipelines.named.scatter[pass_dword].even  //
+                                    : rs->pipelines.named.scatter[pass_dword].odd;
+ 
+-      vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
++      radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
+     }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -938,16 +938,16 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .passes        = passes
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.init,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_init),
+                        &push_init);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.init);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.init);
+ 
+-    vkCmdDispatch(cb, 1, 1, 1);
++    radix_vkCmdDispatch(cb, 1, 1, 1);
+   }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -967,14 +967,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .dword          = 0xFFFFFFFF
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.fill,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_pad),
+                        &push_pad);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
+ 
+     info->dispatch_indirect(cb, &info->indirect, offsetof(struct rs_indirect_info, dispatch.pad));
+   }
+@@ -992,14 +992,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .dword          = 0
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.fill,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_zero),
+                        &push_zero);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.fill);
+ 
+     info->dispatch_indirect(cb, &info->indirect, offsetof(struct rs_indirect_info, dispatch.zero));
+   }
+@@ -1021,14 +1021,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .passes             = passes
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.histogram,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_histogram),
+                        &push_histogram);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.histogram);
+ 
+     info->dispatch_indirect(cb,
+                             &info->indirect,
+@@ -1049,16 +1049,16 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+       .devaddr_histograms = devaddr_histograms,
+     };
+ 
+-    vkCmdPushConstants(cb,
++    radix_vkCmdPushConstants(cb,
+                        rs->pipeline_layouts.named.prefix,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof(push_prefix),
+                        &push_prefix);
+ 
+-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
++    radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, rs->pipelines.named.prefix);
+ 
+-    vkCmdDispatch(cb, passes, 1, 1);
++    radix_vkCmdDispatch(cb, passes, 1, 1);
+   }
+ 
+ #ifdef RS_VK_ENABLE_EXTENSIONS
+@@ -1088,14 +1088,14 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+     {
+       uint32_t const pass_dword = pass_idx / 4;
+ 
+-      vkCmdPushConstants(cb,
++      radix_vkCmdPushConstants(cb,
+                          rs->pipeline_layouts.named.scatter[pass_dword].even,
+                          VK_SHADER_STAGE_COMPUTE_BIT,
+                          0,
+                          sizeof(push_scatter),
+                          &push_scatter);
+ 
+-      vkCmdBindPipeline(cb,
++      radix_vkCmdBindPipeline(cb,
+                         VK_PIPELINE_BIND_POINT_COMPUTE,
+                         rs->pipelines.named.scatter[pass_dword].even);
+     }
+@@ -1134,7 +1134,7 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+         VkPipelineLayout const pl = is_even
+                                       ? rs->pipeline_layouts.named.scatter[pass_dword].even  //
+                                       : rs->pipeline_layouts.named.scatter[pass_dword].odd;
+-        vkCmdPushConstants(
++        radix_vkCmdPushConstants(
+           cb,
+           pl,
+           VK_SHADER_STAGE_COMPUTE_BIT,
+@@ -1148,7 +1148,7 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+         VkPipeline const p = is_even ? rs->pipelines.named.scatter[pass_dword].even  //
+                                      : rs->pipelines.named.scatter[pass_dword].odd;
+ 
+-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
++        radix_vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, p);
+       }
+   }
+ 
+@@ -1177,7 +1177,7 @@ radix_sort_vk_fill_buffer(VkCommandBuffer                     cb,
+                           VkDeviceSize                        size,
+                           uint32_t                            data)
+ {
+-  vkCmdFillBuffer(cb, buffer_info->buffer, buffer_info->offset + offset, size, data);
++  radix_vkCmdFillBuffer(cb, buffer_info->buffer, buffer_info->offset + offset, size, data);
+ }
+ 
+ //
+@@ -1221,7 +1221,7 @@ radix_sort_vk_dispatch_indirect(VkCommandBuffer                     cb,
+                                 radix_sort_vk_buffer_info_t const * buffer_info,
+                                 VkDeviceSize                        offset)
+ {
+-  vkCmdDispatchIndirect(cb, buffer_info->buffer, buffer_info->offset + offset);
++  radix_vkCmdDispatchIndirect(cb, buffer_info->buffer, buffer_info->offset + offset);
+ }
+ 
+ //
+diff --git a/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h b/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
+index 23dd808249a..98fc6c67db7 100644
+--- a/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
++++ b/src/amd/vulkan/radix_sort/radix_sort_vk_devaddr.h
+@@ -89,6 +89,62 @@ radix_sort_vk_sort_indirect_devaddr(radix_sort_vk_t const *
+                                     VkCommandBuffer                                    cb,
+                                     VkDeviceAddress *                                  keyvals_sorted);
+ 
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
++                     const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
++                      const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
++                       const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
++                        const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR VkResult VKAPI_CALL
++radix_vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
++                         const VkComputePipelineCreateInfo *pCreateInfos,
++                         const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
++                     VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
++                     uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,
++                     uint32_t bufferMemoryBarrierCount,
++                     const VkBufferMemoryBarrier *pBufferMemoryBarriers,
++                     uint32_t imageMemoryBarrierCount,
++                     const VkImageMemoryBarrier *pImageMemoryBarriers);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
++                   VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size,
++                   const void *pValues);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
++                  VkPipeline pipeline);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY,
++              uint32_t groupCountZ);
++
++VKAPI_ATTR VkDeviceAddress VKAPI_CALL
++radix_vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
++                VkDeviceSize size, uint32_t data);
++
++VKAPI_ATTR void VKAPI_CALL
++radix_vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset);
++
+ //
+ // clang-format on
+ //
+diff --git a/src/amd/vulkan/radix_sort/radv_radix_sort.c b/src/amd/vulkan/radix_sort/radv_radix_sort.c
+index 4305baaba75..383ca9f358f 100644
+--- a/src/amd/vulkan/radix_sort/radv_radix_sort.c
++++ b/src/amd/vulkan/radix_sort/radv_radix_sort.c
+@@ -80,7 +80,7 @@ radv_create_radix_sort_u64(VkDevice device, VkAllocationCallbacks const *ac, VkP
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
++radix_vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
+                      const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule)
+ {
+    VK_FROM_HANDLE(radv_device, device, _device);
+@@ -88,14 +88,14 @@ vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateIn
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule, const VkAllocationCallbacks *pAllocator)
++radix_vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule, const VkAllocationCallbacks *pAllocator)
+ {
+    VK_FROM_HANDLE(radv_device, device, _device);
+    device->vk.dispatch_table.DestroyShaderModule(_device, shaderModule, pAllocator);
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
++radix_vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
+                        const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout)
+ {
+    VK_FROM_HANDLE(radv_device, device, _device);
+@@ -103,14 +103,14 @@ vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCrea
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout, const VkAllocationCallbacks *pAllocator)
++radix_vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout, const VkAllocationCallbacks *pAllocator)
+ {
+    VK_FROM_HANDLE(radv_device, device, _device);
+    device->vk.dispatch_table.DestroyPipelineLayout(_device, pipelineLayout, pAllocator);
+ }
+ 
+ VKAPI_ATTR VkResult VKAPI_CALL
+-vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
++radix_vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
+                          const VkComputePipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator,
+                          VkPipeline *pPipelines)
+ {
+@@ -120,14 +120,14 @@ vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
++radix_vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
+ {
+    VK_FROM_HANDLE(radv_device, device, _device);
+    device->vk.dispatch_table.DestroyPipeline(_device, pipeline, pAllocator);
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
++radix_vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
+                      VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags, uint32_t memoryBarrierCount,
+                      const VkMemoryBarrier *pMemoryBarriers, uint32_t bufferMemoryBarrierCount,
+                      const VkBufferMemoryBarrier *pBufferMemoryBarriers, uint32_t imageMemoryBarrierCount,
+@@ -142,7 +142,7 @@ vkCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStag
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags,
++radix_vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkShaderStageFlags stageFlags,
+                    uint32_t offset, uint32_t size, const void *pValues)
+ {
+    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -152,7 +152,7 @@ vkCmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkSha
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline)
++radix_vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline)
+ {
+    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+    struct radv_device *device = radv_cmd_buffer_device(cmd_buffer);
+@@ -161,7 +161,7 @@ vkCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBin
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
++radix_vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+ {
+    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+    struct radv_device *device = radv_cmd_buffer_device(cmd_buffer);
+@@ -170,14 +170,14 @@ vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t grou
+ }
+ 
+ VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+-vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
++radix_vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
+ {
+    VK_FROM_HANDLE(radv_device, device, _device);
+    return device->vk.dispatch_table.GetBufferDeviceAddress(_device, pInfo);
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize size,
++radix_vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize size,
+                 uint32_t data)
+ {
+    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+@@ -187,7 +187,7 @@ vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize
+ }
+ 
+ VKAPI_ATTR void VKAPI_CALL
+-vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
++radix_vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
+ {
+    VK_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+    struct radv_device *device = radv_cmd_buffer_device(cmd_buffer);
+diff --git a/src/amd/vulkan/radv_image.c b/src/amd/vulkan/radv_image.c
+index 93960d79e9c..c287a2f9bc6 100644
+--- a/src/amd/vulkan/radv_image.c
++++ b/src/amd/vulkan/radv_image.c
+@@ -744,7 +744,7 @@ radv_compose_swizzle(const struct util_format_description *desc, const VkCompone
+ }
+ 
+ bool
+-vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format)
++radv_vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format)
+ {
+    const struct radv_physical_device *pdev = radv_device_physical(device);
+ 
+diff --git a/src/amd/vulkan/radv_image.h b/src/amd/vulkan/radv_image.h
+index f11120fbd4b..21f95798804 100644
+--- a/src/amd/vulkan/radv_image.h
++++ b/src/amd/vulkan/radv_image.h
+@@ -316,7 +316,7 @@ unsigned radv_map_swizzle(unsigned swizzle);
+ void radv_compose_swizzle(const struct util_format_description *desc, const VkComponentMapping *mapping,
+                           enum pipe_swizzle swizzle[4]);
+ 
+-bool vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format);
++bool radv_vi_alpha_is_on_msb(const struct radv_device *device, const VkFormat format);
+ 
+ void radv_init_metadata(struct radv_device *device, struct radv_image *image, struct radeon_bo_metadata *metadata);
+ 
+diff --git a/src/amd/vulkan/radv_image_view.c b/src/amd/vulkan/radv_image_view.c
+index 937ed2758f3..c973d545d75 100644
+--- a/src/amd/vulkan/radv_image_view.c
++++ b/src/amd/vulkan/radv_image_view.c
+@@ -343,7 +343,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
+       state[6] |=
+          S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
+          S_00A018_MAX_COMPRESSED_BLOCK_SIZE(image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size) |
+-         S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
++         S_00A018_ALPHA_IS_ON_MSB(radv_vi_alpha_is_on_msb(device, vk_format));
+    }
+ 
+    if (radv_image_get_iterate256(device, image)) {
+@@ -504,7 +504,7 @@ gfx6_make_texture_descriptor(struct radv_device *device, struct radv_image *imag
+    }
+ 
+    if (radv_dcc_enabled(image, first_level)) {
+-      state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
++      state[6] = S_008F28_ALPHA_IS_ON_MSB(radv_vi_alpha_is_on_msb(device, vk_format));
+    } else {
+       if (instance->drirc.disable_aniso_single_level) {
+          /* The last dword is unused by hw. The shader uses it to clear
+diff --git a/src/amd/vulkan/radv_instance.c b/src/amd/vulkan/radv_instance.c
+index dc34cb3db37..70185c82fdc 100644
+--- a/src/amd/vulkan/radv_instance.c
++++ b/src/amd/vulkan/radv_instance.c
+@@ -431,7 +431,11 @@ radv_GetInstanceProcAddr(VkInstance _instance, const char *pName)
+  */
+ PUBLIC
+ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+-vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
++radeon_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName);
++
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
++radeon_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
+ {
+    return radv_GetInstanceProcAddr(instance, pName);
+ }
+diff --git a/src/amd/vulkan/radv_sdma.c b/src/amd/vulkan/radv_sdma.c
+index a19284734eb..ebd0fec6ca7 100644
+--- a/src/amd/vulkan/radv_sdma.c
++++ b/src/amd/vulkan/radv_sdma.c
+@@ -193,7 +193,7 @@ radv_sdma_get_metadata_config(const struct radv_device *const device, const stru
+    const struct util_format_description *desc = vk_format_description(format);
+ 
+    const uint32_t data_format = ac_get_cb_format(pdev->info.gfx_level, vk_format_to_pipe_format(format));
+-   const uint32_t alpha_is_on_msb = vi_alpha_is_on_msb(device, format);
++   const uint32_t alpha_is_on_msb = radv_vi_alpha_is_on_msb(device, format);
+    const uint32_t number_type = radv_translate_buffer_numformat(desc, vk_format_get_first_non_void_channel(format));
+    const uint32_t surface_type = radv_sdma_surface_type_from_aspect_mask(aspect_mask);
+    const uint32_t max_comp_block_size = surf->u.gfx9.color.dcc.max_compressed_block_size;
+diff --git a/src/c11/impl/meson.build b/src/c11/impl/meson.build
+index ac794861796..8380494afa5 100644
+--- a/src/c11/impl/meson.build
++++ b/src/c11/impl/meson.build
+@@ -39,7 +39,8 @@ _libmesa_util_c11 = static_library(
+   include_directories : inc_util_c11,
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+-  build_by_default : false
++  build_by_default : false,
++  install : true
+ )
+ 
+ idep_mesautilc11 = declare_dependency(
+diff --git a/src/compiler/clc/meson.build b/src/compiler/clc/meson.build
+index f7de55809a3..4618c11e749 100644
+--- a/src/compiler/clc/meson.build
++++ b/src/compiler/clc/meson.build
+@@ -109,7 +109,8 @@ _libmesaclc = static_library(
+   c_args : _libmesaclc_c_args,
+   cpp_args : [_libmesaclc_cpp_args, _libmesaclc_c_args],
+   dependencies: [idep_nir, dep_clang, dep_llvm, dep_llvmspirvlib,
+-                 idep_mesautil, dep_spirv_tools, idep_vtn]
++                 idep_mesautil, dep_spirv_tools, idep_vtn],
++  install : true
+ )
+ 
+ _idep_mesaclc_link_args = []
+diff --git a/src/compiler/glsl/meson.build b/src/compiler/glsl/meson.build
+index 4ca18bbc98e..a376a7186ea 100644
+--- a/src/compiler/glsl/meson.build
++++ b/src/compiler/glsl/meson.build
+@@ -249,6 +249,7 @@ libglsl = static_library(
+   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+   dependencies : idep_nir,
+   build_by_default : false,
++  install : true
+ )
+ 
+ libglsl_standalone = static_library(
+diff --git a/src/compiler/meson.build b/src/compiler/meson.build
+index 8d73544c6d8..3871ca79891 100644
+--- a/src/compiler/meson.build
++++ b/src/compiler/meson.build
+@@ -67,6 +67,7 @@ libcompiler = static_library(
+   gnu_symbol_visibility : 'hidden',
+   dependencies : [dep_valgrind],
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_compiler = declare_dependency(
+diff --git a/src/compiler/nir/meson.build b/src/compiler/nir/meson.build
+index 42ff91799df..77d1b98f274 100644
+--- a/src/compiler/nir/meson.build
++++ b/src/compiler/nir/meson.build
+@@ -331,6 +331,7 @@ _libnir = static_library(
+   gnu_symbol_visibility : 'hidden',
+   dependencies : [idep_compiler, dep_valgrind],
+   build_by_default : false,
++  install : true
+ )
+ 
+ inc_nir = include_directories('.')
+diff --git a/src/compiler/spirv/meson.build b/src/compiler/spirv/meson.build
+index cba7b79a21e..5313c0b3c90 100644
+--- a/src/compiler/spirv/meson.build
++++ b/src/compiler/spirv/meson.build
+@@ -72,6 +72,7 @@ libvtn = static_library(
+   gnu_symbol_visibility : 'hidden',
+   dependencies : [idep_nir, dep_valgrind],
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vtn = declare_dependency(
+diff --git a/src/gallium/drivers/iris/iris_blorp.c b/src/gallium/drivers/iris/iris_blorp.c
+index 0669c8caa64..3528bdba503 100644
+--- a/src/gallium/drivers/iris/iris_blorp.c
++++ b/src/gallium/drivers/iris/iris_blorp.c
+@@ -292,7 +292,7 @@ static void
+ blorp_pre_emit_urb_config(struct blorp_batch *blorp_batch,
+                           struct intel_urb_config *urb_cfg)
+ {
+-   genX(urb_workaround)(blorp_batch->driver_batch, urb_cfg);
++   genX(iris_urb_workaround)(blorp_batch->driver_batch, urb_cfg);
+ }
+ 
+ static const struct intel_l3_config *
+@@ -341,17 +341,17 @@ iris_blorp_exec_render(struct blorp_batch *blorp_batch,
+ 
+    if (params->depth.enabled &&
+        !(blorp_batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
+-      genX(emit_depth_state_workarounds)(ice, batch, &params->depth.surf);
++      genX(iris_emit_depth_state_workarounds)(ice, batch, &params->depth.surf);
+ 
+    iris_require_command_space(batch, 1400);
+ 
+ #if GFX_VER == 8
+-   genX(update_pma_fix)(ice, batch, false);
++   genX(iris_update_pma_fix)(ice, batch, false);
+ #endif
+ 
+    const unsigned scale = params->fast_clear_op ? UINT_MAX : 1;
+    if (ice->state.current_hash_scale != scale) {
+-      genX(emit_hashing_mode)(ice, batch, params->x1 - params->x0,
++      genX(iris_emit_hashing_mode)(ice, batch, params->x1 - params->x0,
+                               params->y1 - params->y0, scale);
+    }
+ 
+@@ -363,7 +363,7 @@ iris_blorp_exec_render(struct blorp_batch *blorp_batch,
+ #endif
+ 
+ #if GFX_VER >= 12
+-   genX(invalidate_aux_map_state)(batch);
++   genX(iris_invalidate_aux_map_state)(batch);
+ #endif
+ 
+    iris_handle_always_flush_cache(batch);
+@@ -518,7 +518,7 @@ blorp_measure_end(struct blorp_batch *blorp_batch,
+ }
+ 
+ void
+-genX(init_blorp)(struct iris_context *ice)
++genX(iris_init_blorp)(struct iris_context *ice)
+ {
+    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
+ 
+@@ -538,7 +538,7 @@ blorp_emit_pre_draw(struct blorp_batch *blorp_batch, const struct blorp_params *
+ {
+    struct iris_batch *batch = blorp_batch->driver_batch;
+    blorp_measure_start(blorp_batch, params);
+-   genX(maybe_emit_breakpoint)(batch, true);
++   genX(iris_maybe_emit_breakpoint)(batch, true);
+ }
+ 
+ static void
+@@ -547,7 +547,7 @@ blorp_emit_post_draw(struct blorp_batch *blorp_batch, const struct blorp_params
+    struct iris_batch *batch = blorp_batch->driver_batch;
+ 
+    // A _3DPRIM_RECTLIST is a MESA_PRIM_QUAD_STRIP with a implied vertex
+-   genX(emit_3dprimitive_was)(batch, NULL, MESA_PRIM_QUAD_STRIP, 3);
+-   genX(maybe_emit_breakpoint)(batch, false);
++   genX(iris_emit_3dprimitive_was)(batch, NULL, MESA_PRIM_QUAD_STRIP, 3);
++   genX(iris_maybe_emit_breakpoint)(batch, false);
+    blorp_measure_end(blorp_batch, params);
+ }
+diff --git a/src/gallium/drivers/iris/iris_context.c b/src/gallium/drivers/iris/iris_context.c
+index adb4da3dcc4..b0dc219df93 100644
+--- a/src/gallium/drivers/iris/iris_context.c
++++ b/src/gallium/drivers/iris/iris_context.c
+@@ -258,22 +258,22 @@ iris_destroy_context(struct pipe_context *ctx)
+ #define genX_call(devinfo, func, ...)             \
+    switch ((devinfo)->verx10) {                   \
+    case 200:                                      \
+-      gfx20_##func(__VA_ARGS__);                  \
++      gfx20_iris_##func(__VA_ARGS__);                  \
+       break;                                      \
+    case 125:                                      \
+-      gfx125_##func(__VA_ARGS__);                 \
++      gfx125_iris_##func(__VA_ARGS__);                 \
+       break;                                      \
+    case 120:                                      \
+-      gfx12_##func(__VA_ARGS__);                  \
++      gfx12_iris_##func(__VA_ARGS__);                  \
+       break;                                      \
+    case 110:                                      \
+-      gfx11_##func(__VA_ARGS__);                  \
++      gfx11_iris_##func(__VA_ARGS__);                  \
+       break;                                      \
+    case 90:                                       \
+-      gfx9_##func(__VA_ARGS__);                   \
++      gfx9_iris_##func(__VA_ARGS__);                   \
+       break;                                      \
+    case 80:                                       \
+-      gfx8_##func(__VA_ARGS__);                   \
++      gfx8_iris_##func(__VA_ARGS__);                   \
+       break;                                      \
+    default:                                       \
+       unreachable("Unknown hardware generation"); \
+diff --git a/src/gallium/drivers/iris/iris_context.h b/src/gallium/drivers/iris/iris_context.h
+index 2b974319452..2cc5f96d5a2 100644
+--- a/src/gallium/drivers/iris/iris_context.h
++++ b/src/gallium/drivers/iris/iris_context.h
+@@ -1472,7 +1472,7 @@ int iris_get_driver_query_group_info(struct pipe_screen *pscreen,
+                                      struct pipe_driver_query_group_info *info);
+ 
+ /* iris_state.c */
+-void gfx9_toggle_preemption(struct iris_context *ice,
++void gfx9_iris_toggle_preemption(struct iris_context *ice,
+                             struct iris_batch *batch,
+                             const struct pipe_draw_info *draw);
+ static const bool
+diff --git a/src/gallium/drivers/iris/iris_draw.c b/src/gallium/drivers/iris/iris_draw.c
+index e37b7c4b1db..8883a3bb2b5 100644
+--- a/src/gallium/drivers/iris/iris_draw.c
++++ b/src/gallium/drivers/iris/iris_draw.c
+@@ -302,7 +302,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
+    iris_update_draw_info(ice, info);
+ 
+    if (devinfo->ver == 9)
+-      gfx9_toggle_preemption(ice, batch, info);
++      gfx9_iris_toggle_preemption(ice, batch, info);
+ 
+    iris_update_compiled_shaders(ice);
+ 
+diff --git a/src/gallium/drivers/iris/iris_genx_protos.h b/src/gallium/drivers/iris/iris_genx_protos.h
+index d5911538598..dca45863bf5 100644
+--- a/src/gallium/drivers/iris/iris_genx_protos.h
++++ b/src/gallium/drivers/iris/iris_genx_protos.h
+@@ -28,55 +28,55 @@
+  */
+ 
+ /* iris_state.c */
+-void genX(init_state)(struct iris_context *ice);
+-void genX(init_screen_state)(struct iris_screen *screen);
+-void genX(emit_hashing_mode)(struct iris_context *ice,
++void genX(iris_init_state)(struct iris_context *ice);
++void genX(iris_init_screen_state)(struct iris_screen *screen);
++void genX(iris_emit_hashing_mode)(struct iris_context *ice,
+                              struct iris_batch *batch,
+                              unsigned width, unsigned height,
+                              unsigned scale);
+-void genX(emit_urb_config)(struct iris_batch *batch,
++void genX(iris_emit_urb_config)(struct iris_batch *batch,
+                            bool has_tess_eval,
+                            bool has_geometry);
+-void genX(emit_depth_state_workarounds)(struct iris_context *ice,
++void genX(iris_emit_depth_state_workarounds)(struct iris_context *ice,
+                                         struct iris_batch *batch,
+                                         const struct isl_surf *surf);
+-void genX(update_pma_fix)(struct iris_context *ice,
++void genX(iris_update_pma_fix)(struct iris_context *ice,
+                           struct iris_batch *batch,
+                           bool enable);
+ 
+-void genX(invalidate_aux_map_state)(struct iris_batch *batch);
++void genX(iris_invalidate_aux_map_state)(struct iris_batch *batch);
+ 
+-void genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw);
+-void genX(emit_3dprimitive_was)(struct iris_batch *batch,
++void genX(iris_emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw);
++void genX(iris_emit_3dprimitive_was)(struct iris_batch *batch,
+                                 const struct pipe_draw_indirect_info *indirect,
+                                 uint32_t primitive_topology,
+                                 uint32_t vertex_count);
+-void genX(urb_workaround)(struct iris_batch *batch,
++void genX(iris_urb_workaround)(struct iris_batch *batch,
+                           const struct intel_urb_config *urb_cfg);
+ 
+ static inline void
+-genX(maybe_emit_breakpoint)(struct iris_batch *batch,
+-                            bool emit_before_draw)
++genX(iris_maybe_emit_breakpoint)(struct iris_batch *batch,
++                                 bool emit_before_draw)
+ {
+    if (INTEL_DEBUG(DEBUG_DRAW_BKP))
+-      genX(emit_breakpoint)(batch, emit_before_draw);
++      genX(iris_emit_breakpoint)(batch, emit_before_draw);
+ }
+ 
+ 
+ /* iris_blorp.c */
+-void genX(init_blorp)(struct iris_context *ice);
++void genX(iris_init_blorp)(struct iris_context *ice);
+ 
+ /* iris_query.c */
+-void genX(init_query)(struct iris_context *ice);
+-void genX(math_add32_gpr0)(struct iris_context *ice,
++void genX(iris_init_query)(struct iris_context *ice);
++void genX(iris_math_add32_gpr0)(struct iris_context *ice,
+                            struct iris_batch *batch,
+                            uint32_t x);
+-void genX(math_div32_gpr0)(struct iris_context *ice,
++void genX(iris_math_div32_gpr0)(struct iris_context *ice,
+                            struct iris_batch *batch,
+                            uint32_t D);
+ 
+ /* iris_indirect_gen.c */
+-void genX(init_screen_gen_state)(struct iris_screen *screen);
++void genX(iris_init_screen_gen_state)(struct iris_screen *screen);
+ struct iris_gen_indirect_params *
+ genX(emit_indirect_generate)(struct iris_batch *batch,
+                              const struct pipe_draw_info *draw,
+diff --git a/src/gallium/drivers/iris/iris_indirect_gen.c b/src/gallium/drivers/iris/iris_indirect_gen.c
+index 18b19cd003d..0e1fb4ead64 100644
+--- a/src/gallium/drivers/iris/iris_indirect_gen.c
++++ b/src/gallium/drivers/iris/iris_indirect_gen.c
+@@ -110,7 +110,7 @@ iris_call_generation_shader(struct iris_screen *screen, nir_builder *b)
+ }
+ 
+ void
+-genX(init_screen_gen_state)(struct iris_screen *screen)
++genX(iris_init_screen_gen_state)(struct iris_screen *screen)
+ {
+    screen->vtbl.load_shader_lib = load_shader_lib;
+    screen->vtbl.call_generation_shader = iris_call_generation_shader;
+@@ -225,7 +225,7 @@ emit_indirect_generate_draw(struct iris_batch *batch,
+    ice->shaders.urb.cfg.size[MESA_SHADER_TESS_CTRL] = 1;
+    ice->shaders.urb.cfg.size[MESA_SHADER_TESS_EVAL] = 1;
+    ice->shaders.urb.cfg.size[MESA_SHADER_GEOMETRY] = 1;
+-   genX(emit_urb_config)(batch,
++   genX(iris_emit_urb_config)(batch,
+                          false /* has_tess_eval */,
+                          false /* has_geometry */);
+ 
+@@ -489,7 +489,7 @@ emit_indirect_generate_draw(struct iris_batch *batch,
+    bt_map[0] = ice->state.null_fb.offset - surf_base_offset;
+ #endif
+ 
+-   genX(maybe_emit_breakpoint)(batch, true);
++   genX(iris_maybe_emit_breakpoint)(batch, true);
+ 
+    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
+       prim.VertexAccessType         = SEQUENTIAL;
+@@ -665,13 +665,13 @@ genX(emit_indirect_generate)(struct iris_batch *batch,
+                               util_bitcount64(ice->state.bound_vertex_buffers) << 24,
+    };
+ 
+-   genX(maybe_emit_breakpoint)(batch, true);
++   genX(iris_maybe_emit_breakpoint)(batch, true);
+ 
+    emit_indirect_generate_draw(batch, *out_params_addr, params_size,
+                                MIN2(ring_count, indirect->draw_count));
+ 
+-   genX(emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
+-   genX(maybe_emit_breakpoint)(batch, false);
++   genX(iris_emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
++   genX(iris_maybe_emit_breakpoint)(batch, false);
+ 
+ 
+    return params;
+diff --git a/src/gallium/drivers/iris/iris_query.c b/src/gallium/drivers/iris/iris_query.c
+index 6f724932cf4..21b1785684f 100644
+--- a/src/gallium/drivers/iris/iris_query.c
++++ b/src/gallium/drivers/iris/iris_query.c
+@@ -874,7 +874,7 @@ iris_render_condition(struct pipe_context *ctx,
+ }
+ 
+ void
+-genX(init_query)(struct iris_context *ice)
++genX(iris_init_query)(struct iris_context *ice)
+ {
+    struct pipe_context *ctx = &ice->ctx;
+ 
+diff --git a/src/gallium/drivers/iris/iris_screen.c b/src/gallium/drivers/iris/iris_screen.c
+index f979fd17016..e6d5b7c8ae0 100644
+--- a/src/gallium/drivers/iris/iris_screen.c
++++ b/src/gallium/drivers/iris/iris_screen.c
+@@ -61,22 +61,22 @@
+ #define genX_call(devinfo, func, ...)             \
+    switch ((devinfo)->verx10) {                   \
+    case 200:                                      \
+-      gfx20_##func(__VA_ARGS__);                  \
++      gfx20_iris_##func(__VA_ARGS__);                  \
+       break;                                      \
+    case 125:                                      \
+-      gfx125_##func(__VA_ARGS__);                 \
++      gfx125_iris_##func(__VA_ARGS__);                 \
+       break;                                      \
+    case 120:                                      \
+-      gfx12_##func(__VA_ARGS__);                  \
++      gfx12_iris_##func(__VA_ARGS__);                  \
+       break;                                      \
+    case 110:                                      \
+-      gfx11_##func(__VA_ARGS__);                  \
++      gfx11_iris_##func(__VA_ARGS__);                  \
+       break;                                      \
+    case 90:                                       \
+-      gfx9_##func(__VA_ARGS__);                   \
++      gfx9_iris_##func(__VA_ARGS__);                   \
+       break;                                      \
+    case 80:                                       \
+-      gfx8_##func(__VA_ARGS__);                   \
++      gfx8_iris_##func(__VA_ARGS__);                   \
+       break;                                      \
+    default:                                       \
+       unreachable("Unknown hardware generation"); \
+diff --git a/src/gallium/drivers/iris/iris_state.c b/src/gallium/drivers/iris/iris_state.c
+index 06672b8150c..ce3b7dce337 100644
+--- a/src/gallium/drivers/iris/iris_state.c
++++ b/src/gallium/drivers/iris/iris_state.c
+@@ -892,7 +892,7 @@ iris_emit_l3_config(struct iris_batch *batch,
+ }
+ 
+ void
+-genX(emit_urb_config)(struct iris_batch *batch,
++genX(iris_emit_urb_config)(struct iris_batch *batch,
+                       bool has_tess_eval,
+                       bool has_geometry)
+ {
+@@ -907,7 +907,7 @@ genX(emit_urb_config)(struct iris_batch *batch,
+                         &ice->state.urb_deref_block_size,
+                         &ice->shaders.urb.constrained);
+ 
+-   genX(urb_workaround)(batch, &ice->shaders.urb.cfg);
++   genX(iris_urb_workaround)(batch, &ice->shaders.urb.cfg);
+ 
+    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+       iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {
+@@ -2066,7 +2066,7 @@ want_pma_fix(struct iris_context *ice)
+ #endif
+ 
+ void
+-genX(update_pma_fix)(struct iris_context *ice,
++genX(iris_update_pma_fix)(struct iris_context *ice,
+                      struct iris_batch *batch,
+                      bool enable)
+ {
+@@ -6245,7 +6245,7 @@ invalidate_aux_map_state_per_engine(struct iris_batch *batch)
+ }
+ 
+ void
+-genX(invalidate_aux_map_state)(struct iris_batch *batch)
++genX(iris_invalidate_aux_map_state)(struct iris_batch *batch)
+ {
+    struct iris_screen *screen = batch->screen;
+    void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
+@@ -6438,7 +6438,7 @@ emit_push_constant_packet_all(struct iris_context *ice,
+ #endif
+ 
+ void
+-genX(emit_depth_state_workarounds)(struct iris_context *ice,
++genX(iris_emit_depth_state_workarounds)(struct iris_context *ice,
+                                    struct iris_batch *batch,
+                                    const struct isl_surf *surf)
+ {
+@@ -6856,7 +6856,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
+          assert(ice->shaders.urb.cfg.size[i] != 0);
+       }
+ 
+-      genX(emit_urb_config)(batch,
++      genX(iris_emit_urb_config)(batch,
+                             ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
+                             ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL);
+    }
+@@ -7735,7 +7735,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
+       }
+ 
+       if (zres)
+-         genX(emit_depth_state_workarounds)(ice, batch, &zres->surf);
++         genX(iris_emit_depth_state_workarounds)(ice, batch, &zres->surf);
+ 
+       if (intel_needs_workaround(batch->screen->devinfo, 1408224581) ||
+           intel_needs_workaround(batch->screen->devinfo, 14014097488)) {
+@@ -8095,15 +8095,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
+ #if GFX_VER == 8
+    if (dirty & IRIS_DIRTY_PMA_FIX) {
+       bool enable = want_pma_fix(ice);
+-      genX(update_pma_fix)(ice, batch, enable);
++      genX(iris_update_pma_fix)(ice, batch, enable);
+    }
+ #endif
+ 
+    if (ice->state.current_hash_scale != 1)
+-      genX(emit_hashing_mode)(ice, batch, UINT_MAX, UINT_MAX, 1);
++      genX(iris_emit_hashing_mode)(ice, batch, UINT_MAX, UINT_MAX, 1);
+ 
+ #if GFX_VER >= 12
+-   genX(invalidate_aux_map_state)(batch);
++   genX(iris_invalidate_aux_map_state)(batch);
+ #endif
+ }
+ 
+@@ -8137,7 +8137,7 @@ point_or_line_list(enum mesa_prim prim_type)
+ }
+ 
+ void
+-genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw)
++genX(iris_emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw)
+ {
+    struct iris_context *ice = batch->ice;
+    uint32_t draw_count = emit_before_draw ?
+@@ -8159,10 +8159,10 @@ genX(emit_breakpoint)(struct iris_batch *batch, bool emit_before_draw)
+ }
+ 
+ void
+-genX(emit_3dprimitive_was)(struct iris_batch *batch,
+-                           const struct pipe_draw_indirect_info *indirect,
+-                           uint32_t primitive_type,
+-                           uint32_t vertex_count)
++genX(iris_emit_3dprimitive_was)(struct iris_batch *batch,
++                                const struct pipe_draw_indirect_info *indirect,
++                                uint32_t primitive_type,
++                                uint32_t vertex_count)
+ {
+    UNUSED const struct intel_device_info *devinfo = batch->screen->devinfo;
+    UNUSED const struct iris_context *ice = batch->ice;
+@@ -8190,7 +8190,7 @@ genX(emit_3dprimitive_was)(struct iris_batch *batch,
+ }
+ 
+ void
+-genX(urb_workaround)(struct iris_batch *batch,
++genX(iris_urb_workaround)(struct iris_batch *batch,
+                      const struct intel_urb_config *urb_cfg)
+ {
+ #if INTEL_NEEDS_WA_16014912113
+@@ -8451,7 +8451,7 @@ iris_upload_render_state(struct iris_context *ice,
+ 
+    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
+ 
+-   genX(maybe_emit_breakpoint)(batch, true);
++   genX(iris_maybe_emit_breakpoint)(batch, true);
+ 
+    iris_emit_cmd(batch, GENX(3DPRIMITIVE), prim) {
+       prim.VertexAccessType = draw->index_size > 0 ? RANDOM : SEQUENTIAL;
+@@ -8474,8 +8474,8 @@ iris_upload_render_state(struct iris_context *ice,
+       }
+    }
+ 
+-   genX(emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
+-   genX(maybe_emit_breakpoint)(batch, false);
++   genX(iris_emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
++   genX(iris_maybe_emit_breakpoint)(batch, false);
+ 
+    iris_batch_sync_region_end(batch);
+ 
+@@ -8549,7 +8549,7 @@ iris_upload_indirect_render_state(struct iris_context *ice,
+ 
+    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
+ 
+-   genX(maybe_emit_breakpoint)(batch, true);
++   genX(iris_maybe_emit_breakpoint)(batch, true);
+ 
+    iris_emit_cmd(batch, GENX(EXECUTE_INDIRECT_DRAW), ind) {
+       ind.ArgumentFormat             =
+@@ -8575,8 +8575,8 @@ iris_upload_indirect_render_state(struct iris_context *ice,
+       }
+    }
+ 
+-   genX(emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
+-   genX(maybe_emit_breakpoint)(batch, false);
++   genX(iris_emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
++   genX(iris_maybe_emit_breakpoint)(batch, false);
+ 
+    iris_batch_sync_region_end(batch);
+ 
+@@ -8694,7 +8694,7 @@ iris_upload_indirect_shader_render_state(struct iris_context *ice,
+ 
+    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_DRAW, draw, indirect, sc);
+ 
+-   genX(maybe_emit_breakpoint)(batch, true);
++   genX(iris_maybe_emit_breakpoint)(batch, true);
+ 
+ #if GFX_VER >= 12
+    iris_emit_cmd(batch, GENX(MI_ARB_CHECK), arb) {
+@@ -8753,8 +8753,8 @@ iris_upload_indirect_shader_render_state(struct iris_context *ice,
+    assert(command_bo == batch->bo);
+ #endif
+ 
+-   genX(emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
+-   genX(maybe_emit_breakpoint)(batch, false);
++   genX(iris_emit_3dprimitive_was)(batch, indirect, ice->state.prim_mode, sc->count);
++   genX(iris_maybe_emit_breakpoint)(batch, false);
+ 
+    iris_emit_pipe_control_flush(batch,
+                                 "post generated draws wait",
+@@ -9122,7 +9122,7 @@ iris_upload_compute_state(struct iris_context *ice,
+                          IRIS_DOMAIN_NONE);
+ 
+ #if GFX_VER >= 12
+-   genX(invalidate_aux_map_state)(batch);
++   genX(iris_invalidate_aux_map_state)(batch);
+ #endif
+ 
+ #if GFX_VERx10 >= 125
+@@ -10016,7 +10016,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
+  * We don't put this in the vtable because it's only used on Gfx9.
+  */
+ void
+-gfx9_toggle_preemption(struct iris_context *ice,
++gfx9_iris_toggle_preemption(struct iris_context *ice,
+                        struct iris_batch *batch,
+                        const struct pipe_draw_info *draw)
+ {
+@@ -10116,7 +10116,7 @@ iris_emit_mi_report_perf_count(struct iris_batch *batch,
+  *              "finest hashing mode available".
+  */
+ void
+-genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
++genX(iris_emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
+                         unsigned width, unsigned height, unsigned scale)
+ {
+ #if GFX_VER == 9
+@@ -10204,7 +10204,7 @@ iris_set_frontend_noop(struct pipe_context *ctx, bool enable)
+ }
+ 
+ void
+-genX(init_screen_state)(struct iris_screen *screen)
++genX(iris_init_screen_state)(struct iris_screen *screen)
+ {
+    assert(screen->devinfo->verx10 == GFX_VERx10);
+    screen->vtbl.destroy_state = iris_destroy_state;
+@@ -10245,7 +10245,7 @@ genX(init_screen_state)(struct iris_screen *screen)
+ }
+ 
+ void
+-genX(init_state)(struct iris_context *ice)
++genX(iris_init_state)(struct iris_context *ice)
+ {
+    struct pipe_context *ctx = &ice->ctx;
+    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+diff --git a/src/gallium/drivers/zink/zink_screen.c b/src/gallium/drivers/zink/zink_screen.c
+index 43ae9829d47..8c8b94e10e1 100644
+--- a/src/gallium/drivers/zink/zink_screen.c
++++ b/src/gallium/drivers/zink/zink_screen.c
+@@ -1635,8 +1635,10 @@ zink_destroy_screen(struct pipe_screen *pscreen)
+ 
+    util_idalloc_mt_fini(&screen->buffer_ids);
+ 
++#if 0
+    if (screen->loader_lib)
+       util_dl_close(screen->loader_lib);
++#endif
+ 
+    if (screen->drm_fd != -1)
+       close(screen->drm_fd);
+@@ -3290,15 +3292,17 @@ zink_internal_create_screen(const struct pipe_screen_config *config, int64_t dev
+ 
+    u_trace_state_init();
+ 
++#if 0
+    screen->loader_lib = util_dl_open(VK_LIBNAME);
+    if (!screen->loader_lib) {
+       if (!screen->driver_name_is_inferred)
+          mesa_loge("ZINK: failed to load "VK_LIBNAME);
+       goto fail;
+    }
++#endif
+ 
+-   screen->vk_GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)util_dl_get_proc_address(screen->loader_lib, "vkGetInstanceProcAddr");
+-   screen->vk_GetDeviceProcAddr = (PFN_vkGetDeviceProcAddr)util_dl_get_proc_address(screen->loader_lib, "vkGetDeviceProcAddr");
++   screen->vk_GetInstanceProcAddr = vkGetInstanceProcAddr;
++   screen->vk_GetDeviceProcAddr = vkGetDeviceProcAddr;
+    if (!screen->vk_GetInstanceProcAddr ||
+        !screen->vk_GetDeviceProcAddr) {
+       if (!screen->driver_name_is_inferred)
+diff --git a/src/gallium/frontends/lavapipe/lvp_device.c b/src/gallium/frontends/lavapipe/lvp_device.c
+index df7286fcab5..898dee49dc8 100644
+--- a/src/gallium/frontends/lavapipe/lvp_device.c
++++ b/src/gallium/frontends/lavapipe/lvp_device.c
+@@ -1490,7 +1490,12 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_GetInstanceProcAddr(
+  * to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetInstanceProcAddr(
++   VkInstance                                  instance,
++   const char*                                 pName);
++
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_vk_icdGetInstanceProcAddr(
+    VkInstance                                  instance,
+    const char*                                 pName)
+ {
+diff --git a/src/gallium/frontends/lavapipe/meson.build b/src/gallium/frontends/lavapipe/meson.build
+index 9014efd1b3e..7eae91142d2 100644
+--- a/src/gallium/frontends/lavapipe/meson.build
++++ b/src/gallium/frontends/lavapipe/meson.build
+@@ -51,7 +51,7 @@ liblavapipe_st = static_library(
+   [liblvp_files, lvp_entrypoints, sha1_h],
+   c_args : [ c_msvc_compat_args, lvp_flags],
+   gnu_symbol_visibility : 'hidden',
+-  include_directories : [ inc_include, inc_src, inc_util, inc_gallium, inc_gallium_aux, inc_llvmpipe ],
++  include_directories : [ inc_include, inc_src, inc_util, inc_gallium, inc_compiler, inc_gallium_aux, inc_llvmpipe ],
+   dependencies : [ dep_llvm, idep_nir, idep_mesautil, idep_vulkan_util, idep_vulkan_wsi,
+                    idep_vulkan_runtime, lvp_deps ]
+ )
+diff --git a/src/gallium/targets/dri/target.c b/src/gallium/targets/dri/target.c
+index 0915a84480d..65c04bea4ae 100644
+--- a/src/gallium/targets/dri/target.c
++++ b/src/gallium/targets/dri/target.c
+@@ -5,27 +5,26 @@
+ 
+ #include "dri_screen.h"
+ 
++const __DRIextension **__driDriverGetExtensions(const char *name);
++
++const __DRIextension **__driDriverGetExtensions(const char *name)
++{
+ #define DEFINE_LOADER_DRM_ENTRYPOINT(drivername)                          \
+-const __DRIextension **__driDriverGetExtensions_##drivername(void);       \
+-PUBLIC const __DRIextension **__driDriverGetExtensions_##drivername(void) \
++if (!strcmp(name, #drivername))                                           \
+ {                                                                         \
+    return galliumdrm_driver_extensions;                                   \
+ }
+ 
+ #if defined(GALLIUM_SOFTPIPE)
+ 
+-const __DRIextension **__driDriverGetExtensions_swrast(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_swrast(void)
++if (!strcmp(name, "swrast"))
+ {
+    return galliumsw_driver_extensions;
+ }
+ 
+ #if defined(HAVE_LIBDRM)
+ 
+-const __DRIextension **__driDriverGetExtensions_kms_swrast(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
++if (!strcmp(name, "kms_swrast"))
+ {
+    return dri_swrast_kms_driver_extensions;
+ }
+@@ -96,7 +95,7 @@ DEFINE_LOADER_DRM_ENTRYPOINT(etnaviv)
+ #endif
+ 
+ #if defined(GALLIUM_TEGRA)
+-DEFINE_LOADER_DRM_ENTRYPOINT(tegra);
++DEFINE_LOADER_DRM_ENTRYPOINT(tegra)
+ #endif
+ 
+ #if defined(GALLIUM_KMSRO)
+@@ -145,15 +144,16 @@ DEFINE_LOADER_DRM_ENTRYPOINT(lima)
+ #if DETECT_OS_ANDROID
+ DEFINE_LOADER_DRM_ENTRYPOINT(zink);
+ #else
+-const __DRIextension **__driDriverGetExtensions_zink(void);
+-
+-PUBLIC const __DRIextension **__driDriverGetExtensions_zink(void)
+-{
+-   return debug_get_bool_option("LIBGL_KOPPER_DISABLE", false) ? galliumdrm_driver_extensions : galliumvk_driver_extensions;
+-}
++    if (!strcmp(name, "zink"))
++    {
++       return debug_get_bool_option("LIBGL_KOPPER_DISABLE", false) ? galliumdrm_driver_extensions : galliumvk_driver_extensions;
++    }
+ #endif
+ #endif
+ 
+ #if defined(GALLIUM_D3D12)
+-DEFINE_LOADER_DRM_ENTRYPOINT(d3d12);
++DEFINE_LOADER_DRM_ENTRYPOINT(d3d12)
+ #endif
++
++   return NULL;
++}
+diff --git a/src/gallium/targets/lavapipe/meson.build b/src/gallium/targets/lavapipe/meson.build
+index 9b009e6a7e1..49b71a3a482 100644
+--- a/src/gallium/targets/lavapipe/meson.build
++++ b/src/gallium/targets/lavapipe/meson.build
+@@ -6,10 +6,10 @@ libvulkan_lvp = shared_library(
+   vs_module_defs : vulkan_api_def,
+   include_directories : [ inc_src, inc_util, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_winsys, inc_gallium_drivers ],
+   link_whole : [ liblavapipe_st ],
+-  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
++#  link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
+   gnu_symbol_visibility : 'hidden',
+   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
+-  dependencies : driver_swrast,
++  dependencies : driver_swrast.partial_dependency(compile_args : true, includes : true),
+   name_prefix : host_machine.system() == 'windows' ? '' : [],
+   install : true,
+ )
+diff --git a/src/gallium/targets/lavapipe/target.c b/src/gallium/targets/lavapipe/target.c
+index 7ca11854032..53150b45e74 100644
+--- a/src/gallium/targets/lavapipe/target.c
++++ b/src/gallium/targets/lavapipe/target.c
+@@ -1,3 +1,3 @@
+-#include "target-helpers/drm_helper.h"
+-#include "target-helpers/sw_helper.h"
++//#include "target-helpers/drm_helper.h"
++//#include "target-helpers/sw_helper.h"
+ 
+diff --git a/src/gallium/targets/osmesa/meson.build b/src/gallium/targets/osmesa/meson.build
+index d16e7858c63..8e9341efad0 100644
+--- a/src/gallium/targets/osmesa/meson.build
++++ b/src/gallium/targets/osmesa/meson.build
+@@ -55,7 +55,8 @@ libosmesa = shared_library(
+     libmesa, libgallium, libws_null, osmesa_link_with,
+   ],
+   dependencies : [
+-    dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind, driver_swrast
++    dep_ws2_32, dep_selinux, dep_thread, dep_clock, dep_unwind, driver_swrast,
++    meson.get_compiler('cpp').find_library('stdc++')
+   ],
+   name_prefix : host_machine.system() == 'windows' ? '' : [],  # otherwise mingw will create libosmesa.dll
+   soversion : host_machine.system() == 'windows' ? '' : '8',
+diff --git a/src/glx/dri_common.c b/src/glx/dri_common.c
+index 40bbcfffb15..c80f4154c97 100644
+--- a/src/glx/dri_common.c
++++ b/src/glx/dri_common.c
+@@ -55,6 +55,8 @@
+ #define GL_LIB_NAME "libGL.so.1"
+ #endif
+ 
++extern const __DRIextension **__driDriverGetExtensions(const char *driverName);
++
+ /**
+  * Try to \c dlopen the named driver.
+  *
+@@ -72,6 +74,7 @@
+ _X_HIDDEN const __DRIextension **
+ driOpenDriver(const char *driverName, void **out_driver_handle)
+ {
++#if 0
+    void *glhandle;
+ 
+    /* Attempt to make sure libGL symbols will be visible to the driver */
+@@ -88,6 +91,10 @@ driOpenDriver(const char *driverName, void **out_driver_handle)
+ 
+    if (glhandle)
+       dlclose(glhandle);
++#endif
++
++   const __DRIextension **extensions =
++      __driDriverGetExtensions(driverName);
+ 
+    return extensions;
+ }
+@@ -760,8 +767,9 @@ get_driver_config(const char *driverName)
+       }
+    }
+ 
++#if 0
+    dlclose(handle);
+-
++#endif
+    return config;
+ }
+ 
+diff --git a/src/glx/meson.build b/src/glx/meson.build
+index 1d4180f94e2..e1f7cc108d7 100644
+--- a/src/glx/meson.build
++++ b/src/glx/meson.build
+@@ -73,8 +73,8 @@ files_libglx = files(
+   'xfont.c',
+ )
+ 
+-extra_libs_libglx = []
+-extra_deps_libgl = []
++extra_libs_libglx = [libgallium_dri]
++extra_deps_libgl = [meson.get_compiler('cpp').find_library('stdc++')]
+ extra_ld_args_libgl = []
+ 
+ # dri2
+diff --git a/src/intel/blorp/meson.build b/src/intel/blorp/meson.build
+index ef07f498cc6..70501a03bcc 100644
+--- a/src/intel/blorp/meson.build
++++ b/src/intel/blorp/meson.build
+@@ -45,6 +45,7 @@ libblorp = static_library(
+   gnu_symbol_visibility : 'hidden',
+   dependencies : [idep_nir_headers, idep_genxml, idep_mesautil, idep_intel_dev],
+   build_by_default: false,
++  install : false
+ )
+ 
+ idep_intel_blorp = declare_dependency(
+@@ -53,12 +54,13 @@ idep_intel_blorp = declare_dependency(
+ 
+ libblorp_elk = static_library(
+   'blorp_elk',
+-  [files_libblorp, files_blorp_elk],
++  [files_blorp_elk],
+   include_directories : [inc_include, inc_src, inc_intel],
+   c_args : [no_override_init_args],
+   gnu_symbol_visibility : 'hidden',
+   dependencies : [idep_nir_headers, idep_genxml, idep_mesautil, idep_intel_dev],
+-  build_by_default: true, # FIXME XXX
++  build_by_default: true, # FIXME XXX,
++  install : true
+ )
+ 
+ idep_intel_blorp_elk = declare_dependency(
+diff --git a/src/intel/compiler/meson.build b/src/intel/compiler/meson.build
+index da9a958190a..9fa897ff369 100644
+--- a/src/intel/compiler/meson.build
++++ b/src/intel/compiler/meson.build
+@@ -149,6 +149,7 @@ libintel_compiler_brw = static_library(
+   gnu_symbol_visibility : 'hidden',
+   dependencies : [idep_nir_headers, idep_mesautil, idep_intel_dev],
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_intel_compiler_brw = declare_dependency(
+diff --git a/src/intel/decoder/meson.build b/src/intel/decoder/meson.build
+index e61aa2b840f..9cd0ecc7edf 100644
+--- a/src/intel/decoder/meson.build
++++ b/src/intel/decoder/meson.build
+@@ -29,6 +29,7 @@ libintel_decoder_brw = static_library(
+   gnu_symbol_visibility : 'hidden',
+   dependencies : libintel_decoder_deps,
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_intel_decoder_brw = declare_dependency(
+@@ -38,12 +39,13 @@ idep_intel_decoder_brw = declare_dependency(
+ 
+ libintel_decoder_elk = static_library(
+   'intel_decoder_elk',
+-  [libintel_decoder_files, 'intel_batch_decoder_elk.c', genX_xml_h, sha1_h],
++  ['intel_batch_decoder_elk.c', genX_xml_h, sha1_h],
+   include_directories : [inc_include, inc_src, inc_intel],
+   c_args : [no_override_init_args, sse2_args],
+   gnu_symbol_visibility : 'hidden',
+   dependencies : libintel_decoder_deps,
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_intel_decoder_elk = declare_dependency(
+diff --git a/src/intel/dev/meson.build b/src/intel/dev/meson.build
+index a014ee2ab8e..03da2d32131 100644
+--- a/src/intel/dev/meson.build
++++ b/src/intel/dev/meson.build
+@@ -65,6 +65,7 @@ libintel_dev = static_library(
+                   idep_intel_dev_info_gen],
+   c_args : [no_override_init_args],
+   gnu_symbol_visibility : 'hidden',
++  install : true
+ )
+ 
+ idep_intel_dev = declare_dependency(
+diff --git a/src/intel/vulkan/anv_device.c b/src/intel/vulkan/anv_device.c
+index 2e4e20f0251..ce83cd9feab 100644
+--- a/src/intel/vulkan/anv_device.c
++++ b/src/intel/vulkan/anv_device.c
+@@ -2991,7 +2991,12 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
+  * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
+  */
+ PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetInstanceProcAddr(
++    VkInstance                                  instance,
++    const char*                                 pName);
++
++PUBLIC
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName)
+ {
+diff --git a/src/intel/vulkan/meson.build b/src/intel/vulkan/meson.build
+index 8eecda92547..43c71034100 100644
+--- a/src/intel/vulkan/meson.build
++++ b/src/intel/vulkan/meson.build
+@@ -257,14 +257,18 @@ libvulkan_intel = shared_library(
+   ],
+   link_whole : [libanv_common, libanv_per_hw_ver_libs] + optional_libgrl,
+   link_with : [
+-    libisl, libintel_perf,
++#    libisl, libintel_perf,
+   ],
+   dependencies : [
+-    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
+-    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
++    dep_thread, dep_dl, dep_m, anv_deps,
++    idep_libintel_common.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir,
++    idep_genxml.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util, idep_vulkan_wsi,
+     idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+-    idep_intel_driver_ds, idep_intel_dev, idep_intel_blorp,
+-    idep_intel_compiler_brw, idep_intel_decoder_brw,
++    idep_intel_driver_ds.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_dev.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_blorp, idep_intel_compiler_brw, idep_intel_decoder_brw,
+   ],
+   c_args : anv_flags,
+   gnu_symbol_visibility : 'hidden',
+diff --git a/src/intel/vulkan_hasvk/anv_device.c b/src/intel/vulkan_hasvk/anv_device.c
+index 9bc84adbbda..913bcda5709 100644
+--- a/src/intel/vulkan_hasvk/anv_device.c
++++ b/src/intel/vulkan_hasvk/anv_device.c
+@@ -2245,13 +2245,17 @@ PFN_vkVoidFunction anv_GetInstanceProcAddr(
+ /* With version 1+ of the loader interface the ICD should expose
+  * vk_icdGetInstanceProcAddr to work around certain LD_PRELOAD issues seen in apps.
+  */
+-PUBLIC
+-VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetInstanceProcAddr(
++    VkInstance                                  instance,
++    const char*                                 pName);
++
++VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL intel_hasvk_vk_icdGetInstanceProcAddr(
+     VkInstance                                  instance,
+     const char*                                 pName)
+ {
+    return anv_GetInstanceProcAddr(instance, pName);
+ }
++
+ static struct anv_state
+ anv_state_pool_emit_data(struct anv_state_pool *pool, size_t size, size_t align, const void *p)
+ {
+diff --git a/src/intel/vulkan_hasvk/meson.build b/src/intel/vulkan_hasvk/meson.build
+index 80e3cba2870..bac1c7de788 100644
+--- a/src/intel/vulkan_hasvk/meson.build
++++ b/src/intel/vulkan_hasvk/meson.build
+@@ -24,11 +24,11 @@ anv_hasvk_entrypoints = custom_target(
+   output : ['anv_entrypoints.h', 'anv_entrypoints.c'],
+   command : [
+     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
+-    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
++    '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv_hasvk',
+     '--beta', with_vulkan_beta.to_string(),
+     '--device-prefix', 'gfx7', '--device-prefix', 'gfx75',
+     '--device-prefix', 'gfx8',
+-    '--device-prefix', 'doom64',
++    '--device-prefix', 'doom64_hasvk',
+   ],
+   depend_files : vk_entrypoints_gen_depend_files,
+ )
+@@ -192,13 +192,18 @@ libvulkan_intel_hasvk = shared_library(
+   ],
+   link_whole : [libanv_hasvk_common, libanv_per_hw_ver_libs],
+   link_with : [
+-    libisl, libintel_perf,
++#    libisl, libintel_perf,
+   ],
+   dependencies : [
+-    dep_thread, dep_dl, dep_m, anv_deps, idep_libintel_common,
+-    idep_nir, idep_genxml, idep_vulkan_util, idep_vulkan_wsi,
++    dep_thread, dep_dl, dep_m, anv_deps,
++    idep_libintel_common.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_nir,
++    idep_genxml.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_vulkan_util, idep_vulkan_wsi,
+     idep_vulkan_runtime, idep_mesautil, idep_xmlconfig,
+-    idep_intel_driver_ds, idep_intel_dev, idep_intel_blorp_elk,
++    idep_intel_driver_ds.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_dev.partial_dependency(compile_args : true, link_args : true, includes : true),
++    idep_intel_blorp_elk,
+     idep_intel_decoder_elk, idep_intel_compiler_elk,
+   ],
+   c_args : anv_flags,
+diff --git a/src/nouveau/vulkan/nvk_instance.c b/src/nouveau/vulkan/nvk_instance.c
+index da1866e4f06..f454be08502 100644
+--- a/src/nouveau/vulkan/nvk_instance.c
++++ b/src/nouveau/vulkan/nvk_instance.c
+@@ -193,7 +193,10 @@ nvk_GetInstanceProcAddr(VkInstance _instance, const char *pName)
+ }
+ 
+ PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+-vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
++nouveau_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName);
++
++PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
++nouveau_vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
+ {
+    return nvk_GetInstanceProcAddr(instance, pName);
+ }
+diff --git a/src/util/blake3/meson.build b/src/util/blake3/meson.build
+index 6b53daab6b3..5a98472e104 100644
+--- a/src/util/blake3/meson.build
++++ b/src/util/blake3/meson.build
+@@ -40,6 +40,7 @@ blake3 = static_library(
+   files_blake3,
+   c_args : blake3_defs,
+   gnu_symbol_visibility : 'hidden',
++  install : true
+ )
+ 
+ idep_blake3 = declare_dependency(
+diff --git a/src/util/meson.build b/src/util/meson.build
+index 9f40c44c4e3..8871f515a76 100644
+--- a/src/util/meson.build
++++ b/src/util/meson.build
+@@ -291,7 +291,8 @@ _libmesa_util = static_library(
+   link_with: [libmesa_util_sse41],
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+-  build_by_default : false
++  build_by_default : false,
++  install : true
+ )
+ 
+ idep_mesautil = declare_dependency(
+@@ -329,6 +330,7 @@ _libxmlconfig = static_library(
+   ],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_xmlconfig = declare_dependency(
+diff --git a/src/vulkan/runtime/meson.build b/src/vulkan/runtime/meson.build
+index 762c29e97e7..40e474bb692 100644
+--- a/src/vulkan/runtime/meson.build
++++ b/src/vulkan/runtime/meson.build
+@@ -209,6 +209,7 @@ libvulkan_lite_runtime = static_library(
+   c_args : c_msvc_compat_args,
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ libvulkan_lite_instance = static_library(
+@@ -244,14 +245,14 @@ idep_vulkan_lite_runtime_headers = declare_dependency(
+ # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506
+ if get_option('backend').startswith('vs')
+   idep_vulkan_lite_runtime = declare_dependency(
+-    link_with : [libvulkan_lite_runtime, libvulkan_lite_instance],
++    link_with : [libvulkan_lite_runtime],
+     dependencies : idep_vulkan_lite_runtime_headers
+   )
+ else
+   idep_vulkan_lite_runtime = declare_dependency(
+     # Instruct users of this library to link with --whole-archive.  Otherwise,
+     # our weak function overloads may not resolve properly.
+-    link_whole : [libvulkan_lite_runtime, libvulkan_lite_instance],
++    link_with : [libvulkan_lite_runtime],
+     dependencies : idep_vulkan_lite_runtime_headers
+   )
+ endif
+@@ -294,6 +295,7 @@ libvulkan_runtime = static_library(
+   c_args : c_msvc_compat_args,
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ libvulkan_instance = static_library(
+@@ -304,6 +306,7 @@ libvulkan_instance = static_library(
+   c_args : ['-DVK_LITE_RUNTIME_INSTANCE=0', c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ if get_option('backend').startswith('vs')
+@@ -312,7 +315,7 @@ if get_option('backend').startswith('vs')
+   )
+ else
+   idep_vulkan_runtime_body = declare_dependency(
+-    link_whole : [libvulkan_lite_runtime, libvulkan_runtime, libvulkan_instance],
++    link_with : [libvulkan_lite_runtime, libvulkan_runtime, libvulkan_instance],
+   )
+ endif
+ 
+diff --git a/src/vulkan/util/meson.build b/src/vulkan/util/meson.build
+index 3861501efc1..19c4510d22c 100644
+--- a/src/vulkan/util/meson.build
++++ b/src/vulkan/util/meson.build
+@@ -125,6 +125,7 @@ libvulkan_util = static_library(
+   c_args : [c_msvc_compat_args],
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_util_headers = declare_dependency(
+@@ -134,6 +135,6 @@ idep_vulkan_util_headers = declare_dependency(
+ )
+ 
+ idep_vulkan_util = declare_dependency(
+-  link_with : libvulkan_util,
++#  link_with : libvulkan_util,
+   dependencies : idep_vulkan_util_headers
+ )
+diff --git a/src/vulkan/wsi/meson.build b/src/vulkan/wsi/meson.build
+index 67c3691619b..6dc21e39bf6 100644
+--- a/src/vulkan/wsi/meson.build
++++ b/src/vulkan/wsi/meson.build
+@@ -74,6 +74,7 @@ libvulkan_wsi = static_library(
+   link_with: links_vulkan_wsi,
+   gnu_symbol_visibility : 'hidden',
+   build_by_default : false,
++  install : true
+ )
+ 
+ idep_vulkan_wsi_headers = declare_dependency(
+@@ -87,14 +88,14 @@ idep_vulkan_wsi_headers = declare_dependency(
+ # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506
+ if get_option('backend').startswith('vs')
+   idep_vulkan_wsi = declare_dependency(
+-    link_with : libvulkan_wsi,
++#    link_with : libvulkan_wsi,
+     dependencies : idep_vulkan_wsi_headers
+   )
+ else
+   idep_vulkan_wsi = declare_dependency(
+     # Instruct users of this library to link with --whole-archive.  Otherwise,
+     # our weak function overloads may not resolve properly.
+-    link_whole : libvulkan_wsi,
++#    link_whole : libvulkan_wsi,
+     dependencies : [
+       idep_vulkan_wsi_headers, dep_libudev
+     ]
