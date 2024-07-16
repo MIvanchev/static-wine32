@@ -1,0 +1,52 @@
+diff --git a/configure.ac b/configure.ac
+index bbe8673..d35e9ca 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -425,7 +425,7 @@ AM_CONDITIONAL(TESTS_RPATH, test "$tests_use_rpath" = yes)
+ dnl zlib is mandatory.
+ save_LIBS="$LIBS"
+ LIBS=
+-eu_ZIPLIB(zlib,ZLIB,z,gzdirect,gzip)
++eu_ZIPLIB(zlib,ZLIB,z,gzdirect,gzip,[$(pkg-config --libs -static zlib)])
+ AS_IF([test "x$with_zlib" = xno], [AC_MSG_ERROR([zlib not found but is required])])
+ LIBS="$save_LIBS"
+ 
+@@ -437,10 +437,10 @@ eu_ZIPLIB(bzlib,BZLIB,bz2,BZ2_bzdopen,bzip2)
+ # We need this since bzip2 doesn't have a pkgconfig file.
+ BZ2_LIB="$LIBS"
+ AC_SUBST([BZ2_LIB])
+-eu_ZIPLIB(lzma,LZMA,lzma,lzma_auto_decoder,[LZMA (xz)])
++eu_ZIPLIB(lzma,LZMA,lzma,lzma_auto_decoder,[LZMA (xz)],[$(pkg-config --libs --static liblzma)])
+ AS_IF([test "x$with_lzma" = xyes], [LIBLZMA="liblzma"], [LIBLZMA=""])
+ AC_SUBST([LIBLZMA])
+-eu_ZIPLIB(zstd,ZSTD,zstd,ZSTD_decompress,[ZSTD (zst)])
++eu_ZIPLIB(zstd,ZSTD,zstd,ZSTD_decompress,[ZSTD (zst)],[$(pkg-config --libs --static libzstd)])
+ AS_IF([test "x$with_zstd" = xyes], [LIBZSTD="libzstd"], [LIBLZSTD=""])
+ AC_SUBST([LIBZSTD])
+ zstd_LIBS="$LIBS"
+diff --git a/libdwfl/gzip.c b/libdwfl/gzip.c
+index 002afc4..af403dc 100644
+--- a/libdwfl/gzip.c
++++ b/libdwfl/gzip.c
+@@ -379,7 +379,7 @@ unzip (int fd, off_t start_offset,
+       int n = gzread (state.zf, state.buffer + pos, state.size - pos);
+       if (n < 0)
+ 	{
+-	  int code;
++	  int code = 0;
+ 	  gzerror (state.zf, &code);
+ 	  gzclose (state.zf);
+ 	  return zlib_fail (&state, code);
+diff --git a/m4/zip.m4 b/m4/zip.m4
+index 8affa3f..b060822 100644
+--- a/m4/zip.m4
++++ b/m4/zip.m4
+@@ -9,7 +9,7 @@ AS_HELP_STRING([--with-[$1]], [support [$1] compression in libdwfl]),,
+ if test $with_[$1] != no; then
+   AC_SEARCH_LIBS([$4], [$3], [with_[$1]=yes],
+   	         [test $with_[$1] = default ||
+-		  AC_MSG_ERROR([missing -l[$3] for --with-[$1]])])
++		  AC_MSG_ERROR([missing -l[$3] for --with-[$1]])], [$6])
+ fi
+ AM_CONDITIONAL([$2], test $with_[$1] = yes)
+ if test $with_[$1] = yes; then
