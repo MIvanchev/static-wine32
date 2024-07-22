@@ -30,8 +30,6 @@ ARG BUILD_JOBS=8
 # Do NOT set these as this would make your life rather difficult.
 
 ARG PATH="$PATH:/usr/local/bin"
-ARG MAKEFLAGS=-j$BUILD_JOBS
-ARG NINJAFLAGS=-j$BUILD_JOBS
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -53,7 +51,7 @@ RUN dpkg --add-architecture i386 && \
     wget -q http://mirror.netcologne.de/gnu/autoconf-archive/autoconf-archive-2023.02.20.tar.xz && \
     tar xf autoconf-archive-*.tar.* && \
     pushd autoconf-archive-*/ && ./configure --prefix=/usr && make install && popd && rm -rf autoconf-archive-* && \
-    wget -q https://ftp.gnu.org/gnu/automake/automake-1.16.5.tar.xz && \
+    wget -q https://ftp.gnu.org/gnu/automake/automake-1.17.tar.xz && \
     tar xf automake-*.tar.* && \
     pushd automake-*/ && ./configure --prefix=/usr && make install && popd && rm -rf automake-* && \
     wget -q https://pkgconfig.freedesktop.org/releases/pkg-config-0.29.2.tar.gz && \
@@ -62,10 +60,10 @@ RUN dpkg --add-architecture i386 && \
     wget -q https://mirror.checkdomain.de/gnu/libtool/libtool-2.4.7.tar.xz && \
     tar xf libtool-*.tar.* && \
     pushd libtool-*/ && ./configure --prefix=/usr && make install && popd && rm -rf libtool-* && \
-    wget -q https://github.com/Kitware/CMake/releases/download/v3.29.0/cmake-3.29.0-linux-x86_64.tar.gz && \
+    wget -q https://github.com/Kitware/CMake/releases/download/v3.30.0/cmake-3.30.0-linux-x86_64.tar.gz && \
     tar xf cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     rm -rf cmake-* && apt-get -y remove cmake && \
-    git clone --depth 1 --branch 1.4.0 https://github.com/mesonbuild/meson.git && \
+    git clone --depth 1 --branch 1.5.0 https://github.com/mesonbuild/meson.git && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
     chmod +x /usr/bin/meson && \
@@ -85,20 +83,6 @@ RUN build/checkvers.sh && build/download.sh
 ARG COMPILE_FLAGS="-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe"
 ARG LINK_FLAGS="-m32 -march=$PLATFORM -fno-lto"
 
-ARG CONFIGURE_PREFIX="--prefix=/usr/local"
-ARG CONFIGURE_FLAGS="CFLAGS=\"$COMPILE_FLAGS\" \
-                     CXXFLAGS=\"$COMPILE_FLAGS\" \
-                     OBJCFLAGS=\"$COMPILE_FLAGS\" \
-                     OBCXXFLAGS=\"$COMPILE_FLAGS\" \
-                     LDFLAGS=\"$LINK_FLAGS\" \
-                     AR=\"/usr/bin/gcc-ar\" \
-                     RANLIB=\"/usr/bin/gcc-ranlib\" \
-                     NM=\"/usr/bin/gcc-nm\""
-ARG CONFIGURE_PROLOGUE="$CONFIGURE_PREFIX \
-                        --sysconfdir=/etc \
-                        --datarootdir=/usr/share \
-                        --mandir=/usr/local/man"
-ARG CONFIGURE_HOST="--host=i386-linux-gnu"
 ARG MESON_PROLOGUE="--prefix=/usr/local \
                     --sysconfdir=/etc \
                     --datadir=/usr/share \
@@ -107,14 +91,6 @@ ARG MESON_PROLOGUE="--prefix=/usr/local \
                     --cross-file=../meson-cross-i386 \
                     --default-library=static \
                     --prefer-static"
-ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
-                    -DCMAKE_AR=/usr/bin/gcc-ar \
-                    -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
-                    -DCMAKE_NM=gcc-nm \
-                    -DSYSCONFDIR=/etc \
-                    -DDATAROOTDIR=/usr/share \
-                    -DMANDIR=/usr/local/man \
-                    -DCMAKE_BUILD_TYPE=Release"
 
 # wine recently modified configure.ac to use PKG_CONFIG_LIBDIR instead of
 # PKG_CONFIG_PATH and something broke so this is now required before
@@ -126,95 +102,52 @@ ARG CMAKE_PROLOGUE="-DCMAKE_INSTALL_PREFIX=/usr/local \
 ENV PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib32/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:/usr/local/share/pkgconfig
 
 ARG DEP_BUILD_SCRIPTS="\
-[libiconv] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
-[libiconv] make install\n\
+[libiconv] build_autoconf\n\
 [libiconv] mkdir -p /usr/local/lib/pkgconfig && jinja2 ../libiconv.pc.template \
 -D prefix=\"`sed -n 's/^prefix[ \\t]*=[ \\t]*//p' Makefile`\" \
 -D exec_prefix=\"`sed -n 's/^exec_prefix[ \\t]*=[ \\t]*//p' Makefile`\" \
 -D includedir=\"`sed -n 's/^includedir[ \\t]*=[ \\t]*//p' Makefile`\" \
 -D libdir=\"`sed -n 's/^libdir[ \\t]*=[ \\t]*//p' Makefile`\" \
 -D VERSION=\"`sed -n 's/^VERSION[ \\t]*=[ \\t]*//p' Makefile`\" | tee /usr/local/lib/pkgconfig/iconv.pc /usr/local/lib/pkgconfig/iconv-meson.pc\n\
-[macros-util-macros] autoreconf -i\n\
-[macros-util-macros] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE\n\
-[macros-util-macros] make install\n\
-[zlib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PREFIX --static\n\
-[zlib] make install\n\
-[zstd] mkdir build/cmake/builddir\n\
-[zstd] cd build/cmake/builddir\n\
-[zstd] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF ..\n\
-[zstd] make install\n\
-[xz] autoreconf -fi\n\
-[xz] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared \
---disable-xz --disable-xzdec --disable-lzmadec --disable-lzmainfo --disable-lzma-links \
---disable-scripts --disable-doc\n\
-[xz] make install\n\
+[macros-util-macros] build_autoconf --reconf\n\
+[zlib] CONFIGURE_OPTS=\"--prefix=/usr/local --static\" build_autoconf --no-auto-feature\n\
+[zstd] cd build/cmake\n\
+[zstd] CMAKE_OPTS+=\" -DZSTD_BUILD_STATIC=ON -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF\" build_cmake\n\
+[xz] CONFIGURE_OPTS+=\" --disable-xz --disable-xzdec \
+--disable-lzmadec --disable-lzmainfo --disable-lzma-links \
+--disable-scripts\" build_autoconf --reconf\n\
 [bzip2] sed -i 's/\(CFLAGS.*=.*\)/\\1 -m32/' Makefile\n\
 [bzip2] make libbz2.a\n\
 [bzip2] cp libbz2.a /usr/local/lib/\n\
 [bzip2] cp bzlib.h /usr/local/include/\n\
-[elfutils] sed -i 's/^\([ \t]*\)int code;$/\\1int code = 0;/' libdwfl/gzip.c\n\
-[elfutils] sed -i 's/^\\(zstd_LIBS=.*\\)\"/\\1 \$(pkg-config --libs --static libzstd)\"/' configure.ac\n\
-[elfutils] sed -i 's/^\\(zip_LIBS=.*\\)\"/\\1 \$(pkg-config --libs --static libzstd)\"/' configure.ac\n\
-[elfutils] autoreconf -fi\n\
-[elfutils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-libdebuginfod --disable-debuginfod\n\
-[elfutils] make install\n\
+[elfutils] CONFIGURE_OPTS+=\" --disable-libdebuginfod --disable-debuginfod\" build_autoconf --reconf\n\
 [elfutils] rm /usr/local/lib/libasm*.so* /usr/local/lib/libdw*.so* /usr/local/lib/libelf*.so*\n\
-[libjpeg-turbo] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\n\
-[libjpeg-turbo] make install\n\
-[libexif] autoreconf -i\n\
-[libexif] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
-[libexif] make install\n\
-[gmp] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --libdir=/usr/local/lib --enable-static --disable-shared\n\
-[gmp] make install\n\
-[nettle] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --disable-assembler\n\
-[nettle] make install\n\
-[gnutls] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared \
---with-included-unistring \
+[libjpeg-turbo] CMAKE_OPTS+=\" -DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DWITH_TURBOJPEG=FALSE\" build_cmake\n\
+[libexif] build_autoconf --reconf\n\
+[gmp] CONFIGURE_OPTS+=\" --libdir=/usr/local/lib\" build_autoconf\n\
+[nettle] CONFIGURE_OPTS+=\" --disable-assembler\" build_autoconf\n\
+[gnutls] CONFIGURE_OPTS+=\" --with-included-unistring \
 --with-included-libtasn1 \
 --without-p11-kit \
 --disable-libdane \
 --enable-ssl3-support \
 --enable-openssl-compatibility \
---host=i386-pc-linux --disable-tools --disable-tests --disable-doc\n\
-[gnutls] make install\n\
-[libxml2] autoreconf -i\n\
-[libxml2] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared --without-python \
---without-python\n\
-[libxml2] make install\n\
-[wayland-protocols] meson setup build $MESON_PROLOGUE --datadir=/usr/local/share -Dtests=false\n\
-[wayland-protocols] meson install -C build\n\
-[wayland] meson setup build $MESON_PROLOGUE -Dtests=false -Ddocumentation=false -Ddtd_validation=false\n\
-[wayland] meson install -C build\n\
-[libxkbcommon] meson setup build $MESON_PROLOGUE \
--Denable-docs=false \
--Denable-tools=false\n\
-[libxkbcommon] cd build\n\
-[libxkbcommon] meson compile xkbcommon xkbcommon-x11 xkbregistry\n\
-[libxkbcommon] meson install --no-rebuild\n\
-[fontconfig] ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-docs $CONFIGURE_FLAGS\n\
-[fontconfig] make install\n\
-[dbus] autoreconf -i\n\
-[dbus] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
-[dbus] make install\n\
-[SDL] mkdir build\n\
-[SDL] cd build\n\
-[SDL] $CONFIGURE_FLAGS CFLAGS=\"\$CFLAGS -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1\" cmake $CMAKE_PROLOGUE \
--DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF ..\n\
-[SDL] make install\n\
-[Linux-PAM] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --includedir=/usr/local/include/security --enable-static --disable-shared\n\
-[Linux-PAM] make install\n\
+--disable-tools\" build_autoconf\n\
+[libxml2] build_autoconf --reconf\n\
+[wayland-protocols] MESON_OPTS+=\" --datadir=/usr/local/share -Dtests=false\" build_meson\n\
+[wayland] MESON_OPTS+=\" -Dtests=false -Ddocumentation=false -Ddtd_validation=false\" build_meson\n\
+[libxkbcommon] MESON_OPTS+=\" -Denable-docs=false -Denable-tools=false\" \
+MESON_COMPILE_TARGETS=\"xkbcommon xkbcommon-x11 xkbregistry\" build_meson\n\
+[dbus] build_autoconf --reconf\n\
+[SDL] CMAKE_OPTS+=\" -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1 -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF\" build_cmake\n\
+[Linux-PAM] CONFIGURE_OPTS+=\" --includedir=/usr/local/include/security\" build_autoconf\n\
 [Linux-PAM] PC_FILE=/usr/local/lib/pkgconfig/pam.pc\n\
 [Linux-PAM] [ -f \$PC_FILE ] && sed -i 's/^\\(Libs:.*\\)/\\1 -ldl/' \$PC_FILE\n\
-[libcap] sed -i 's/.*\$(MAKE) -C tests \$@.*//' Makefile\n\
-[libcap] sed -i 's/.*\$(MAKE) -C progs \$@.*//' Makefile\n\
-[libcap] sed -i 's/.*\$(MAKE) -C doc \\\$@.*//' Makefile\n\
+[libcap] patch_file Makefile 's/.*\$(MAKE) -C \(tests\|progs\|doc\) \$@.*//'\n\
 [libcap] COPTS=\"-m32 -O2\" lib=lib prefix=/usr/local SHARED=no make install\n\
-[libcap-ng] ./autogen.sh\n\
-[libcap-ng] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --without-python3\n\
-[libcap-ng] make install\n\
-[util-linux] ./autogen.sh\n\
-[util-linux] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-year2038 \
---without-python --disable-fdisks --disable-mount --disable-losetup --disable-zramctl \
+[libcap-ng] ./autogen.sh && build_autoconf\n\
+[util-linux] ./autogen.sh && CONFIGURE_OPTS+=\" --disable-year2038 \
+--disable-fdisks --disable-mount --disable-losetup --disable-zramctl \
 --disable-fsck --disable-partx --disable-uuidd --disable-uuidgen --disable-blkid \
 --disable-wipefs --disable-mountpoint --disable-fallocate --disable-unshare \
 --disable-nsenter --disable-setpriv --disable-hardlink --disable-eject --disable-agetty \
@@ -226,61 +159,42 @@ ARG DEP_BUILD_SCRIPTS="\
 --disable-kill --disable-last --disable-utmpdump --disable-mesg --disable-raw \
 --disable-rename --disable-chfn-chsh --disable-login --disable-nologin --disable-sulogin \
 --disable-su --disable-runuser --disable-ul --disable-more --disable-setterm \
---disable-schedutils --disable-wall --disable-bash-completion --disable-liblastlog2\n\
-[util-linux] make install\n\
-[systemd] sed -i 's/install : pkgconfiglibdir != .no.,/install : false,/' src/libsystemd/meson.build\n\
-[systemd] sed -i 's/install : true,/install : false,/' meson.build\n\
-[systemd] meson setup build $MESON_PROLOGUE -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\n\
-[systemd] cd build\n\
-[systemd] meson compile basic:static_library udev:static_library systemd:static_library libudev.pc udev.pc systemd.pc\n\
-[systemd] meson install --tags devel,libudev --no-rebuild\n\
+--disable-schedutils --disable-wall --disable-bash-completion --disable-liblastlog2\" \
+build_autoconf\n\
+[systemd] patch_file src/libsystemd/meson.build 's/install : pkgconfiglibdir != .no.,/install : false,/'\n\
+[systemd] patch_file meson.build 's/install : true,/install : false,/'\n\
+[systemd] MESON_OPTS+=\" -Drootlibdir=/usr/local/lib -Dstatic-libudev=true\" \
+MESON_COMPILE_TARGETS=\"basic:static_library udev:static_library systemd:static_library libudev.pc udev.pc systemd.pc\" \
+MESON_INSTALL_OPTS=\"--tags devel,libudev\" build_meson\n\
 [systemd] PC_FILE=/usr/local/lib/pkgconfig/libudev.pc\n\
 [systemd] [ -f \$PC_FILE ] && echo 'Requires.private: libcap' >> \$PC_FILE\n\
-[libpciaccess] sed -i 's/shared_library/library/' src/meson.build\n\
-[libpciaccess] meson setup build $MESON_PROLOGUE\n\
-[libpciaccess] meson install -C build\n\
-[libdrm] meson setup build $MESON_PROLOGUE -Dintel=enabled -Dradeon=enabled -Damdgpu=enabled -Dnouveau=enabled\n\
-[libdrm] meson install -C build\n\
-[tdb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-python\n\
-[tdb] make install\n\
+[libpciaccess] patch_file src/meson.build 's/shared_library/library/'\n\
+[libpciaccess] build_meson\n\
+[libdrm] MESON_OPTS+=\" -Dintel=enabled -Dradeon=enabled -Damdgpu=enabled -Dnouveau=enabled\" build_meson\n\
+[tdb] CONFIGURE_OPTS+=\" --disable-python\" build_autoconf\n\
 [tdb] rm /usr/local/lib/libtdb*.so*\n\
-[glib] sed -i \"s/dependency('iconv'/dependency('iconv-meson'/\" meson.build\n\
-[glib] meson setup build $MESON_PROLOGUE -Dtests=false\n\
-[glib] ninja -C build install\n\
-[libusb] sed -i 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev)]/' configure.ac\n\
-[libusb] autoreconf -i\n\
-[libusb] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
-[libusb] make install\n\
+[glib] patch_file meson.build \"s/dependency('iconv'/dependency('iconv-meson'/\"\n\
+[glib] MESON_OPTS+=\" -Dtests=false\" build_meson\n\
+[libusb] patch_file configure.ac 's/\\[udev_new\\], \\[\\], \\[\\(.*\\)\\]/[udev_new], [], [\\1], [\\$(pkg-config --libs --static libudev)]/'\n\
+[libusb] build_autoconf --reconf\n\
 [libusb] PC_FILE=/usr/local/lib/pkgconfig/libusb-1.0.pc\n\
 [libusb] [ -f \$PC_FILE ] && sed -i 's/-ludev//' \$PC_FILE\n\
 [libusb] [ -f \$PC_FILE ] && echo 'Requires.private: libudev' >> \$PC_FILE\n\
 [libusb] pkg-config --libs --static libusb-1.0\n\
-[polkit] meson setup build $MESON_PROLOGUE -Dlibs-only=true -Dintrospection=false\n\
-[polkit] ninja -C build install\n\
-[pcsc-lite] $CONFIGURE_FLAGS LIBUDEV_LIBS=`pkg-config --libs --static libudev` ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared --disable-libsystemd\n\
-[pcsc-lite] make install\n\
-[pulseaudio] sed -i 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/' meson.build\n\
+[polkit] MESON_OPTS+=\" -Dlibs-only=true -Dintrospection=false\" build_meson\n\
+[pcsc-lite] LIBUDEV_LIBS=`pkg-config --libs --static libudev` CONFIGURE_OPTS+=\" --disable-libsystemd\" build_autoconf\n\
+[pulseaudio] patch_file meson.build 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/'\n\
 [pulseaudio] find . -name meson.build -exec sed -i 's/=[[:space:]]*shared_library(/= library(/g' {} \\;\n\
-[pulseaudio] meson setup build $MESON_PROLOGUE -Ddaemon=false -Ddoxygen=false \
--Dgcov=false -Dman=false -Dtests=false\n\
-[pulseaudio] cd build\n\
-[pulseaudio] meson compile pulse-simple \
-pulsecommon-`echo "\$PWD" | sed 's/.*pulseaudio-\\([0-9]\\{1,\}\\.[0-9]\\{1,\\}\\).*/\\1/'` \
-pulse-mainloop-glib pulse pulsedsp\n\
-[pulseaudio] meson install --tags devel --no-rebuild\n\
+[pulseaudio] MESON_OPTS+=\" -Ddaemon=false -Ddoxygen=false -Dgcov=false -Dman=false -Dtests=false\" \
+MESON_COMPILE_TARGETS=\"pulse-simple pulsecommon-\${PWD##*-} pulse-mainloop-glib pulse pulsedsp\" \
+MESON_INSTALL_OPTS=\"--tags devel\" build_meson\n\
 [pulseaudio] PC_FILE=/usr/local/lib/pkgconfig/libpulse.pc\n\
 [pulseaudio] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lm -lrt/' \$PC_FILE\n\
 [pulseaudio] [ -f \$PC_FILE ] && echo 'Requires.private: dbus-1' >> \$PC_FILE\n\
 [pulseaudio] pkg-config --libs --static libpulse\n\
-[libgphoto2] autoreconf -i\n\
-[libgphoto2] $CONFIGURE_FLAGS LIBLTDL=\"-lltdl -ldl\" ./configure $CONFIGURE_PROLOGUE --enable-static --disable-shared\n\
-[libgphoto2] make install\n\
-[alsa-lib] autoreconf -i\n\
-[alsa-lib] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[alsa-lib] make install\n\
-[alsa-plugins] autoreconf -i\n\
-[alsa-plugins] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[alsa-plugins] make install\n\
+[libgphoto2] LIBLTDL=\"-lltdl -ldl\" build_autoconf --reconf\n\
+[alsa-lib] build_autoconf --reconf\n\
+[alsa-plugins] build_autoconf --reconf\n\
 [alsa-plugins] PC_FILE=/usr/local/lib/pkgconfig/alsa.pc\n\
 [alsa-plugins] [ -f \$PC_FILE ] && echo 'Requires.private: libpulse' >> \$PC_FILE\n\
 [alsa-plugins] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private: \\(.*\\)/Libs.private: \
@@ -289,34 +203,28 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -lasound_module_pcm_usb_stream -lasound_module_ctl_pulse -lasound_module_pcm_vdownmix \
 -lasound_module_rate_speexrate -lasound_module_pcm_oss \\1/' \$PC_FILE\n\
 [alsa-plugins] pkg-config --libs --static alsa\n\
-[libunwind] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE $CONFIGURE_HOST --enable-static --disable-shared\n\
-[libunwind] make install\n\
 [llvmorg] if [ -z \"\$LLVM_BUILD_COMPLETE\" ]; then\n\
-[llvmorg]     cmake $CMAKE_PROLOGUE -S llvm -B build \
--DLLVM_ENABLE_PROJECTS=\"clang;clang-tools-extra\" \
+[llvmorg]     CMAKE_SOURCE_PATH=llvm CMAKE_OPTS+=' \
+-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra \
 -DLLVM_BUILD_SHARED_LIBS=OFF \
--DLLVM_TARGETS_TO_BUILD=\"X86;AMDGPU\" \
+-DLLVM_TARGETS_TO_BUILD=X86;AMDGPU \
 -DLLVM_BUILD_32_BITS=ON \
 -DLLVM_BUILD_TOOLS=ON \
--DLLVM_ENABLE_RTTI=ON\n\
-[llvmorg]     make -C build install\n\
+-DLLVM_ENABLE_RTTI=ON' \
+build_cmake\n\
 [llvmorg]     sed -i 's/#llvm-config =/llvm-config =/' ../meson-cross-i386\n\
 [llvmorg]     LLVM_BUILD_COMPLETE=true\n\
 [llvmorg] else\n\
-[llvmorg]     $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -S libclc -B build\n\
+[llvmorg]     CMAKE_SOURCE_PATH=libclc build_cmake\n\
 [llvmorg]     make -C build install\n\
 [llvmorg] fi\n\
-[spirv-headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build\n\
-[spirv-headers] make -C build install\n\
-[spirv-tools] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DSPIRV-Headers_SOURCE_DIR=/usr/local\n\
-[spirv-tools] make -C build install\n\
-[llvm-spirv] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DSPIRV-Headers_SOURCE_DIR=/usr/local\n\
-[llvm-spirv] make -C build install\n\
+[spirv-headers] build_cmake\n\
+[spirv-tools] CMAKE_OPTS+=\" -DSPIRV-Headers_SOURCE_DIR=/usr/local\" build_cmake\n\
+[llvm-spirv] CMAKE_OPTS+=\" -DSPIRV-Headers_SOURCE_DIR=/usr/local\" build_cmake\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
-[mesa] meson setup build $MESON_PROLOGUE \
--Dplatforms=x11 \
+[mesa] MESON_OPTS+=\" -Dplatforms=x11 \
 -Ddri3=enabled \
 -Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600,radeonsi \
 -Dgallium-vdpau=disabled \
@@ -335,9 +243,8 @@ pulse-mainloop-glib pulse pulsedsp\n\
 -Dshared-llvm=disabled \
 -Dlibunwind=enabled \
 -Dstatic-libclc=all \
--Dosmesa=true\n\
-[mesa] cd build\n\
-[mesa] meson compile OSMesa GL EGL glapi gallium_dri \
+-Dosmesa=true\" \
+MESON_COMPILE_TARGETS=\"OSMesa GL EGL glapi gallium_dri \
 mesa_util mesa_util_c11 xmlconfig \
 compiler nir blake3 glsl vtn \
 blorp blorp_elk intel_decoder_brw intel_decoder_elk \
@@ -346,8 +253,7 @@ radeon_icd vulkan_radeon \
 intel_icd vulkan_intel \
 intel_hasvk_icd vulkan_intel_hasvk \
 lvp_icd vulkan_lvp \
-d3dadapter9 gbm\n\
-[mesa] meson install --no-rebuild\n\
+d3dadapter9 gbm\" build_meson\n\
 [mesa] PC_FILE=/usr/local/lib/pkgconfig/gbm.pc\n\
 [mesa] [ -f \$PC_FILE ] && sed -i 's/Libs:\\(.*\\)/Libs:\
 \\1 -lnir -lblake3/' \$PC_FILE\n\
@@ -355,10 +261,8 @@ d3dadapter9 gbm\n\
 [mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\
 \\1 -lvulkan/' \$PC_FILE\n\
 [mesa] echo pkg-config --libs --static gl\n\
-[Vulkan-Headers] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build .\n\
-[Vulkan-Headers] make -C build install\n\
-[Vulkan-Loader] $CONFIGURE_FLAGS cmake $CMAKE_PROLOGUE -B build -DAPPLE_STATIC_LOADER=ON .\n\
-[Vulkan-Loader] make -C build install\n\
+[Vulkan-Headers] build_cmake\n\
+[Vulkan-Loader] CMAKE_OPTS+=\" -DAPPLE_STATIC_LOADER=ON\" build_cmake\n\
 [Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Requires.private: gl libudev' >> \$PC_FILE\n\
 [Vulkan-Loader] [ -f \$PC_FILE ] && echo 'Libs.private: -Wl,--whole-archive \
@@ -366,38 +270,23 @@ d3dadapter9 gbm\n\
 -lvulkan_runtime -lvulkan_lite_runtime -lvulkan_instance \
 -lvulkan_util -lvulkan_wsi -Wl,--no-whole-archive \
 -ldrm_amdgpu' >> \$PC_FILE\n\
-[vkcube] meson setup build $MESON_PROLOGUE\n\
-[vkcube] meson compile -C build\n\
+[vkcube] build_meson --no-install\n\
 [vkcube] cp build/vkcube /usr/local/bin/\n\
-[mesa-demos] $CONFIGURE_FLAGS eval gcc \\\$CFLAGS -c -o src/xdemos/glxgears.o src/xdemos/glxgears.c\n\
-[mesa-demos] $CONFIGURE_FLAGS eval gcc \\\$LDFLAGS -o /usr/local/bin/glxgears src/xdemos/glxgears.o \$(pkg-config --libs --static vulkan)\n\
-[ogg] ./autogen.sh\n\
-[ogg] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[ogg] make install\n\
-[vorbis] ./autogen.sh\n\
-[vorbis] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[vorbis] make install\n\
-[flac] ./autogen.sh\n\
-[flac] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[flac] make install\n\
-[libsndfile] sed -i '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)' configure.ac\n\
-[libsndfile] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[libsndfile] make install\n\
-[cups] LIBS=`pkg-config --libs --static gnutls` $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --libdir=/usr/local/lib --disable-shared --enable-static \
---with-components=libcups\n\
-[cups] make install\n\
-[v4l-utils] sed -i \"s/dependency('iconv'/dependency('iconv-meson'/\" meson.build\n\
-[v4l-utils] meson setup build $MESON_PROLOGUE -Dv4l-utils=false\n\
-[v4l-utils] cd build\n\
-[v4l-utils] meson compile\n\
-[v4l-utils] meson install --no-rebuild\n\
+[mesa-demos] gcc \$CFLAGS -c -o src/xdemos/glxgears.o src/xdemos/glxgears.c\n\
+[mesa-demos] gcc \$LDFLAGS -o /usr/local/bin/glxgears src/xdemos/glxgears.o \$(pkg-config --libs --static vulkan)\n\
+[ogg] ./autogen.sh && build_autoconf\n\
+[vorbis] ./autogen.sh && build_autoconf\n\
+[flac] ./autogen.sh && build_autoconf\n\
+[libsndfile] echo patch_file configure.ac '/AC_SUBST(EXTERNAL_MPEG_REQUIRE)/ a AC_SUBST(EXTERNAL_MPEG_LIBS)'\n\
+[libsndfile] build_autoconf\n\
+[cups] LIBS=`pkg-config --libs --static gnutls` CONFIGURE_OPTS+=\" --libdir=/usr/local/lib --with-components=libcups\" build_autoconf\n\
+[v4l-utils] patch_file meson.build \"s/dependency('iconv'/dependency('iconv-meson'/\"\n\
+[v4l-utils] MESON_OPTS+=\" -Dv4l-utils=false\" build_meson\n\
 [openh264] echo > codec/console/enc/meson.build\n\
-[openh264] meson setup build $MESON_PROLOGUE -Dtests=disabled\n\
-[openh264] ninja -C build install\n\
-[gstreamer] sed -i 's/^\\(float step_size\\[8\\] = {\\)$/static \\1/' subprojects/gst-plugins-bad/gst/siren/common.c\n\
-[gstreamer] sed -i 's/^\\(extern float step_size\\[8\\];\\)$/\/\/\\1/' subprojects/gst-plugins-bad/gst/siren/common.h\n\
-[gstreamer] meson setup build $MESON_PROLOGUE \
---prefer-static \
+[openh264] MESON_OPTS+=\" -Dtests=disabled\" build_meson\n\
+[gstreamer] patch_file subprojects/gst-plugins-bad/gst/siren/common.c 's/^\\(float step_size\\[8\\] = {\\)$/static \\1/'\n\
+[gstreamer] patch_file subprojects/gst-plugins-bad/gst/siren/common.h 's/^\\(extern float step_size\\[8\\];\\)$/\/\/\\1/'\n\
+[gstreamer] MESON_OPTS+=\" --prefer-static \
 --wrap-mode=nofallback \
 --force-fallback=libavfilter,dv,openh264,x264,fdk-aac,avtp,dssim,dav1d \
 -Dgst-full-target-type=static_library \
@@ -417,34 +306,27 @@ d3dadapter9 gbm\n\
 -Dgst-plugins-good:ximagesrc=disabled \
 -Dgst-plugins-good:v4l2=disabled \
 -Dgst-plugins-bad:x11=disabled \
--Dgst-plugins-bad:wayland=disabled\n\
-[gstreamer] ninja -C build install\n\
-[libpcap] $CONFIGURE_FLAGS DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" ./configure --prefix=/usr/local --disable-shared\n\
-[libpcap] make install\n\
+-Dgst-plugins-bad:wayland=disabled\" build_meson\n\
+[libpcap] DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" build_autoconf\n\
 [isdn4k-utils] pushd capi20\n\
-[isdn4k-utils] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[isdn4k-utils] make install-libLTLIBRARIES install-pcDATA install-includeHEADERS\n\
+[isdn4k-utils] MAKE_TARGETS=\"install-libLTLIBRARIES install-pcDATA install-includeHEADERS\" build_autoconf\n\
 [isdn4k-utils] popd\n\
 [isdn4k-utils] PC_FILE=/usr/local/lib/pkgconfig/capi20.pc\n\
 [isdn4k-utils] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lrt -lpthread' >> \$PC_FILE\n\
 [isdn4k-utils] pkg-config --libs --static capi20\n\
-[tiff] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[tiff] sed -i 's/SUBDIRS = port libtiff tools build contrib test doc/SUBDIRS = port libtiff build test doc/' Makefile\n\
+[tiff] build_autoconf --no-make\n\
+[tiff] patch_file Makefile 's/SUBDIRS = port libtiff tools build contrib test doc/SUBDIRS = port libtiff build test doc/'\n\
 [tiff] make install\n\
 [ieee1284] ./bootstrap\n\
-[ieee1284] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --without-python\n\
-[ieee1284] make install-includeHEADERS install-libLTLIBRARIES\n\
-[sane-backends] autoreconf -i\n\
-[sane-backends] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --enable-dynamic --enable-preload\n\
-[sane-backends] make install\n\
+[ieee1284] MAKE_TARGETS=\"install-includeHEADERS install-libLTLIBRARIES\" build_autoconf\n\
+[sane-backends] CONFIGURE_OPTS+=\" --enable-dynamic --enable-preload\" build_autoconf --reconf\n\
 [sane-backends] pushd tools\n\
 [sane-backends] make install-pkgconfigDATA install-binSCRIPTS\n\
 [sane-backends] popd\n\
-[openldap] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static --disable-debug --disable-slapd\n\
-[openldap] make install\n\
+[openldap] CONFIGURE_OPTS+=\" --disable-debug --disable-slapd\" build_autoconf\n\
 [krb5] cd src\n\
-[krb5] $CONFIGURE_FLAGS ./configure $CONFIGURE_PROLOGUE --disable-shared --enable-static\n\
-[krb5] make && make install\n\
+[krb5] CONFIGURE_OPTS+=\" --disable-shared --enable-static\" build_autoconf --no-make\n\
+[krb5] make -j$BUILD_JOBS && make install\n\
 [krb5] PC_FILE=/usr/local/lib/pkgconfig/mit-krb5.pc\n\
 [krb5] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -ldl -lresolv/' \$PC_FILE\n\
 [krb5] pkg-config --libs --static krb5\n\
@@ -452,15 +334,14 @@ d3dadapter9 gbm\n\
 [krb5] [ -f \$PC_FILE ] && echo 'Libs.private: -ldl -lresolv' >> \$PC_FILE\n\
 [krb5] pkg-config --libs --static krb5-gssapi\n\
 [wine] autoreconf -f\n\
-[wine] $CONFIGURE_FLAGS \
-CFLAGS=\"\${CFLAGS/-flto -ffat-lto-objects}\" \
+[wine] CFLAGS=\"\${CFLAGS/-flto -ffat-lto-objects}\" \
 CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
-./configure --disable-tests --prefix=\"$PREFIX\" --disable-year2038\n\
+CONFIGURE_OPTS=\"--disable-tests --prefix=\"$PREFIX\" --disable-year2038\" build_autoconf --reconf --no-make\n\
 [wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
-[wine] make install\n\
+[wine] make -j$BUILD_JOBS install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\
 [wine] tar czvf \"\$HOME/wine-build.tar.gz\" -C \"$PREFIX\" .\n\
 [wine] make uninstall\n\
@@ -470,24 +351,7 @@ PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
 ARG DEFAULT_BUILD_SCRIPT="\
 #!/bin/sh\n\
 set -e\n\
-ENABLE_STATIC_ARG=\n\
-DISABLE_SHARED_ARG=\n\
-DISABLE_DOCS_ARG=\n\
-./configure --help | grep -q '\-\-enable\-static'\n\
-if [ \$? -eq 0 ]; then ENABLE_STATIC_ARG=--enable-static; fi\n\
-./configure --help | grep -q '\-\-enable-shared\|\-\-disable\-shared'\n\
-if [ \$? -eq 0 ]; then DISABLE_SHARED_ARG=--disable-shared; fi\n\
-./configure --help | grep -q '\-\-enable-docs\|\-\-disable\-docs'\n\
-if [ \$? -eq 0 ]; then DISABLE_DOCS_ARG=--disable-docs; fi\n\
-./configure $CONFIGURE_PROLOGUE \
-  \$ENABLE_STATIC_ARG \
-  \$DISABLE_SHARED_ARG \
-  \$DISABLE_DOCS_ARG \
-  $CONFIGURE_FLAGS\n\
-unset ENABLE_STATIC_ARG\n\
-unset DISABLED_SHARED_ARG\n\
-unset DISABLE_DOCS_ARG\n\
-make install\n"
+build_autoconf\n"
 
 # pkg_file         = xcb-proto-1.14.1.tar.gz
 # pkg_name         = xcb-proto
@@ -517,6 +381,7 @@ RUN if [[ -z "$PLATFORM" ]]; then \
     cat build/meson-cross-i386 && \
     mkdir -p build && \
     cd build && \
+    source ./build-tools.sh && \
     # The packages.txt files contains 1 line for every dependency to build.
     # Each line is in one of the following formats:
     #
