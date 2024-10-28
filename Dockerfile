@@ -39,7 +39,7 @@ RUN dpkg --add-architecture i386 && \
     apt-get install -y build-essential \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         rustc bindgen python3 python3-pip python3-dev python3-mako python3-jinja2 \
-        python3-packaging wget git ninja-build gperf autopoint gettext nasm \
+        python3-packaging python3-yaml wget git ninja-build gperf autopoint gettext nasm \
         glslang-tools xmlto fop xsltproc doxygen asciidoc gtk-doc-tools docbook2x && \
     pip3 install jinja2-cli && \
     pushd "$HOME" && \
@@ -63,7 +63,8 @@ RUN dpkg --add-architecture i386 && \
     wget -q https://github.com/Kitware/CMake/releases/download/v3.30.0/cmake-3.30.0-linux-x86_64.tar.gz && \
     tar xf cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     rm -rf cmake-* && apt-get -y remove cmake && \
-    git clone --depth 1 --branch 1.5.0 https://github.com/mesonbuild/meson.git && \
+    git clone --depth 1 --branch 1.6.0 https://github.com/mesonbuild/meson.git && \
+    sed -i 's/^.*remove_dups()/# &/' meson/mesonbuild/modules/pkgconfig.py && \
     echo "#!/bin/sh" > /usr/bin/meson && \
     echo "python3 \"$HOME/meson/meson.py\" \$@" > /usr/bin/meson && \
     chmod +x /usr/bin/meson && \
@@ -138,7 +139,7 @@ ARG DEP_BUILD_SCRIPTS="\
 [wayland] MESON_OPTS+=\" -Dtests=false -Ddocumentation=false -Ddtd_validation=false\" build_meson\n\
 [libxkbcommon] MESON_OPTS+=\" -Denable-docs=false -Denable-tools=false\" \
 MESON_COMPILE_TARGETS=\"xkbcommon xkbcommon-x11 xkbregistry\" build_meson\n\
-[dbus] build_autoconf --reconf\n\
+[dbus] MESON_OPTS+=\" -Dmodular_tests=disabled -Dtools=false -Ddoxygen_docs=disabled  -Dducktype_docs=disabled  -Dxml_docs=disabled\" build_meson\n\
 [SDL] CMAKE_OPTS+=\" -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1 -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF\" build_cmake\n\
 [Linux-PAM] CONFIGURE_OPTS+=\" --includedir=/usr/local/include/security\" build_autoconf\n\
 [Linux-PAM] PC_FILE=/usr/local/lib/pkgconfig/pam.pc\n\
@@ -182,7 +183,7 @@ MESON_INSTALL_OPTS=\"--tags devel,libudev\" build_meson\n\
 [libusb] [ -f \$PC_FILE ] && echo 'Requires.private: libudev' >> \$PC_FILE\n\
 [libusb] pkg-config --libs --static libusb-1.0\n\
 [polkit] MESON_OPTS+=\" -Dlibs-only=true -Dintrospection=false\" build_meson\n\
-[pcsc-lite] LIBUDEV_LIBS=`pkg-config --libs --static libudev` CONFIGURE_OPTS+=\" --disable-libsystemd\" build_autoconf\n\
+[pcsc-lite] MESON_OPTS+=\" -Dlibsystemd=false\" build_meson\n\
 [pulseaudio] patch_file meson.build 's/\\(input : .PulseAudioConfigVersion.cmake.in.,\\)/\\1 install_tag : '\"'\"'devel'\"'\"',/'\n\
 [pulseaudio] find . -name meson.build -exec sed -i 's/=[[:space:]]*shared_library(/= library(/g' {} \\;\n\
 [pulseaudio] MESON_OPTS+=\" -Ddaemon=false -Ddoxygen=false -Dgcov=false -Dman=false -Dtests=false\" \
@@ -221,11 +222,12 @@ build_cmake\n\
 [spirv-headers] build_cmake\n\
 [spirv-tools] CMAKE_OPTS+=\" -DSPIRV-Headers_SOURCE_DIR=/usr/local\" build_cmake\n\
 [llvm-spirv] CMAKE_OPTS+=\" -DSPIRV-Headers_SOURCE_DIR=/usr/local\" build_cmake\n\
-[mesa] find -name 'meson.build' -exec sed -i 's/shared_library(/library(/' {} \\;\n\
+[mesa] find -name 'meson.build' -exec sed -i 's/\\(shared\\|static\\)_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
 [mesa] find src/intel/vulkan_hasvk \\( -name '*.c' -o -name '*.h' \\) -exec perl -pi.bak -e 's/(?<!\")(anv|doom64)_/\\1_hasvk_/g' {} \\;\n\
 [mesa] MESON_OPTS+=\" -Dplatforms=x11 \
 -Ddri3=enabled \
+-Dunversion-libgallium=true \
 -Dgallium-drivers=swrast,zink,i915,iris,crocus,nouveau,r300,r600,radeonsi \
 -Dgallium-vdpau=disabled \
 -Dgallium-omx=disabled \
@@ -254,13 +256,9 @@ intel_icd vulkan_intel \
 intel_hasvk_icd vulkan_intel_hasvk \
 lvp_icd vulkan_lvp \
 d3dadapter9 gbm\" build_meson\n\
-[mesa] PC_FILE=/usr/local/lib/pkgconfig/gbm.pc\n\
-[mesa] [ -f \$PC_FILE ] && sed -i 's/Libs:\\(.*\\)/Libs:\
-\\1 -lnir -lblake3/' \$PC_FILE\n\
 [mesa] PC_FILE=/usr/local/lib/pkgconfig/gl.pc\n\
 [mesa] [ -f \$PC_FILE ] && sed -i 's/Libs\\.private:\\(.*\\)/Libs.private:\
 \\1 -lvulkan/' \$PC_FILE\n\
-[mesa] echo pkg-config --libs --static gl\n\
 [Vulkan-Headers] build_cmake\n\
 [Vulkan-Loader] CMAKE_OPTS+=\" -DAPPLE_STATIC_LOADER=ON\" build_cmake\n\
 [Vulkan-Loader] PC_FILE=/usr/local/lib/pkgconfig/vulkan.pc\n\
@@ -307,7 +305,7 @@ d3dadapter9 gbm\" build_meson\n\
 -Dgst-plugins-good:v4l2=disabled \
 -Dgst-plugins-bad:x11=disabled \
 -Dgst-plugins-bad:wayland=disabled\" build_meson\n\
-[libpcap] DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" build_autoconf\n\
+[libpcap] ./autogen.sh && DBUS_LIBS=\"`pkg-config --libs --static dbus-1`\" build_autoconf\n\
 [isdn4k-utils] pushd capi20\n\
 [isdn4k-utils] MAKE_TARGETS=\"install-libLTLIBRARIES install-pcDATA install-includeHEADERS\" build_autoconf\n\
 [isdn4k-utils] popd\n\
@@ -417,4 +415,3 @@ if [ -f \"../patches/$pkg_dir.patch\" ]; then patch -p1 < \"../patches/$pkg_dir.
          && . "../$pkg_build_script" && set +e && popd \
          && rm -rf "$pkg_dir"  || exit; \
      done)
-

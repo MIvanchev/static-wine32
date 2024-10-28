@@ -39,7 +39,7 @@ patch_file()
   local checksum_before=$(md5sum "$file")
   sed -i "$2" "$file"
   local checksum_after=$(md5sum "$file")
-  if [[ $checksum_before != $checksum_after ]]; then
+  if [[ "$checksum_before" == "$checksum_after" ]]; then
     echo "File was unchanged after applying patch" 1>&2
     false
   fi
