@@ -141,7 +141,8 @@ ARG DEP_BUILD_SCRIPTS="\
 MESON_COMPILE_TARGETS=\"xkbcommon xkbcommon-x11 xkbregistry\" build_meson\n\
 [dbus] MESON_OPTS+=\" -Dmodular_tests=disabled -Dtools=false -Ddoxygen_docs=disabled  -Dducktype_docs=disabled  -Dxml_docs=disabled\" build_meson\n\
 [SDL] CMAKE_OPTS+=\" -DSDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS=1 -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF\" build_cmake\n\
-[Linux-PAM] CONFIGURE_OPTS+=\" --includedir=/usr/local/include/security\" build_autoconf\n\
+[Linux-PAM] echo CONFIGURE_OPTS+=\" --includedir=/usr/local/include/security\" build_autoconf\n\
+[Linux-PAM] build_meson\n\
 [Linux-PAM] PC_FILE=/usr/local/lib/pkgconfig/pam.pc\n\
 [Linux-PAM] [ -f \$PC_FILE ] && sed -i 's/^\\(Libs:.*\\)/\\1 -ldl/' \$PC_FILE\n\
 [libcap] patch_file Makefile 's/.*\$(MAKE) -C \(tests\|progs\|doc\) \$@.*//'\n\
