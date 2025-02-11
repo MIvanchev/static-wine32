@@ -1,0 +1,64 @@
+diff --git a/Makefile.in b/Makefile.in
+index 5ddabe1..8f49f4d 100644
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -54,6 +54,8 @@ install : lib/localcharset.h force
+ 	cd src && $(MAKE) install prefix='$(prefix)' exec_prefix='$(exec_prefix)' libdir='$(libdir)'
+ 	if [ ! -d $(DESTDIR)$(includedir) ] ; then $(mkinstalldirs) $(DESTDIR)$(includedir) ; fi
+ 	$(INSTALL_DATA) include/iconv.h.inst $(DESTDIR)$(includedir)/iconv.h
++	if [ ! -d $(DESTDIR)$(libdir)/pkgconfig ] ; then $(mkinstalldirs) $(DESTDIR)$(libdir)/pkgconfig ; fi
++	$(INSTALL_DATA) iconv.pc $(DESTDIR)$(libdir)/pkgconfig/iconv.pc
+ 	cd po && $(MAKE) install prefix='$(prefix)' exec_prefix='$(exec_prefix)' datarootdir='$(datarootdir)' datadir='$(datadir)'
+ 	cd man && $(MAKE) install prefix='$(prefix)' exec_prefix='$(exec_prefix)' datarootdir='$(datarootdir)' datadir='$(datadir)' mandir='$(mandir)'
+ 
+diff --git a/configure b/configure
+index be73930..8830f02 100755
+--- a/configure
++++ b/configure
+@@ -33693,6 +33693,8 @@ ac_config_files="$ac_config_files po/Makefile.in"
+ 
+ ac_config_files="$ac_config_files man/Makefile"
+ 
++ac_config_files="$ac_config_files iconv.pc"
++
+ if test -d "${srcdir}/tests"; then
+   ac_config_files="$ac_config_files tests/Makefile"
+ 
+@@ -34887,6 +34889,7 @@ do
+     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
+     "po/Makefile.in") CONFIG_FILES="$CONFIG_FILES po/Makefile.in" ;;
+     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
++    "iconv.pc") CONFIG_FILES="$CONFIG_FILES iconv.pc" ;;
+     "tests/Makefile") CONFIG_FILES="$CONFIG_FILES tests/Makefile" ;;
+     "include/iconv.h") CONFIG_FILES="$CONFIG_FILES include/iconv.h:include/iconv.h.build.in" ;;
+     "include/iconv.h.inst") CONFIG_FILES="$CONFIG_FILES include/iconv.h.inst:include/iconv.h.in" ;;
+diff --git a/configure.ac b/configure.ac
+index 25af6a5..d2fe046 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -206,6 +206,7 @@ AC_CONFIG_FILES([srclib/Makefile])
+ AC_CONFIG_FILES([src/Makefile])
+ AC_CONFIG_FILES([po/Makefile.in])
+ AC_CONFIG_FILES([man/Makefile])
++AC_CONFIG_FILES([iconv.pc])
+ if test -d "${srcdir}/tests"; then
+   AC_CONFIG_FILES([tests/Makefile])
+ fi
+diff --git a/iconv.pc.in b/iconv.pc.in
+new file mode 100644
+index 0000000..5afeeef
+--- /dev/null
++++ b/iconv.pc.in
+@@ -0,0 +1,12 @@
++prefix=@prefix@
++exec_prefix=@exec_prefix@
++libdir=@libdir@
++includedir=@includedir@
++
++Name: libiconv
++Description: TODO
++URL: TODO
++Version: @VERSION@
++Requires:
++Libs: -L${libdir} -liconv -lcharset
++Cflags: -I${includedir}

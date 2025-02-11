@@ -9,25 +9,27 @@ export AR=/usr/bin/gcc-ar
 export RANLIB=/usr/bin/gcc-ranlib
 export NM=/usr/bin/gcc-nm
 
-CONFIGURE_OPTS="--prefix=/usr/local \
+INSTALL_PREFIX="/usr/local"
+
+CONFIGURE_OPTS="--prefix=$INSTALL_PREFIX \
                 --sysconfdir=/etc \
                 --datarootdir=/usr/share \
-                --mandir=/usr/local/man \
+                --mandir=$INSTALL_PREFIX/man \
                 --host=i386-linux-gnu"
 
-CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX=/usr/local \
+CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
             -DCMAKE_AR=/usr/bin/gcc-ar \
             -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
             -DCMAKE_NM=gcc-nm \
             -DSYSCONFDIR=/etc \
             -DDATAROOTDIR=/usr/share \
-            -DMANDIR=/usr/local/man \
+            -DMANDIR=$INSTALL_PREFIX/man \
             -DCMAKE_BUILD_TYPE=Release"
 
-MESON_OPTS="--prefix=/usr/local \
+MESON_OPTS="--prefix=$INSTALL_PREFIX \
             --sysconfdir=/etc \
             --datadir=/usr/share \
-            --mandir=/usr/local/man \
+            --mandir=$INSTALL_PREFIX/man \
             --buildtype=release \
             --cross-file=../meson-cross-i386 \
             --default-library=static \
@@ -41,8 +43,35 @@ patch_file()
   local checksum_after=$(md5sum "$file")
   if [[ "$checksum_before" == "$checksum_after" ]]; then
     echo "File was unchanged after applying patch" 1>&2
-    false
+    return 1
   fi
+}
+
+patch_pc_file()
+{
+  patch_file "$INSTALL_PREFIX/lib/pkgconfig/$1" "$2"
+}
+
+add_pc_file_section()
+{
+  case "$2" in
+    Requires) ;;
+    Requires.private) ;;
+    Libs) ;;
+    Libs.private) ;;
+    *)
+      echo "Invalid PC file section \"$2\"." 2>&1
+      return 1
+      ;;
+  esac
+
+  local file="$INSTALL_PREFIX/lib/pkgconfig/$1"
+
+  grep -q "^[ \t]*$2:" "$file" \
+    && echo "PC file \"$file\" already contains a section \"$2\"." 2>&1 \
+    && exit
+
+  echo "$2: $3" >> "$file"
 }
 
 build_autoconf()
@@ -104,14 +133,29 @@ build_autoconf()
   fi
 
   if [ $make == true ]; then
-    make -j$BUILD_JOBS ${MAKE_TARGETS-install}
+    mkdir -p /tmp/cache
+    local CACHE_DIR="/tmp/cache/$pkg_dir"
+    make -j$BUILD_JOBS ${MAKE_TARGETS-install} DESTDIR=$CACHE_DIR
+    if [[ -n "$pkg_cache_file" ]]; then
+      tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+    fi
+    rsync -ap --ignore-existing "$CACHE_DIR/" /
+    rm -rf "$CACHE_DIR"
   fi
 }
 
 build_cmake()
 {
   cmake $CMAKE_OPTS -B build -S "${CMAKE_SOURCE_PATH-.}"
-  make -j$BUILD_JOBS -C build install
+
+  mkdir -p /tmp/cache
+  local CACHE_DIR="/tmp/cache/$pkg_dir"
+  make -j$BUILD_JOBS -C build install DESTDIR="$CACHE_DIR"
+  if [[ -n "$pkg_cache_file" ]]; then
+    tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+  fi
+  rsync -ap --ignore-existing "$CACHE_DIR/" /
+  rm -rf "$CACHE_DIR"
 }
 
 build_meson()
@@ -129,9 +173,19 @@ build_meson()
     esac
     shift
   done
+
   meson setup build $MESON_OPTS
   meson compile -C build -j $BUILD_JOBS $MESON_COMPILE_TARGETS
+
   if [[ $install == true ]]; then
-    meson install -C build --no-rebuild $MESON_INSTALL_OPTS
+    mkdir -p /tmp/cache
+    local CACHE_DIR="/tmp/cache/$pkg_dir"
+    DESTDIR="$CACHE_DIR" meson install -C build --no-rebuild $MESON_INSTALL_OPTS
+    if [[ -n "$pkg_cache_file" ]]; then
+      tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+    fi
+    rsync -ap --ignore-existing "$CACHE_DIR/" /
+    echo "$CACHE_DIR"
+    rm -rf "$CACHE_DIR"
   fi
 }

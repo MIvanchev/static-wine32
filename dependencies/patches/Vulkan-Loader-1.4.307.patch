@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 57f8e8eed..d63a85a42 100644
+index 8e273eea4..1d5bb7689 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -251,9 +251,10 @@ if (NOT (WIN32 OR APPLE))
+@@ -258,9 +258,10 @@ if (NOT (WIN32 OR APPLE))
      endif()
  endif()
  
@@ -14,7 +14,7 @@ index 57f8e8eed..d63a85a42 100644
      add_custom_target(loader_codegen
          COMMAND Python3::Interpreter ${PROJECT_SOURCE_DIR}/scripts/generate_source.py
              "${VULKAN_HEADERS_INSTALL_DIR}/${CMAKE_INSTALL_DATADIR}/vulkan/registry"
-@@ -261,6 +262,23 @@ if(LOADER_CODEGEN)
+@@ -268,6 +269,23 @@ if(LOADER_CODEGEN)
      )
  endif()
  
@@ -39,10 +39,10 @@ index 57f8e8eed..d63a85a42 100644
      target_compile_definitions(loader_common_options INTERFACE FALLBACK_CONFIG_DIRS="${FALLBACK_CONFIG_DIRS}" FALLBACK_DATA_DIRS="${FALLBACK_DATA_DIRS}")
  
 diff --git a/loader/CMakeLists.txt b/loader/CMakeLists.txt
-index 99b6a393a..171d94080 100644
+index 624192dc3..ecf752210 100644
 --- a/loader/CMakeLists.txt
 +++ b/loader/CMakeLists.txt
-@@ -401,7 +401,7 @@ if(WIN32)
+@@ -403,7 +403,7 @@ if(WIN32)
      endif()
  
  else()
@@ -51,12 +51,12 @@ index 99b6a393a..171d94080 100644
          option(APPLE_STATIC_LOADER "Build a loader that can be statically linked. Intended for Chromium usage/testing.")
          mark_as_advanced(APPLE_STATIC_LOADER)
      endif()
-@@ -518,13 +518,13 @@ endif()
+@@ -524,13 +524,13 @@ endif()
  if (APPLE_STATIC_LOADER)
      # TLDR: This feature only exists at the request of Google for Chromium. No other project should use this!
      message(NOTICE "Apple STATIC lib: it will be built but not installed, and vulkan.pc and VulkanLoaderConfig.cmake won't be generated!")
 -    return()
-+    # return()
++#    return()
  endif()
  
  # Generate CMake Configuration File (IE: VulkanLoaderConfig.cmake)
@@ -67,55 +67,11 @@ index 99b6a393a..171d94080 100644
  
  # Generate CMake Version File (IE: VulkanLoaderConfigVersion.cmake)
  include(CMakePackageConfigHelpers)
-diff --git a/loader/cJSON.c b/loader/cJSON.c
-index 5f63bbc2d..a396cf8dc 100644
---- a/loader/cJSON.c
-+++ b/loader/cJSON.c
-@@ -1044,6 +1044,22 @@ VkResult loader_read_entire_file(const struct loader_instance *inst, const char
- }
- #endif
- 
-+VkResult loader_get_json_from_str(const struct loader_instance *inst, const char *filename, const char *json_str, cJSON **json) {
-+    VkResult res = VK_SUCCESS;
-+    bool out_of_memory = false;
-+    *json = cJSON_Parse(inst ? &inst->alloc_callbacks : NULL, json_str, &out_of_memory);
-+    if (out_of_memory) {
-+        loader_log(inst, VULKAN_LOADER_ERROR_BIT, 0, "loader_get_json_from_str: Out of Memory error occured while parsing JSON file %s.", filename);
-+        res = VK_ERROR_OUT_OF_HOST_MEMORY;
-+        goto out;
-+    } else if (*json == NULL) {
-+        loader_log(inst, VULKAN_LOADER_ERROR_BIT, 0, "loader_get_json_from_str: Invalid JSON file %s.", filename);
-+        goto out;
-+    }
-+out:
-+    return res;
-+}
-+
- VkResult loader_get_json(const struct loader_instance *inst, const char *filename, cJSON **json) {
-     char *json_buf = NULL;
-     VkResult res = VK_SUCCESS;
-diff --git a/loader/cJSON.h b/loader/cJSON.h
-index e02af8a71..d953841aa 100644
---- a/loader/cJSON.h
-+++ b/loader/cJSON.h
-@@ -89,6 +89,12 @@ cJSON *loader_cJSON_GetObjectItem(cJSON *object, const char *string);
- struct loader_instance;
- struct loader_string_list;
- 
-+// Parse an already read JSON file to a buffer.
-+//
-+// @return -  A pointer to a cJSON object representing the JSON parse tree.
-+//            This returned buffer should be freed by caller.
-+VkResult loader_get_json_from_str(const struct loader_instance *inst, const char *filename, const char *json_str, cJSON **json);
-+
- // Read a JSON file into a buffer.
- //
- // @return -  A pointer to a cJSON object representing the JSON parse tree.
 diff --git a/loader/loader.c b/loader/loader.c
-index ca27fa648..1ff1e03a6 100644
+index d79258c5c..552c76d31 100644
 --- a/loader/loader.c
 +++ b/loader/loader.c
-@@ -74,6 +74,8 @@
+@@ -75,6 +75,8 @@
  // Generated file containing all the extension data
  #include "vk_loader_extensions.c"
  
@@ -124,7 +80,7 @@ index ca27fa648..1ff1e03a6 100644
  struct loader_struct loader = {0};
  
  struct activated_layer_info {
-@@ -1519,7 +1521,7 @@ void loader_clear_scanned_icd_list(const struct loader_instance *inst, struct lo
+@@ -1516,7 +1518,7 @@ void loader_clear_scanned_icd_list(const struct loader_instance *inst, struct lo
      if (0 != icd_tramp_list->capacity && icd_tramp_list->scanned_list) {
          for (uint32_t i = 0; i < icd_tramp_list->count; i++) {
              if (icd_tramp_list->scanned_list[i].handle) {
@@ -133,7 +89,7 @@ index ca27fa648..1ff1e03a6 100644
                  icd_tramp_list->scanned_list[i].handle = NULL;
              }
              loader_instance_heap_free(inst, icd_tramp_list->scanned_list[i].lib_name);
-@@ -1785,11 +1787,19 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
+@@ -1781,11 +1783,19 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
  
  // TODO implement smarter opening/closing of libraries. For now this
  // function leaves libraries open and the scanned_icd_clear closes them
@@ -153,7 +109,7 @@ index ca27fa648..1ff1e03a6 100644
      if (NULL == handle) {
          loader_handle_load_library_error(inst, filename, lib_status);
          if (lib_status && *lib_status == LOADER_LAYER_LIB_ERROR_OUT_OF_MEMORY) {
-@@ -1801,13 +1811,13 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
+@@ -1797,13 +1807,13 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
      }
  
      // Try to load the driver's exported vk_icdNegotiateLoaderICDInterfaceVersion
@@ -169,7 +125,7 @@ index ca27fa648..1ff1e03a6 100644
  
          // If we successfully loaded vk_icdGetInstanceProcAddr, try to get vk_icdNegotiateLoaderICDInterfaceVersion
          if (fp_get_proc_addr) {
-@@ -1828,7 +1838,7 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
+@@ -1824,7 +1834,7 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
  
      // If we didn't already query vk_icdGetInstanceProcAddr, try now
      if (NULL == fp_get_proc_addr) {
@@ -178,7 +134,7 @@ index ca27fa648..1ff1e03a6 100644
      }
  
      // If vk_icdGetInstanceProcAddr is NULL, this ICD is using version 0 and so we should respond accordingly.
-@@ -1901,7 +1911,7 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
+@@ -1897,7 +1907,7 @@ VkResult loader_scanned_icd_add(const struct loader_instance *inst, struct loade
                  (PFN_vk_icdGetPhysicalDeviceProcAddr)fp_get_proc_addr(NULL, "vk_icdGetPhysicalDeviceProcAddr");
          }
          if (NULL == fp_get_phys_dev_proc_addr && interface_vers >= 3) {
@@ -187,7 +143,7 @@ index ca27fa648..1ff1e03a6 100644
          }
  #if defined(VK_USE_PLATFORM_WIN32_KHR)
          // Query "vk_icdEnumerateAdapterPhysicalDevices" with vk_icdGetInstanceProcAddr if the library reports interface version
-@@ -3540,8 +3550,8 @@ struct ICDManifestInfo {
+@@ -3560,8 +3570,8 @@ struct ICDManifestInfo {
  
  // Takes a json file, opens, reads, and parses an ICD Manifest out of it.
  // Should only return VK_SUCCESS, VK_ERROR_INCOMPATIBLE_DRIVER, or VK_ERROR_OUT_OF_HOST_MEMORY
@@ -196,18 +152,18 @@ index ca27fa648..1ff1e03a6 100644
 +VkResult loader_parse_icd_manifest(const struct loader_instance *inst, const char *file_str, const char *json_str,
 +                                   struct ICDManifestInfo *icd, bool *skipped_portability_drivers) {
      VkResult res = VK_SUCCESS;
-     cJSON *json = NULL;
-     char *file_vers_str = NULL;
-@@ -3552,7 +3562,7 @@ VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *fil
+     cJSON *icd_manifest_json = NULL;
+ 
+@@ -3569,7 +3579,7 @@ VkResult loader_parse_icd_manifest(const struct loader_instance *inst, char *fil
          goto out;
      }
  
--    res = loader_get_json(inst, file_str, &json);
-+    res = loader_get_json_from_str(inst, file_str, json_str, &json);
+-    res = loader_get_json(inst, file_str, &icd_manifest_json);
++    res = loader_get_json_from_str(inst, file_str, json_str, &icd_manifest_json);
      if (res == VK_ERROR_OUT_OF_HOST_MEMORY) {
          goto out;
      }
-@@ -3711,7 +3721,7 @@ out:
+@@ -3717,7 +3727,7 @@ out:
  VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_tramp_list *icd_tramp_list,
                           const VkInstanceCreateInfo *pCreateInfo, bool *skipped_portability_drivers) {
      VkResult res = VK_SUCCESS;
@@ -216,7 +172,7 @@ index ca27fa648..1ff1e03a6 100644
      struct loader_envvar_filter select_filter = {0};
      struct loader_envvar_filter disable_filter = {0};
      struct ICDManifestInfo *icd_details = NULL;
-@@ -3742,24 +3752,25 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+@@ -3748,24 +3758,25 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
      if (VK_SUCCESS != res) {
          goto out;
      }
@@ -247,7 +203,7 @@ index ca27fa648..1ff1e03a6 100644
          if (VK_ERROR_OUT_OF_HOST_MEMORY == icd_res) {
              res = icd_res;
              goto out;
-@@ -3768,12 +3779,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+@@ -3774,12 +3785,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
          }
  
          if (select_filter.count > 0 || disable_filter.count > 0) {
@@ -262,7 +218,7 @@ index ca27fa648..1ff1e03a6 100644
              } else {
                  just_filename_str++;
              }
-@@ -3831,11 +3841,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
+@@ -3837,11 +3847,11 @@ VkResult loader_icd_scan(const struct loader_instance *inst, struct loader_icd_t
  out:
      if (NULL != icd_details) {
          // Successfully got the icd_details structure, which means we need to free the paths contained within
@@ -276,8 +232,58 @@ index ca27fa648..1ff1e03a6 100644
      return res;
  }
  
+diff --git a/loader/loader_json.c b/loader/loader_json.c
+index 805d278c0..46c73a094 100644
+--- a/loader/loader_json.c
++++ b/loader/loader_json.c
+@@ -171,6 +171,32 @@ out:
+     return res;
+ }
+ 
++VkResult loader_get_json_from_str(const struct loader_instance *inst, const char *filename, const char *json_str, cJSON **json) {
++    VkResult res = VK_SUCCESS;
++
++    assert(json != NULL);
++
++    bool out_of_memory = false;
++    *json = loader_cJSON_Parse(inst ? &inst->alloc_callbacks : NULL, json_str, &out_of_memory);
++    if (out_of_memory) {
++        loader_log(inst, VULKAN_LOADER_ERROR_BIT, 0, "loader_get_json_str: Out of Memory error occurred while parsing JSON file %s.",
++                   filename);
++        res = VK_ERROR_OUT_OF_HOST_MEMORY;
++        goto out;
++    } else if (*json == NULL) {
++        loader_log(inst, VULKAN_LOADER_ERROR_BIT, 0, "loader_get_json_str: Invalid JSON file %s.", filename);
++        goto out;
++    }
++
++out:
++    if (res != VK_SUCCESS && *json != NULL) {
++        loader_cJSON_Delete(*json);
++        *json = NULL;
++    }
++
++    return res;
++}
++
+ VkResult loader_parse_json_string_to_existing_str(cJSON *object, const char *key, size_t out_str_len, char *out_string) {
+     if (NULL == key) {
+         return VK_ERROR_INITIALIZATION_FAILED;
+diff --git a/loader/loader_json.h b/loader/loader_json.h
+index b78ffc95d..71f2b719e 100644
+--- a/loader/loader_json.h
++++ b/loader/loader_json.h
+@@ -40,6 +40,8 @@ struct loader_string_list;
+ //            This returned buffer should be freed by caller.
+ TEST_FUNCTION_EXPORT VkResult loader_get_json(const struct loader_instance *inst, const char *filename, cJSON **json);
+ 
++TEST_FUNCTION_EXPORT VkResult loader_get_json_from_str(const struct loader_instance *inst, const char *filename, const char *json_str, cJSON **json);
++
+ // Given a cJSON object, find the string associated with the key and puts an pre-allocated string into out_string.
+ // Length is given by out_str_len, and this function truncates the string with a null terminator if it the provided space isn't
+ // large enough.
 diff --git a/loader/vk_loader_platform.h b/loader/vk_loader_platform.h
-index 23908ae58..317a9b216 100644
+index 9a3b9c1c9..de29c3eb8 100644
 --- a/loader/vk_loader_platform.h
 +++ b/loader/vk_loader_platform.h
 @@ -76,11 +76,11 @@
