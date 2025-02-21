@@ -124,7 +124,10 @@ do
 
     if [[ -n "$pkg_cache_file" && -e "$pkg_cache_file" ]]; then
       echo "Using cached entry $pkg_cache_file, package will not be rebuilt."
-      tar -xzvf "$pkg_cache_file" --keep-old-files --strip-components=1 -C /
+      mkdir -p /tmp/cache/unpack
+      tar -xzvf "$pkg_cache_file" --strip-components=1 -C /tmp/cache/unpack
+      rsync -ap --ignore-existing /tmp/cache/unpack/ /
+      rm -rf /tmp/cache/unpack
       [ -e "${pkg_script}-post.sh" ] && . "${pkg_script}-post.sh"
       continue
     fi
