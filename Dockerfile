@@ -83,7 +83,8 @@ ENV DISPLAY=:1
 COPY cache /cache
 COPY dependencies /build
 
-RUN build/checkvers.sh && build/download.sh
+#RUN build/checkvers.sh && build/download.sh
+RUN build/download.sh
 
 ARG COMPILE_FLAGS="-m32 -march=$PLATFORM -mfpmath=sse -O2 -flto -ffat-lto-objects -pipe"
 ARG LINK_FLAGS="-m32 -march=$PLATFORM -fno-lto"
@@ -237,6 +238,7 @@ lvp_icd vulkan_lvp \
 d3dadapter9 gbm\" build_meson\n\
 [mesa-post] patch_pc_file gl.pc 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -lvulkan/'\n\
 [mesa-post] patch_pc_file egl.pc 's/Libs\\.private:\\(.*\\)/Libs.private:\\1 -lvulkan/'\n\
+[glu] MESON_OPTS+=\" -Dgl_provider=gl\" build_meson\n\
 [Vulkan-Headers] build_cmake\n\
 [Vulkan-Loader] CMAKE_OPTS+=\" -DAPPLE_STATIC_LOADER=ON\" build_cmake\n\
 [Vulkan-Loader-post] add_pc_file_section vulkan.pc 'Requires.private' 'gl libudev'\n\
@@ -248,7 +250,9 @@ d3dadapter9 gbm\" build_meson\n\
 [vkcube] build_meson --no-install\n\
 [vkcube] cp build/vkcube /usr/local/bin/\n\
 [mesa-demos] gcc \$CFLAGS -c -o src/xdemos/glxgears.o src/xdemos/glxgears.c\n\
+[mesa-demos] gcc \$CFLAGS -Isrc/util -c -o src/egl/opengl/xeglgears.o src/egl/opengl/xeglgears.c\n\
 [mesa-demos] gcc \$LDFLAGS -o /usr/local/bin/glxgears src/xdemos/glxgears.o \$(pkg-config --libs --static vulkan)\n\
+[mesa-demos] gcc \$LDFLAGS -o /usr/local/bin/xeglgears src/egl/opengl/xeglgears.o \$(pkg-config --libs --static vulkan)\n\
 [ogg] ./autogen.sh && build_autoconf\n\
 [vorbis] ./autogen.sh && build_autoconf\n\
 [flac] ./autogen.sh && build_autoconf\n\
@@ -310,7 +314,7 @@ CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
-CONFIGURE_OPTS=\"--disable-tests --prefix=\"$PREFIX\" --disable-year2038 --with-wayland=no\" build_autoconf --reconf --no-make\n\
+CONFIGURE_OPTS=\"--disable-tests --prefix=\"$PREFIX\" --disable-year2038\" build_autoconf --reconf --no-make\n\
 [wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
 [wine] make -j$BUILD_JOBS install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\

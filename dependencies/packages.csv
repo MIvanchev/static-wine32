@@ -54,6 +54,7 @@ git,https://github.com/llvm/llvm-project.git,llvmorg-19.1.7,llvmorg-19.1.7
 git,https://github.com/KhronosGroup/SPIRV-LLVM-Translator.git,v19.1.4,llvm-spirv-19.1.4
 git,https://github.com/llvm/llvm-project.git,llvmorg-19.1.7,llvmorg-19.1.7,libclc
 file,https://archive.mesa3d.org/mesa-24.3.4.tar.xz
+git,https://gitlab.freedesktop.org/mesa/glu.git,glu-9.0.3,glu-9.0.3
 file,https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.307.tar.gz,Vulkan-Headers-1.4.307.tar.gz
 file,https://github.com/KhronosGroup/Vulkan-Loader/archive/refs/tags/v1.4.307.tar.gz,Vulkan-Loader-1.4.307.tar.gz
 git,https://github.com/krh/vkcube.git,master,vkcube-0.0.0
