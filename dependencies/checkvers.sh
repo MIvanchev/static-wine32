@@ -1,55 +1,64 @@
 #!/bin/bash
+
 PKG_DIR=$(dirname $0)
-for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
-  ver_found="false"
-  pkg=$(echo "$line" | sed 's/\$.*//')
-  if [[ "$pkg" =~ "https://github.com/"(.*)"/archive/refs/tags/"(.*)\.tar.* \
-        || "$line" =~ "https://github.com/"(.*)\.git\$(.*)\$ ]]; then
-#    continue
-    path=${BASH_REMATCH[1]}
-    tag=${BASH_REMATCH[2]}
-    latest_tag=$(wget -q -O - "https://api.github.com/repos/$path/tags" | \
-                 grep -o "https://api.github.com/repos/$path/.*/refs/tags/[^\"]\+" | \
-                 grep -vi "[0-9]-\?\(rc\|pre\|b\)" | \
-                 grep "[0-9][._0-9]*$" | \
-                 sed 's/.*\///' | \
-                 sed 's/.*/& &/' | \
-                 sed 's/[0-9][._0-9]* .*/ &/' | \
-                 sed 's/[^ ]* //' | \
-                 awk '{ gsub(/_/, ".", $1); print }' | \
-                 sort -rV | \
-                 head -n1 | \
-                 sed 's/[^ ]* //')
-#    echo "Latest tag of $pkg is PROBABLY \"$latest_tag\"."
-    if [[ -n "$latest_tag" ]]; then
-      ver_found="true"
-      if [[ "$latest_tag" != "$tag" ]]; then
-        echo "$pkg with current tag \"$tag\" PROBABLY has a newer version under the tag \"$latest_tag\"."
-      fi
-    fi
-  elif [[ "$pkg" =~ "https://github.com/"(.*)"/releases/".*"/"(.*)-([0-9]+[0-9.]+)(\..*) ]]; then
-#    continue
-    path=${BASH_REMATCH[1]}
-    name=${BASH_REMATCH[2]}
-    ver=${BASH_REMATCH[3]}
-    ext=${BASH_REMATCH[4]}
-    latest_ver=$(wget -q -O - "https://api.github.com/repos/$path/releases/latest" | \
-                 grep -o -m 1 "$name-[0-9]\+\(\.[0-9]\+\)\+" | \
-                 sed "s/.*-//")
-    #echo "Latest version of $pkg is $latest_ver."
-    if [[ -n "$latest_ver" ]]; then
-      ver_found="true"
-      if [[ "$latest_ver" != "$ver" ]]; then
-        echo "$pkg could be updated to $latest_ver."
-      fi
-    fi
-  elif [[ "$pkg" =~ (.*)/(.*)-([0-9]+[0-9.]+)(\..*) ]]; then
-#    continue
-    path=${BASH_REMATCH[1]}
-    name=${BASH_REMATCH[2]}
-    ver=${BASH_REMATCH[3]}
-    ext=${BASH_REMATCH[4]}
-    list="https://ftp.gnu.org/pub/gnu/libiconv \
+
+while IFS=, read -r type url arg1 arg2; do
+    if [[ "$url" =~ "https://github.com/"(.*)"/archive/refs/tags/"(v[0-9]+|v[0-9]+\.[0-9]+|v[0-9]+\.[0-9]+\.[0-9]+) ]]; then
+        latest=$(curl -s "https://api.github.com/repos/${BASH_REMATCH[1]}/tags" 2>&1 |
+            jq --raw-output '.[] | .name' |
+            grep -o 'v[0-9]\+\(\.[0-9]\+\)*' |
+            head -1)
+        if [[ "$latest" != "${BASH_REMATCH[2]}" ]]; then
+            echo "$url could PROBABLY be updated to $latest."
+        fi
+    elif [[ "$url" =~ "https://github.com/"(.*)"/"(.*)".git" ]]; then
+        owner=${BASH_REMATCH[1]}
+        proj=${BASH_REMATCH[2]}
+        api=tags
+        case "$proj" in
+            "libxkbcommon") matcher="xkbcommon-[0-9]+(\.[0-9]+)+" ;;
+            "vulkan-sdk")
+                api=branches
+                matcher="vulkan-sdk-[0-9]+(\.[0-9]+)+"
+                ;;
+            "SPIRV-Tools")
+                api=branches
+                matcher="vulkan-sdk-[0-9]+(\.[0-9]+)+"
+                ;;
+            "SPIRV-Headers")
+                api=branches
+                matcher="vulkan-sdk-[0-9]+(\.[0-9]+)+"
+                ;;
+            "llvm-project") matcher="llvmorg-[0-9]+(\.[0-9]+)+" ;;
+            "SPIRV-LLVM-Translator") matcher="v[0-9]+(\.[0-9]+)+" ;;
+            "SDL") matcher="release-[0-9]+(\.[0-9]+)+" ;;
+            "libpcap")
+                api=branches
+                matcher="libpcap-[0-9]+(\.[0-9]+)+"
+                ;;
+            "libieee1284") matcher="V[0-9]+(_[0-9]+)+" ;;
+            *)
+                echo "Cannot determine latest version of $url; must be manually checked." 2>&1
+                continue
+                ;;
+        esac
+        latest=$(curl -s "https://api.github.com/repos/$owner/$proj/$api" 2>&1 |
+            jq --raw-output '.[] | .name' |
+            grep -xE "${matcher}" |
+            head -1)
+        if [[ -z "$latest" ]]; then
+            echo "Internal error: failed to find latest version of $url." 2>&1
+            exit 1
+        elif [[ "$latest" != "$arg1" ]]; then
+            echo "$url could PROBABLY be updated to $latest."
+        fi
+    elif [[ "$url" =~ (.*)/(.*)-([0-9]+[0-9.]+)(\..*) ]]; then
+        path=${BASH_REMATCH[1]}
+        name=${BASH_REMATCH[2]}
+        ver=${BASH_REMATCH[3]}
+        ext=${BASH_REMATCH[4]}
+
+        list="https://ftp.gnu.org/pub/gnu/libiconv \
       https://www.x.org/releases/individual/proto \
       https://www.x.org/releases/individual/lib \
       https://sourceware.org/pub/bzip2 \
@@ -72,28 +81,29 @@ for line in $(cat "$PKG_DIR/packages.txt" | sed 's/[ \t][ \t]*/\$/g'); do
       https://www.openldap.org/software/download/OpenLDAP/openldap-release \
       https://dri.freedesktop.org/libdrm \
       https://dbus.freedesktop.org/releases/dbus"
-    latest_ver=
-    for item in $list; do
-      if [[ "$item" == "$path" ]]; then
-        latest_ver=$(wget -q -O - $path | \
-                     grep -vi "$name-[0-9]\+\(\.[0-9]\+\)*-\?\(rc\|pre\|b\)" | \
-                     grep -o "$name-[0-9]\+\(\.[0-9]\+\)*" | \
-                     sed "s/.*-//" | \
-                     sort -rV |\
-                     head -n1)
-        break
-      fi
-    done
-    if [[ -n "$latest_ver" ]]; then
-      ver_found="true"
-      if [[ "$latest_ver" != "$ver" ]]; then
-        echo "$pkg could be updated to $latest_ver."
-      fi
-    fi
-  fi
 
-  if [[ "$ver_found" == "false" ]]; then
-    echo "Cannot determine latest version of $pkg; must be manually checked." 2>&1
-  fi
-done
+        unset latest_ver
+
+        for item in $list; do
+            if [[ "$item" == "$path" ]]; then
+                latest_ver=$(wget -q -O - $path |
+                    grep -vi "$name-[0-9]\+\(\.[0-9]\+\)*-\?\(rc\|pre\|b\)" |
+                    grep -o "$name-[0-9]\+\(\.[0-9]\+\)*" |
+                    sed "s/.*-//" |
+                    sort -rV |
+                    head -n1)
+            fi
+        done
+
+        if [[ -n "$latest_ver" ]]; then
+            if [[ "$latest_ver" != "$ver" ]]; then
+                echo "$url could be updated to $latest_ver."
+            fi
+        else
+            echo "Cannot determine latest version of $url; must be manually checked." 2>&1
+        fi
+    else
+        echo "Cannot determine latest version of $url; must be manually checked." 2>&1
+    fi
+done <"$PKG_DIR/packages.csv"
 
