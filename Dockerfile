@@ -40,7 +40,7 @@ RUN dpkg --add-architecture i386 && \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         rustc bindgen python3 python3-pip python3-dev python3-mako python3-jinja2 \
         python3-packaging python3-yaml wget git ninja-build gperf autopoint gettext nasm \
-        glslang-tools xmlto fop xsltproc doxygen asciidoc gtk-doc-tools docbook2x rsync && \
+        glslang-tools xmlto fop xsltproc doxygen asciidoc gtk-doc-tools docbook2x rsync jq && \
     pip3 install jinja2-cli
 
 RUN pushd "$HOME" && \
@@ -203,6 +203,7 @@ MESON_INSTALL_OPTS=\"--tags devel\" build_meson\n\
 [spirv-headers] build_cmake\n\
 [spirv-tools] CMAKE_OPTS+=\" -DSPIRV-Headers_SOURCE_DIR=/usr/local\" build_cmake\n\
 [spirv-tools-post] add_pc_file_section SPIRV-Tools.pc 'Libs.private' '-lstdc++'\n\
+[spirv-tools-post] echo exit\n\
 [llvm-spirv] CMAKE_OPTS+=\" -DSPIRV-Headers_SOURCE_DIR=/usr/local\" build_cmake\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/\\(shared\\|static\\)_library(/library(/' {} \\;\n\
 [mesa] find -name 'meson.build' -exec sed -i 's/name_suffix : .so.,//' {} \\;\n\
@@ -229,7 +230,7 @@ MESON_INSTALL_OPTS=\"--tags devel\" build_meson\n\
 MESON_COMPILE_TARGETS=\"OSMesa GL EGL glapi gallium_dri dri_gbm \
 mesa_util mesa_util_c11 xmlconfig \
 compiler nir blake3 glsl vtn \
-blorp blorp_elk intel_decoder intel_decoder_brw intel_decoder_elk \
+blorp blorp_elk intel_decoder intel_decoder_brw intel_decoder_elk intel_dev intel_compiler \
 vulkan_util vulkan_lite_runtime vulkan_instance vulkan_runtime vulkan_wsi \
 radeon_icd vulkan_radeon \
 intel_icd vulkan_intel \
@@ -253,6 +254,7 @@ d3dadapter9 gbm\" build_meson\n\
 [mesa-demos] gcc \$CFLAGS -Isrc/util -c -o src/egl/opengl/xeglgears.o src/egl/opengl/xeglgears.c\n\
 [mesa-demos] gcc \$LDFLAGS -o /usr/local/bin/glxgears src/xdemos/glxgears.o \$(pkg-config --libs --static vulkan)\n\
 [mesa-demos] gcc \$LDFLAGS -o /usr/local/bin/xeglgears src/egl/opengl/xeglgears.o \$(pkg-config --libs --static vulkan)\n\
+[mesa-demos] echo exit\n\
 [ogg] ./autogen.sh && build_autoconf\n\
 [vorbis] ./autogen.sh && build_autoconf\n\
 [flac] ./autogen.sh && build_autoconf\n\
@@ -309,13 +311,15 @@ d3dadapter9 gbm\" build_meson\n\
 [krb5] add_pc_file_section mit-krb5-gssapi.pc 'Libs.private' '-ldl -lresolv'\n\
 [krb5] echo exit\n\
 [wine] autoreconf -f\n\
+[wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && patch_file dlls/winex11.drv/Makefile.in 's/^UNIX_CFLAGS =.*/& -flto -ffat-lto-objects/'\n\
+[wine] cat dlls/winex11.drv/Makefile.in\n\
 [wine] CFLAGS=\"\${CFLAGS/-flto -ffat-lto-objects}\" \
 CPPFLAGS=\"\${CPPFLAGS/-flto -ffat-lto-objects}\" \
 CXXFLAGS=\"\${CXXFLAGS/-flto -ffat-lto-objects}\" \
 OBJCFLAGS=\"\${OBJCFLAGS/-flto -ffat-lto-objects}\" \
 PKG_CONFIG_PATH=/usr/local/lib/gstreamer-1.0/pkgconfig \
 CONFIGURE_OPTS=\"--disable-tests --prefix=\"$PREFIX\" --disable-year2038\" build_autoconf --reconf --no-make\n\
-[wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && sed -i 's/\(^[ \\t]*LDFLAGS[ \\t]*=.*\)-fno-lto\(.*$\)/\\1-flto -flto-partition=one\\2/' Makefile\n\
+[wine] [ \"${BUILD_WITH_LTO:-}\" == \"y\" ] && patch_file Makefile 's/^\([ \\t]*LDFLAGS[ \\t]*=[ \\t]*.*\\)-fno-lto\\(.*\\)/\\1-flto -flto-partition=one\\2/'\n\
 [wine] make -j$BUILD_JOBS install\n\
 [wine] find \"$PREFIX/lib/wine\" -type f -name \"*\" -exec strip -s {} \\;\n\
 [wine] tar czvf \"\$HOME/wine-build.tar.gz\" -C \"$PREFIX\" .\n\
