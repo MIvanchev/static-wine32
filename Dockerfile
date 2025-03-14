@@ -64,6 +64,7 @@ RUN pushd "$HOME" && \
     wget -q https://github.com/Kitware/CMake/releases/download/v3.31.5/cmake-3.31.5-linux-x86_64.tar.gz && \
     tar xf cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     rm -rf cmake-* && apt-get -y remove cmake && \
+    git config --global advice.detachedHead false && \
     git clone --depth 1 --branch 1.7.0 https://github.com/mesonbuild/meson.git && \
     sed -i 's/^.*remove_dups()/# &/' meson/mesonbuild/modules/pkgconfig.py && \
     echo "#!/bin/sh" > /usr/bin/meson && \

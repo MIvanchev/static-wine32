@@ -1,21 +1,16 @@
 on: workflow_dispatch
 
-env:
-  PLATFORM:
-  PREFIX:
-  BUILD_WITH_LTO: y
-
 jobs:
   build_static_wine32:
     runs-on: ubuntu-22.04
     name: A job that builds static-wine32
     steps:
-      - name: Build
-        uses: ./.github/actions/build
-        with:
-          build-args: |
-            PLATFORM="${{env.PLATFORM}}"
-            PREFIX="${{env.PREFIX}}"
-            BUILD_WITH_LTO="${{env.BUILD_WITH_LTO}}"
-            BUILD_JOBS=8
+      - uses: actions/checkout@v4
+      - run: >
+          DOCKER_BUILDKIT=0 docker build
+          --build-arg PLATFORM="${{vars.PLATFORM}}"
+          --build-arg PREFIX="${{vars.PREFIX}}"
+          --build-arg BUILD_WITH_LTO="${{vars.BUILD_WITH_LTO}}"
+          --build-arg BUILD_JOBS=8
+          -t static-wine32:latest .
 

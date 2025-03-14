@@ -137,7 +137,7 @@ build_autoconf()
     local CACHE_DIR="/tmp/cache/$pkg_dir"
     make -j$BUILD_JOBS ${MAKE_TARGETS-install} DESTDIR=$CACHE_DIR
     if [[ -n "$pkg_cache_file" ]]; then
-      tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+      tar -C /tmp/cache -czf "$pkg_cache_file" "$pkg_dir"
     fi
     rsync -ap --ignore-existing "$CACHE_DIR/" /
     rm -rf "$CACHE_DIR"
@@ -152,7 +152,7 @@ build_cmake()
   local CACHE_DIR="/tmp/cache/$pkg_dir"
   make -j$BUILD_JOBS -C build install DESTDIR="$CACHE_DIR"
   if [[ -n "$pkg_cache_file" ]]; then
-    tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+    tar -C /tmp/cache -czf "$pkg_cache_file" "$pkg_dir"
   fi
   rsync -ap --ignore-existing "$CACHE_DIR/" /
   rm -rf "$CACHE_DIR"
@@ -182,7 +182,7 @@ build_meson()
     local CACHE_DIR="/tmp/cache/$pkg_dir"
     DESTDIR="$CACHE_DIR" meson install -C build --no-rebuild $MESON_INSTALL_OPTS
     if [[ -n "$pkg_cache_file" ]]; then
-      tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+      tar -C /tmp/cache -czf "$pkg_cache_file" "$pkg_dir"
     fi
     rsync -ap --ignore-existing "$CACHE_DIR/" /
     echo "$CACHE_DIR"
