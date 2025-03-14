@@ -34,6 +34,8 @@ ARG PATH="$PATH:/usr/local/bin"
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN dpkg --add-architecture i386 && \
+    apt update && \
+    apt upgrade -y && \
     apt-get install -y build-essential \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         rustc bindgen python3 python3-pip python3-dev python3-mako python3-jinja2 \
@@ -62,6 +64,7 @@ RUN pushd "$HOME" && \
     wget -q https://github.com/Kitware/CMake/releases/download/v3.31.5/cmake-3.31.5-linux-x86_64.tar.gz && \
     tar xf cmake-*-linux-x86_64.tar.gz -C /usr --strip-components=1 && \
     rm -rf cmake-* && apt-get -y remove cmake && \
+    git config --global advice.detachedHead false && \
     git clone --depth 1 --branch 1.7.0 https://github.com/mesonbuild/meson.git && \
     sed -i 's/^.*remove_dups()/# &/' meson/mesonbuild/modules/pkgconfig.py && \
     echo "#!/bin/sh" > /usr/bin/meson && \

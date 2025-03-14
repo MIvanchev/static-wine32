@@ -1,6 +1,0 @@
-# action.yml
-name: 'static-wine32-build'
-description: 'Builds you a shiny new static-wine32'
-runs:
-  using: 'docker'
-  image: 'Dockerfile'
