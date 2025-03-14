@@ -15,7 +15,7 @@ do
             echo "File \"$pkg_file\" is already present; not downloading." 1>&2
             echo 1>&2
         else
-            wget --no-clobber --output-document "$PKG_DIR/$pkg_file" "$url"
+            wget -q --no-clobber --output-document "$PKG_DIR/$pkg_file" "$url"
             if [[ $? -ne 0 ]]; then
                 exit 1
             fi
@@ -36,7 +36,7 @@ do
             echo "Git repository archive '" $pkg_file "' is already present; repository will not be cloned." 1>&2
             echo 1>&2
         else
-            git clone --branch "$arg1" --depth 1 "$url" "$pkg_path" && tar --xform="s:^${PKG_DIR}/::"  -czvf "$pkg_file" "$pkg_path" && rm -rf "$pkg_path"
+            git clone --quiet --branch "$arg1" --depth 1 "$url" "$pkg_path" && tar --xform="s:^${PKG_DIR}/::"  -czvf "$pkg_file" "$pkg_path" && rm -rf "$pkg_path"
             if [[ $? -ne 0 ]]; then
                 exit 1
             fi
