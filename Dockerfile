@@ -34,6 +34,8 @@ ARG PATH="$PATH:/usr/local/bin"
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN dpkg --add-architecture i386 && \
+    apt update && \
+    apt upgrade -y && \
     apt-get install -y build-essential \
         gcc-multilib g++-multilib gcc-mingw-w64 libcrypt1-dev:i386 flex bison \
         rustc bindgen python3 python3-pip python3-dev python3-mako python3-jinja2 \
