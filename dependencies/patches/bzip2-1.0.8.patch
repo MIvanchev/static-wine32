@@ -1,0 +1,24 @@
+diff --git a/Makefile b/Makefile
+index f8a1772..60d00e8 100644
+--- a/Makefile
++++ b/Makefile
+@@ -15,13 +15,14 @@
+ SHELL=/bin/sh
+ 
+ # To assist in cross-compiling
+-CC=gcc
+-AR=ar
+-RANLIB=ranlib
+-LDFLAGS=
++CC?=gcc
++AR?=ar
++RANLIB?=ranlib
++LDFLAGS?=
+ 
+ BIGFILES=-D_FILE_OFFSET_BITS=64
+-CFLAGS=-Wall -Winline -O2 -g $(BIGFILES)
++#CFLAGS=-Wall -Winline -O2 -g $(BIGFILES)
++CFLAGS+= $(BIGFILES)
+ 
+ # Where you want it installed when you do 'make install'
+ PREFIX=/usr/local

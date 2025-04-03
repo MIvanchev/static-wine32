@@ -68,32 +68,86 @@ index 86b1d1f08..77361010e 100644
      ../sanei/sanei_config2.lo \
      ../sanei/sanei_usb.lo \
      ../sanei/sanei_scsi.lo \
+diff --git a/backend/kvs1025_low.c b/backend/kvs1025_low.c
+index d185fb307..9685c0dd3 100644
+--- a/backend/kvs1025_low.c
++++ b/backend/kvs1025_low.c
+@@ -438,7 +438,7 @@ CMD_set_window (PKV_DEV dev, int side, PKV_CMD_RESPONSE rs)
+   hdr.data = window;
+   hdr.data_size = size;
+ 
+-  hexdump (DBG_error, "window", window, size);
++  kv_hexdump (DBG_error, "window", window, size);
+ 
+   return kv_send_command (dev, &hdr, rs);
+ }
 diff --git a/backend/kvs1025_low.h b/backend/kvs1025_low.h
-index ba8da24b6..29bdf4128 100644
+index ba8da24b6..df0b70b03 100644
 --- a/backend/kvs1025_low.h
 +++ b/backend/kvs1025_low.h
-@@ -235,7 +235,7 @@ void kv_init_options (PKV_DEV dev);
+@@ -235,7 +235,8 @@ void kv_init_options (PKV_DEV dev);
  SANE_Status kv_control_option (PKV_DEV dev, SANE_Int option,
  			       SANE_Action action, void *val,
  			       SANE_Int * info);
 -void hexdump (int level, const char *comment, unsigned char *p, int l);
++void kv_hexdump (int level, const char *comment, unsigned char *p, int l);
 +
  void kv_set_window_data (PKV_DEV dev,
  			 KV_SCAN_MODE scan_mode,
  			 int side, unsigned char *windowdata);
 diff --git a/backend/kvs1025_opt.c b/backend/kvs1025_opt.c
-index 3006a2523..b0a2f6475 100644
+index 3006a2523..9bb9de0fa 100644
 --- a/backend/kvs1025_opt.c
 +++ b/backend/kvs1025_opt.c
-@@ -1362,7 +1362,7 @@ kv_control_option (PKV_DEV dev, SANE_Int option,
- }
+@@ -1363,7 +1363,7 @@ kv_control_option (PKV_DEV dev, SANE_Int option,
  
  /* Display a buffer in the log. */
--void
-+static void
- hexdump (int level, const char *comment, unsigned char *p, int l)
+ void
+-hexdump (int level, const char *comment, unsigned char *p, int l)
++kv_hexdump (int level, const char *comment, unsigned char *p, int l)
  {
    int i;
+   char line[128];
+diff --git a/backend/kvs1025_usb.c b/backend/kvs1025_usb.c
+index d7a4dde7f..389232025 100644
+--- a/backend/kvs1025_usb.c
++++ b/backend/kvs1025_usb.c
+@@ -224,7 +224,7 @@ kv_usb_escape (PKV_DEV dev,
+   if (sanei_usb_write_bulk (dev->usb_fd, (SANE_Byte *) cmd_buff, &len))
+     {
+       DBG (DBG_error, "usb_bulk_write: Error writing command.\n");
+-      hexdump (DBG_error, "cmd block", cmd_buff, 24);
++      kv_hexdump (DBG_error, "cmd block", cmd_buff, 24);
+       return SANE_STATUS_IO_ERROR;
+     }
+ 
+@@ -292,7 +292,7 @@ kv_usb_escape (PKV_DEV dev,
+ 	  DBG (DBG_shortread, "usb_bulk_write: bytes to write = %lu\n", (unsigned long)size);
+ 	  DBG (DBG_shortread,
+ 	       "usb_bulk_write: bytes actual written = %lu\n", (unsigned long)size_written);
+-	  hexdump (DBG_shortread, "data", data, size_written);
++	  kv_hexdump (DBG_shortread, "data", data, size_written);
+ 	}
+     }
+ 
+@@ -316,7 +316,7 @@ kv_usb_escape (PKV_DEV dev,
+   if (cmd_buff[5] != 3)
+     {
+       DBG (DBG_error, "usb_bulk_read: Invalid response block.\n");
+-      hexdump (DBG_error, "response", cmd_buff, 16);
++      kv_hexdump (DBG_error, "response", cmd_buff, 16);
+       return SANE_STATUS_IO_ERROR;
+     }
+ 
+@@ -357,7 +357,7 @@ kv_usb_send_command (PKV_DEV dev,
+       if (kv_usb_escape (dev, &hdr, &status) != 0)
+ 	return SANE_STATUS_IO_ERROR;
+ 
+-      hexdump (DBG_error, "sense data", (unsigned char *) &response->sense,
++      kv_hexdump (DBG_error, "sense data", (unsigned char *) &response->sense,
+ 	       0x12);
+ 
+       response->status = KV_CHK_CONDITION;
 diff --git a/configure.ac b/configure.ac
 index ddb52b992..c03895084 100644
 --- a/configure.ac
