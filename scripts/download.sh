@@ -1,9 +1,11 @@
 #!/bin/bash
 
-PKG_DIR=$(dirname $0)
+PKG_DIR=$(dirname $0)/../dependencies
 
 while IFS=, read -r type url arg1 arg2 arg3 arg4
 do
+    echo "Processing $url..."
+
     if [[ "$type" == "file" ]]; then
         if [[ -n "$arg1" ]]; then
             pkg_file="$arg1"
@@ -36,7 +38,7 @@ do
             echo "Git repository archive '" $pkg_file "' is already present; repository will not be cloned." 1>&2
             echo 1>&2
         else
-            git clone --quiet --branch "$arg1" --depth 1 "$url" "$pkg_path" && tar --xform="s:^${PKG_DIR}/::"  -czvf "$pkg_file" "$pkg_path" && rm -rf "$pkg_path"
+            git clone --quiet --branch "$arg1" --depth 1 "$url" "$pkg_path" && tar --xform="s:^dependencies/::"  -czf "$pkg_file" "$pkg_path" && rm -rf "$pkg_path"
             if [[ $? -ne 0 ]]; then
                 exit 1
             fi

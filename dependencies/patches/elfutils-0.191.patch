@@ -7,7 +7,7 @@ index bbe8673..d35e9ca 100644
  save_LIBS="$LIBS"
  LIBS=
 -eu_ZIPLIB(zlib,ZLIB,z,gzdirect,gzip)
-+eu_ZIPLIB(zlib,ZLIB,z,gzdirect,gzip,[$(pkg-config --libs -static zlib)])
++eu_ZIPLIB(zlib,ZLIB,z,gzdirect,gzip,[$(pkg-config --libs --static zlib)])
  AS_IF([test "x$with_zlib" = xno], [AC_MSG_ERROR([zlib not found but is required])])
  LIBS="$save_LIBS"
  
@@ -24,6 +24,19 @@ index bbe8673..d35e9ca 100644
  AS_IF([test "x$with_zstd" = xyes], [LIBZSTD="libzstd"], [LIBLZSTD=""])
  AC_SUBST([LIBZSTD])
  zstd_LIBS="$LIBS"
+diff --git a/libdw/dwarf_cu_dwp_section_info.c b/libdw/dwarf_cu_dwp_section_info.c
+index 5a081f5..b6e3fe8 100644
+--- a/libdw/dwarf_cu_dwp_section_info.c
++++ b/libdw/dwarf_cu_dwp_section_info.c
+@@ -464,7 +464,7 @@ __libdw_dwp_find_unit (Dwarf *dbg, bool debug_types, Dwarf_Off off,
+ 	}
+       for (uint32_t i = 0; i < index->unit_count; i++)
+ 	{
+-	  Dwarf_Off offset, size;
++	  Dwarf_Off offset = 0, size = 0;
+ 	  __libdw_dwp_section_info (index, i + 1, DW_SECT_INFO, &offset,
+ 				    &size);
+ 	  if (offset <= off && off - offset < size)
 diff --git a/libdwfl/gzip.c b/libdwfl/gzip.c
 index 002afc4..af403dc 100644
 --- a/libdwfl/gzip.c

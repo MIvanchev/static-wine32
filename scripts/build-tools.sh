@@ -4,10 +4,27 @@ export CFLAGS="$COMPILE_FLAGS"
 export CXXFLAGS="$COMPILE_FLAGS"
 export OBJCFLAGS="$COMPILE_FLAGS"
 export OBCXXFLAGS="$COMPILE_FLAGS"
-export LDFLAGS="$LINK_FLAGS"
-export AR=/usr/bin/gcc-ar
-export RANLIB=/usr/bin/gcc-ranlib
-export NM=/usr/bin/gcc-nm
+export ASFLAGS="$COMPILE_FLAGS"
+
+if command -v clang 2>&1 >/dev/null ; then
+    export CC=/usr/bin/clang
+    export CXX=/usr/bin/clang++
+    export AS=/usr/bin/llvm-as
+    export AR=/usr/bin/llvm-ar
+    export RANLIB=/usr/bin/llvm-ranlib
+    export OBJCOPY=/usr/bin/llvm-objcopy
+    export NM=/usr/bin/llvm-nm
+    export LDFLAGS="-fuse-ld=lld $LINK_FLAGS"
+else
+    export CC=/usr/bin/gcc
+    export CXX=/usr/bin/g++
+    export AS=/usr/bin/as
+    export AR=/usr/bin/gcc-ar
+    export RANLIB=/usr/bin/gcc-ranlib
+    export OBJCOPY=/usr/bin/objcopy
+    export NM=/usr/bin/gcc-nm
+    export LDFLAGS="$LINK_FLAGS"
+fi
 
 INSTALL_PREFIX="/usr/local"
 
@@ -31,7 +48,7 @@ MESON_OPTS="--prefix=$INSTALL_PREFIX \
             --datadir=/usr/share \
             --mandir=$INSTALL_PREFIX/man \
             --buildtype=release \
-            --cross-file=../meson-cross-i386 \
+            --cross-file=/scripts/meson-cross-i386 \
             --default-library=static \
             --prefer-static"
 
@@ -137,9 +154,9 @@ build_autoconf()
     local CACHE_DIR="/tmp/cache/$pkg_dir"
     make -j$BUILD_JOBS ${MAKE_TARGETS-install} DESTDIR=$CACHE_DIR
     if [[ -n "$pkg_cache_file" ]]; then
-      tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+      tar -C /tmp/cache -czf "$pkg_cache_file" "$pkg_dir"
     fi
-    rsync -ap --ignore-existing "$CACHE_DIR/" /
+    rsync -ap --progress --ignore-existing "$CACHE_DIR/" /
     rm -rf "$CACHE_DIR"
   fi
 }
@@ -152,7 +169,7 @@ build_cmake()
   local CACHE_DIR="/tmp/cache/$pkg_dir"
   make -j$BUILD_JOBS -C build install DESTDIR="$CACHE_DIR"
   if [[ -n "$pkg_cache_file" ]]; then
-    tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+    tar -C /tmp/cache -czf "$pkg_cache_file" "$pkg_dir"
   fi
   rsync -ap --ignore-existing "$CACHE_DIR/" /
   rm -rf "$CACHE_DIR"
@@ -175,14 +192,14 @@ build_meson()
   done
 
   meson setup build $MESON_OPTS
-  meson compile -C build -j $BUILD_JOBS $MESON_COMPILE_TARGETS
+  meson compile -v -C build -j $BUILD_JOBS $MESON_COMPILE_TARGETS
 
   if [[ $install == true ]]; then
     mkdir -p /tmp/cache
     local CACHE_DIR="/tmp/cache/$pkg_dir"
     DESTDIR="$CACHE_DIR" meson install -C build --no-rebuild $MESON_INSTALL_OPTS
     if [[ -n "$pkg_cache_file" ]]; then
-      tar -C /tmp/cache -cvzf "$pkg_cache_file" "$pkg_dir"
+      tar -C /tmp/cache -czf "$pkg_cache_file" "$pkg_dir"
     fi
     rsync -ap --ignore-existing "$CACHE_DIR/" /
     echo "$CACHE_DIR"

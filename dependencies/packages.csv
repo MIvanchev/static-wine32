@@ -27,7 +27,7 @@ file,https://sourceware.org/elfutils/ftp/0.191/elfutils-0.191.tar.bz2
 file,https://sourceforge.net/projects/libjpeg-turbo/files/3.0.1/libjpeg-turbo-3.0.1.tar.gz/download,libjpeg-turbo-3.0.1.tar.gz
 file,http://prdownloads.sourceforge.net/libpng/libpng-1.6.46.tar.xz?download,libpng-1.6.46.tar.xz
 file,https://github.com/libexif/libexif/archive/refs/tags/v0.6.25.tar.gz,libexif-0.6.25.tar.gz
-file,https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz
+file,https://github.com/libffi/libffi/releases/download/v3.4.7/libffi-3.4.7.tar.gz
 file,https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz
 file,https://ftp.gnu.org/gnu/nettle/nettle-3.10.1.tar.gz
 file,https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-3.8.8.tar.xz
@@ -35,7 +35,7 @@ file,https://sourceforge.net/projects/freetype/files/freetype2/2.13.3/freetype-2
 file,https://github.com/libexpat/libexpat/releases/download/R_2_6_4/expat-2.6.4.tar.bz2
 file,https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.5.tar.xz
 file,https://freedesktop.org/software/fontconfig/release/fontconfig-2.16.0.tar.xz
-git,https://github.com/xkbcommon/libxkbcommon.git,xkbcommon-1.8.0,libxkbcommon-1.8.0
+git,https://github.com/xkbcommon/libxkbcommon.git,xkbcommon-1.8.1,libxkbcommon-1.8.1
 file,https://gitlab.freedesktop.org/wayland/wayland/-/archive/1.23.1/wayland-1.23.1.tar.bz2
 file,https://gitlab.freedesktop.org/wayland/wayland-protocols/-/archive/1.38/wayland-protocols-1.38.tar.bz2
 file,https://dbus.freedesktop.org/releases/dbus/dbus-1.16.2.tar.xz
@@ -50,9 +50,9 @@ file,https://dri.freedesktop.org/libdrm/libdrm-2.4.124.tar.xz
 file,https://github.com/libunwind/libunwind/releases/download/v1.8.1/libunwind-1.8.1.tar.gz
 git,https://github.com/KhronosGroup/SPIRV-Headers.git,vulkan-sdk-1.4.309,spirv-headers-1.4.309
 git,https://github.com/KhronosGroup/SPIRV-Tools.git,vulkan-sdk-1.4.309,spirv-tools-1.4.309
-git,https://github.com/llvm/llvm-project.git,llvmorg-19.1.7,llvmorg-19.1.7
-git,https://github.com/KhronosGroup/SPIRV-LLVM-Translator.git,v19.1.4,llvm-spirv-19.1.4
-git,https://github.com/llvm/llvm-project.git,llvmorg-19.1.7,llvmorg-19.1.7,libclc
+git,https://github.com/llvm/llvm-project.git,llvmorg-20.1.1,llvmorg-20.1.1
+git,https://github.com/KhronosGroup/SPIRV-LLVM-Translator.git,v20.1.0,llvm-spirv-20.1.0
+git,https://github.com/llvm/llvm-project.git,llvmorg-20.1.1,llvmorg-20.1.1,libclc
 file,https://archive.mesa3d.org/mesa-25.0.1.tar.xz
 git,https://gitlab.freedesktop.org/mesa/glu.git,glu-9.0.3,glu-9.0.3
 file,https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.310.tar.gz,Vulkan-Headers-1.4.310.tar.gz
@@ -79,6 +79,8 @@ file,https://www.alsa-project.org/files/pub/plugins/alsa-plugins-1.2.12.tar.bz2
 git,https://github.com/libsdl-org/SDL.git,release-2.32.2,SDL-2.32.2
 file,https://github.com/apple/cups/archive/refs/tags/v2.3.6.tar.gz,cups-2.3.6.tar.gz
 file,https://linuxtv.org/downloads/v4l-utils/v4l-utils-1.28.1.tar.xz
+file,https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.xz
+file,https://sourceforge.net/projects/libdv/files/libdv/1.0.0/libdv-1.0.0.tar.gz/download,libdv-1.0.0.tar.gz
 file,https://github.com/cisco/openh264/archive/refs/tags/v2.6.0.tar.gz,openh264-2.6.0.tar.gz
 git,https://gitlab.freedesktop.org/gstreamer/gstreamer.git,1.25.50,gstreamer-1.25.50
 git,https://github.com/the-tcpdump-group/libpcap.git,libpcap-1.10.5,libpcap-1.10.5

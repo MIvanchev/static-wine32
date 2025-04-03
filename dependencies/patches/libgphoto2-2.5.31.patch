@@ -71,15 +71,30 @@ index 8214ee45b..e3f6bb3f7 100644
  		camera->pl->jdec = NULL;
  	}
  	free (camera->pl->mem);
+diff --git a/camlibs/ax203/jidctflt.c b/camlibs/ax203/jidctflt.c
+index f04046f28..fd89abd7e 100644
+--- a/camlibs/ax203/jidctflt.c
++++ b/camlibs/ax203/jidctflt.c
+@@ -121,7 +121,7 @@ static inline unsigned char descale_and_clamp(int x, int shift)
+  */
+ 
+ void
+-tinyjpeg_idct_float (struct component *compptr, uint8_t *output_buf, int stride)
++ax203_tinyjpeg_idct_float (struct component *compptr, uint8_t *output_buf, int stride)
+ {
+   FAST_FLOAT tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+   FAST_FLOAT tmp10, tmp11, tmp12, tmp13;
 diff --git a/camlibs/ax203/tinyjpeg-internal.h b/camlibs/ax203/tinyjpeg-internal.h
-index 8cf393494..174837265 100644
+index 8cf393494..36faea058 100644
 --- a/camlibs/ax203/tinyjpeg-internal.h
 +++ b/camlibs/ax203/tinyjpeg-internal.h
-@@ -117,6 +117,6 @@ struct jdec_private
+@@ -116,7 +116,7 @@ struct jdec_private
+   char error_string[256];
  };
  
- #define IDCT tinyjpeg_idct_float
+-#define IDCT tinyjpeg_idct_float
 -void tinyjpeg_idct_float (struct component *compptr, uint8_t *output_buf, int stride);
++#define IDCT ax203_tinyjpeg_idct_float
 +void ax203_tinyjpeg_idct_float (struct component *compptr, uint8_t *output_buf, int stride);
  
  #endif /* !defined(CAMLIBS_AX203_TINYJPEG_INTERNAL_H) */

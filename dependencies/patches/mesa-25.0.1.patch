@@ -685,6 +685,18 @@ index 6e785e52249..276e719f526 100644
  {
     struct pipe_context *ctx = &ice->ctx;
     struct iris_screen *screen = (struct iris_screen *)ctx->screen;
+diff --git a/src/gallium/drivers/llvmpipe/meson.build b/src/gallium/drivers/llvmpipe/meson.build
+index 33b4bec5f61..9ae72c6d1a5 100644
+--- a/src/gallium/drivers/llvmpipe/meson.build
++++ b/src/gallium/drivers/llvmpipe/meson.build
+@@ -103,6 +103,7 @@ libllvmpipe = static_library(
+   gnu_symbol_visibility : 'hidden',
+   include_directories : [inc_gallium, inc_gallium_aux, inc_include, inc_src],
+   dependencies : [ dep_llvm, idep_nir_headers, idep_mesautil, dep_libdrm],
++  install : true
+ )
+ 
+ driver_llvmpipe = declare_dependency(
 diff --git a/src/gallium/drivers/zink/zink_screen.c b/src/gallium/drivers/zink/zink_screen.c
 index ac9e726630c..e15d39cf171 100644
 --- a/src/gallium/drivers/zink/zink_screen.c
@@ -1139,6 +1151,31 @@ index 5b46c44a9db..cbe06ca905d 100644
      idep_intel_decoder_elk, idep_intel_compiler_elk,
    ],
    c_args : anv_flags,
+diff --git a/src/mapi/glapi/meson.build b/src/mapi/glapi/meson.build
+index d15a59caadc..1711e52e6ac 100644
+--- a/src/mapi/glapi/meson.build
++++ b/src/mapi/glapi/meson.build
+@@ -64,7 +64,7 @@ libglapi_bridge = static_library(
+   'glapi_bridge',
+   bridge_glapi_files,
+   include_directories : [inc_mesa, inc_include, inc_src, inc_mapi, inc_gallium],
+-  c_args : [c_msvc_compat_args, bridge_glapi_args],
++  c_args : [c_msvc_compat_args, bridge_glapi_args, '-fno-lto'],
+   dependencies : [dep_thread, idep_mesautil],
+   build_by_default : false,
+ )
+diff --git a/src/mapi/shared-glapi/meson.build b/src/mapi/shared-glapi/meson.build
+index dc7be9cdc07..be6d3562806 100644
+--- a/src/mapi/shared-glapi/meson.build
++++ b/src/mapi/shared-glapi/meson.build
+@@ -35,6 +35,7 @@ libglapi = static_library(
+     '-DMAPI_MODE_GLAPI',
+     '-DMAPI_ABI_HEADER="@0@"'.format(shared_glapi_mapi_tmp_h.full_path()),
+     gcc_lto_quirk,
++    '-fno-lto',
+   ],
+   gnu_symbol_visibility : 'hidden',
+   link_args : [ld_args_gc_sections],
 diff --git a/src/nouveau/vulkan/nvk_instance.c b/src/nouveau/vulkan/nvk_instance.c
 index edaba417447..174fc30c82d 100644
 --- a/src/nouveau/vulkan/nvk_instance.c

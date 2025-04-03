@@ -1,0 +1,28 @@
+[binaries]
+{% if use_llvm %}
+c = '/usr/bin/clang'
+cpp = '/usr/bin/clang++'
+strip = '/usr/bin/llvm-strip'
+ar = '/usr/bin/llvm-ar'
+ranlib = '/usr/bin/llvm-ranlib'
+nm = '/usr/bin/llvm-nm'
+{% else %}
+c = '/usr/bin/gcc'
+cpp = '/usr/bin/g++'
+rust = '/usr/bin/rustc'
+strip = '/usr/bin/strip'
+ar = '/usr/bin/gcc-ar'
+ranlib = '/usr/bin/gcc-ranlib'
+nm = '/usr/bin/gcc-nm'
+{% endif %}
+
+rust = '/usr/bin/rustc'
+pkgconfig = '/usr/bin/pkg-config'
+cmake = '/usr/bin/cmake'
+#llvm-config = '/usr/local/bin/llvm-config'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86'
+cpu = 'i686'
+endian = 'little'

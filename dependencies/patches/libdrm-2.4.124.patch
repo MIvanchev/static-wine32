@@ -1,0 +1,139 @@
+diff --git a/amdgpu/amdgpu_bo.c b/amdgpu/amdgpu_bo.c
+index 672f000d..3ff7edde 100644
+--- a/amdgpu/amdgpu_bo.c
++++ b/amdgpu/amdgpu_bo.c
+@@ -51,7 +51,7 @@ static int amdgpu_bo_create(amdgpu_device_handle dev,
+ 	if (!bo)
+ 		return -ENOMEM;
+ 
+-	r = handle_table_insert(&dev->bo_handles, handle, bo);
++	r = amdgpu_handle_table_insert(&dev->bo_handles, handle, bo);
+ 	if (r) {
+ 		free(bo);
+ 		return r;
+@@ -211,7 +211,7 @@ static int amdgpu_bo_export_flink(amdgpu_bo_handle bo)
+ 		drmCloseBufferHandle(bo->dev->flink_fd, handle);
+ 
+ 	pthread_mutex_lock(&bo->dev->bo_table_mutex);
+-	r = handle_table_insert(&bo->dev->bo_flink_names, bo->flink_name, bo);
++	r = amdgpu_handle_table_insert(&bo->dev->bo_flink_names, bo->flink_name, bo);
+ 	pthread_mutex_unlock(&bo->dev->bo_table_mutex);
+ 
+ 	return r;
+@@ -286,11 +286,11 @@ drm_public int amdgpu_bo_import(amdgpu_device_handle dev,
+ 	/* If we have already created a buffer with this handle, find it. */
+ 	switch (type) {
+ 	case amdgpu_bo_handle_type_gem_flink_name:
+-		bo = handle_table_lookup(&dev->bo_flink_names, shared_handle);
++		bo = amdgpu_handle_table_lookup(&dev->bo_flink_names, shared_handle);
+ 		break;
+ 
+ 	case amdgpu_bo_handle_type_dma_buf_fd:
+-		bo = handle_table_lookup(&dev->bo_handles, shared_handle);
++		bo = amdgpu_handle_table_lookup(&dev->bo_handles, shared_handle);
+ 		break;
+ 
+ 	case amdgpu_bo_handle_type_kms:
+@@ -359,7 +359,7 @@ drm_public int amdgpu_bo_import(amdgpu_device_handle dev,
+ 
+ 	if (flink_name) {
+ 		bo->flink_name = flink_name;
+-		r = handle_table_insert(&dev->bo_flink_names, flink_name,
++		r = amdgpu_handle_table_insert(&dev->bo_flink_names, flink_name,
+ 					bo);
+ 		if (r)
+ 			goto free_bo_handle;
+@@ -395,10 +395,10 @@ drm_public int amdgpu_bo_free(amdgpu_bo_handle buf_handle)
+ 
+ 	if (update_references(&bo->refcount, NULL)) {
+ 		/* Remove the buffer from the hash tables. */
+-		handle_table_remove(&dev->bo_handles, bo->handle);
++		amdgpu_handle_table_remove(&dev->bo_handles, bo->handle);
+ 
+ 		if (bo->flink_name)
+-			handle_table_remove(&dev->bo_flink_names,
++			amdgpu_handle_table_remove(&dev->bo_flink_names,
+ 					    bo->flink_name);
+ 
+ 		/* Release CPU access. */
+@@ -547,7 +547,7 @@ drm_public int amdgpu_find_bo_by_cpu_mapping(amdgpu_device_handle dev,
+ 	 */
+ 	pthread_mutex_lock(&dev->bo_table_mutex);
+ 	for (i = 0; i < dev->bo_handles.max_key; i++) {
+-		bo = handle_table_lookup(&dev->bo_handles, i);
++		bo = amdgpu_handle_table_lookup(&dev->bo_handles, i);
+ 		if (!bo || !bo->cpu_ptr || size > bo->alloc_size)
+ 			continue;
+ 		if (cpu >= bo->cpu_ptr &&
+diff --git a/amdgpu/amdgpu_device.c b/amdgpu/amdgpu_device.c
+index 34463b53..26f763d8 100644
+--- a/amdgpu/amdgpu_device.c
++++ b/amdgpu/amdgpu_device.c
+@@ -115,8 +115,8 @@ static void amdgpu_device_free_internal(amdgpu_device_handle dev)
+ 	amdgpu_vamgr_deinit(&dev->va_mgr.vamgr_low);
+ 	amdgpu_vamgr_deinit(&dev->va_mgr.vamgr_high_32);
+ 	amdgpu_vamgr_deinit(&dev->va_mgr.vamgr_high);
+-	handle_table_fini(&dev->bo_handles);
+-	handle_table_fini(&dev->bo_flink_names);
++	amdgpu_handle_table_fini(&dev->bo_handles);
++	amdgpu_handle_table_fini(&dev->bo_flink_names);
+ 	pthread_mutex_destroy(&dev->bo_table_mutex);
+ 	free(dev->marketing_name);
+ 	free(dev);
+diff --git a/amdgpu/handle_table.c b/amdgpu/handle_table.c
+index 4fdd29d3..8aae9276 100644
+--- a/amdgpu/handle_table.c
++++ b/amdgpu/handle_table.c
+@@ -28,7 +28,7 @@
+ #include "handle_table.h"
+ #include "util_math.h"
+ 
+-drm_private int handle_table_insert(struct handle_table *table, uint32_t key,
++drm_private int amdgpu_handle_table_insert(struct handle_table *table, uint32_t key,
+ 				    void *value)
+ {
+ 	if (key >= table->max_key) {
+@@ -50,13 +50,13 @@ drm_private int handle_table_insert(struct handle_table *table, uint32_t key,
+ 	return 0;
+ }
+ 
+-drm_private void handle_table_remove(struct handle_table *table, uint32_t key)
++drm_private void amdgpu_handle_table_remove(struct handle_table *table, uint32_t key)
+ {
+ 	if (key < table->max_key)
+ 		table->values[key] = NULL;
+ }
+ 
+-drm_private void *handle_table_lookup(struct handle_table *table, uint32_t key)
++drm_private void *amdgpu_handle_table_lookup(struct handle_table *table, uint32_t key)
+ {
+ 	if (key < table->max_key)
+ 		return table->values[key];
+@@ -64,7 +64,7 @@ drm_private void *handle_table_lookup(struct handle_table *table, uint32_t key)
+ 		return NULL;
+ }
+ 
+-drm_private void handle_table_fini(struct handle_table *table)
++drm_private void amdgpu_handle_table_fini(struct handle_table *table)
+ {
+ 	free(table->values);
+ 	table->max_key = 0;
+diff --git a/amdgpu/handle_table.h b/amdgpu/handle_table.h
+index 461193f6..92878fea 100644
+--- a/amdgpu/handle_table.h
++++ b/amdgpu/handle_table.h
+@@ -32,10 +32,10 @@ struct handle_table {
+ 	void		**values;
+ };
+ 
+-drm_private int handle_table_insert(struct handle_table *table, uint32_t key,
++drm_private int amdgpu_handle_table_insert(struct handle_table *table, uint32_t key,
+ 				    void *value);
+-drm_private void handle_table_remove(struct handle_table *table, uint32_t key);
+-drm_private void *handle_table_lookup(struct handle_table *table, uint32_t key);
+-drm_private void handle_table_fini(struct handle_table *table);
++drm_private void amdgpu_handle_table_remove(struct handle_table *table, uint32_t key);
++drm_private void *amdgpu_handle_table_lookup(struct handle_table *table, uint32_t key);
++drm_private void amdgpu_handle_table_fini(struct handle_table *table);
+ 
+ #endif /* _HANDLE_TABLE_H_ */
